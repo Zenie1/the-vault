@@ -558,6 +558,119 @@ header {
 
 audio { display:none; }
 
+/* COVER ART SEARCH */
+.cover-search-row { display:flex; gap:8px; align-items:center; margin-top:6px; }
+.cover-search-row input { flex:1; }
+.cover-art-btn {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  padding: 10px 14px;
+  border: 1px solid rgba(200,255,0,0.35);
+  background: rgba(200,255,0,0.07);
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.cover-art-btn:hover { background: rgba(200,255,0,0.15); border-color: var(--accent); }
+.cover-art-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.cover-results {
+  display: none;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.cover-results.visible { display: flex; }
+.cover-option {
+  width: 72px; height: 72px;
+  object-fit: cover;
+  border: 2px solid transparent;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s;
+  opacity: 0.75;
+}
+.cover-option:hover { opacity: 1; border-color: var(--accent); transform: scale(1.05); }
+.cover-option.selected { border-color: var(--accent); opacity: 1; box-shadow: 0 0 12px rgba(200,255,0,0.4); }
+.cover-selected-preview {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(200,255,0,0.06);
+  border: 1px solid rgba(200,255,0,0.2);
+}
+.cover-selected-preview.visible { display: flex; }
+.cover-selected-preview img { width:40px; height:40px; object-fit:cover; border-radius:2px; }
+.cover-selected-preview span { font-family:var(--font-mono); font-size:9px; color:var(--accent); letter-spacing:1px; }
+.cover-clear-btn { margin-left:auto; background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:14px; }
+
+/* VINYL ART CARD — click disc to reveal */
+.vinyl-art-card {
+  position: absolute;
+  bottom: 80px;
+  left: 20px;
+  width: 200px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+  z-index: 150;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.vinyl-art-card.open { display: flex; }
+.vinyl-art-card img {
+  width: 100%; aspect-ratio:1/1;
+  object-fit: cover;
+  display: block;
+}
+.vinyl-art-card .vac-info {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+.vinyl-art-card .vac-title { font-size:13px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vinyl-art-card .vac-artist { font-family:var(--font-mono); font-size:9px; color:var(--muted); letter-spacing:2px; margin-top:3px; text-transform:uppercase; }
+.vinyl-art-card .vac-no-art {
+  width:100%; aspect-ratio:1/1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface3);
+  font-size:48px;
+  color: var(--muted);
+}
+
+/* WAVEFORM STYLE TOGGLE */
+.wave-toggle {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.wave-style-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  width: 22px; height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: all 0.2s;
+  border-radius: 2px;
+  padding: 0;
+}
+.wave-style-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+.wave-style-btn.active { background: rgba(200,255,0,0.1); border-color: rgba(200,255,0,0.4); color: var(--accent); }
+
 /* RESPONSIVE */
 @media(max-width:700px) {
   .logo { font-size:40px; }
@@ -613,8 +726,18 @@ audio { display:none; }
 </div>
 
 <!-- PLAYER BAR -->
+<!-- VINYL ART CARD POPUP -->
+<div class="vinyl-art-card" id="vinyl-art-card">
+  <div class="vac-no-art" id="vac-no-art">♪</div>
+  <img id="vac-img" src="" alt="" style="display:none">
+  <div class="vac-info">
+    <div class="vac-title" id="vac-title">—</div>
+    <div class="vac-artist" id="vac-artist">—</div>
+  </div>
+</div>
+
 <div id="player-bar">
-  <div class="player-vinyl" id="player-vinyl"><div class="vinyl-dot"></div><img class="player-vinyl-img" id="player-cover-img" src="" alt=""></div>
+  <div class="player-vinyl" id="player-vinyl" title="Click to view art" style="cursor:pointer"><div class="vinyl-dot"></div><img class="player-vinyl-img" id="player-cover-img" src="" alt=""></div>
   <div class="player-info">
     <div class="player-title" id="player-title">—</div>
     <div class="player-artist" id="player-artist">—</div>
@@ -629,6 +752,10 @@ audio { display:none; }
       <span class="time-label" id="time-current">0:00</span>
       <canvas id="waveform-canvas" height="36"></canvas>
       <span class="time-label" id="time-total">0:00</span>
+      <div class="wave-toggle">
+        <button class="wave-style-btn active" id="wave-bars-btn" title="Bar waveform">▮▮</button>
+        <button class="wave-style-btn" id="wave-line-btn" title="Line waveform">〜</button>
+      </div>
     </div>
   </div>
   <div class="volume-wrap">
@@ -667,6 +794,19 @@ audio { display:none; }
         <label>Tags (comma separated)</label>
         <input type="text" id="inp-tags" placeholder="unreleased, leak, snippet">
       </div>
+      <div class="form-group">
+        <label>Cover Art</label>
+        <div class="cover-search-row">
+          <input type="url" id="inp-cover" placeholder="Paste image URL, or search →">
+          <button class="cover-art-btn" id="find-cover-btn">🔍 Find Art</button>
+        </div>
+        <div class="cover-results" id="cover-results"></div>
+        <div class="cover-selected-preview" id="cover-preview">
+          <img id="cover-preview-img" src="" alt="">
+          <span>Cover art selected</span>
+          <button class="cover-clear-btn" id="cover-clear-btn" title="Remove">✕</button>
+        </div>
+      </div>
     </div>
 
     <!-- CLOUDINARY TAB -->
@@ -691,6 +831,19 @@ audio { display:none; }
       <div class="form-group">
         <label>Tags (comma separated)</label>
         <input type="text" id="inp-tags-c" placeholder="unreleased, leak, snippet">
+      </div>
+      <div class="form-group">
+        <label>Cover Art</label>
+        <div class="cover-search-row">
+          <input type="url" id="inp-cover-c" placeholder="Paste image URL, or search →">
+          <button class="cover-art-btn" id="find-cover-btn-c">🔍 Find Art</button>
+        </div>
+        <div class="cover-results" id="cover-results-c"></div>
+        <div class="cover-selected-preview" id="cover-preview-c">
+          <img id="cover-preview-img-c" src="" alt="">
+          <span>Cover art selected</span>
+          <button class="cover-clear-btn" id="cover-clear-btn-c" title="Remove">✕</button>
+        </div>
       </div>
       <div class="cloudinary-note">
         ✓ Track saved as a Cloudinary entry — survives all Git pushes
@@ -720,6 +873,19 @@ audio { display:none; }
         <div class="form-group">
           <label>Tags (comma separated)</label>
           <input type="text" id="inp-tags-f" placeholder="unreleased, leak, snippet">
+        </div>
+        <div class="form-group">
+          <label>Cover Art</label>
+          <div class="cover-search-row">
+            <input type="url" id="inp-cover-f" placeholder="Paste image URL, or search →">
+            <button class="cover-art-btn" id="find-cover-btn-f">🔍 Find Art</button>
+          </div>
+          <div class="cover-results" id="cover-results-f"></div>
+          <div class="cover-selected-preview" id="cover-preview-f">
+            <img id="cover-preview-img-f" src="" alt="">
+            <span>Cover art selected</span>
+            <button class="cover-clear-btn" id="cover-clear-btn-f" title="Remove">✕</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1183,12 +1349,15 @@ function playAtIndex(idx) {
   if (t.coverArt) {
     vinylImg.src = t.coverArt;
     vinylImg.onload = () => vinylImg.classList.add('loaded');
+    updateVinylCard(t, t.coverArt);
   } else {
+    updateVinylCard(t, null);
     fetchCoverArt(t.artist, t.title).then(url => {
       if (url) {
         t.coverArt = url;
         vinylImg.src = url;
         vinylImg.onload = () => vinylImg.classList.add('loaded');
+        updateVinylCard(t, url);
       }
     });
   }
@@ -1270,65 +1439,154 @@ function drawWaveform() {
   const BAR_COUNT = 60;
   if (analyser && isPlaying) {
     analyser.getByteFrequencyData(freqData);
-    // Downsample freqData to BAR_COUNT bars
     const step = Math.floor(freqData.length / BAR_COUNT);
     if (smoothedBars.length !== BAR_COUNT)
       smoothedBars = new Array(BAR_COUNT).fill(0);
     for (let i = 0; i < BAR_COUNT; i++) {
-      // Average a small window for smoother look
       let sum = 0;
       for (let j = 0; j < step; j++) sum += freqData[i * step + j] || 0;
       const target = sum / step;
-      // Ease toward target — fast attack, slow decay
       smoothedBars[i] = smoothedBars[i] < target
-        ? smoothedBars[i] * 0.4 + target * 0.6   // fast attack
-        : smoothedBars[i] * 0.82 + target * 0.18; // slow decay
+        ? smoothedBars[i] * 0.4 + target * 0.6
+        : smoothedBars[i] * 0.82 + target * 0.18;
     }
   } else if (!smoothedBars.length) {
     smoothedBars = new Array(BAR_COUNT).fill(8);
   }
 
-  const gap = 2.5;
-  const barW = (W - gap * (BAR_COUNT - 1)) / BAR_COUNT;
+  if (waveformStyle === 'line') {
+    // ── WhatsApp-style smooth line waveform ──
+    const midY = H / 2;
+    const playheadX = progress * W;
 
-  for (let i = 0; i < BAR_COUNT; i++) {
-    const barProgress = i / BAR_COUNT;
-    const rawH = (smoothedBars[i] / 255) * H;
-    const barH = Math.max(3, rawH);
-    const x = i * (barW + gap);
-    const y = (H - barH) / 2;
+    // Draw played portion (full color) and unplayed (dim) as two separate paths
+    for (let pass = 0; pass < 2; pass++) {
+      const isPastPass = pass === 0;
+      waveCtx.save();
+      // Clip to played or unplayed region
+      waveCtx.beginPath();
+      if (isPastPass) {
+        waveCtx.rect(0, 0, playheadX, H);
+      } else {
+        waveCtx.rect(playheadX, 0, W - playheadX, H);
+      }
+      waveCtx.clip();
 
-    const isPast = barProgress <= progress;
-    waveCtx.globalAlpha = isPast ? 0.92 : 0.18;
+      // Upper line
+      waveCtx.beginPath();
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const x = (i / (BAR_COUNT - 1)) * W;
+        const amp = (smoothedBars[i] / 255) * (H * 0.44);
+        const y = midY - Math.max(2, amp);
+        if (i === 0) waveCtx.moveTo(x, y);
+        else waveCtx.lineTo(x, y);
+      }
+      // Lower line (mirror, drawn back)
+      for (let i = BAR_COUNT - 1; i >= 0; i--) {
+        const x = (i / (BAR_COUNT - 1)) * W;
+        const amp = (smoothedBars[i] / 255) * (H * 0.44);
+        const y = midY + Math.max(2, amp);
+        waveCtx.lineTo(x, y);
+      }
+      waveCtx.closePath();
 
-    // Gradient per bar: brighter at tip
-    if (isPast) {
-      const grad = waveCtx.createLinearGradient(x, y + barH, x, y);
-      grad.addColorStop(0, rawColor + '99');
-      grad.addColorStop(1, rawColor);
-      waveCtx.fillStyle = grad;
-    } else {
-      waveCtx.fillStyle = rawColor;
+      if (isPastPass) {
+        const grad = waveCtx.createLinearGradient(0, 0, playheadX, 0);
+        grad.addColorStop(0, rawColor + 'cc');
+        grad.addColorStop(1, rawColor);
+        waveCtx.fillStyle = grad;
+        waveCtx.globalAlpha = 0.9;
+      } else {
+        waveCtx.fillStyle = rawColor;
+        waveCtx.globalAlpha = 0.18;
+      }
+      waveCtx.fill();
+
+      // Stroke the outline for crispness
+      waveCtx.beginPath();
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const x = (i / (BAR_COUNT - 1)) * W;
+        const amp = (smoothedBars[i] / 255) * (H * 0.44);
+        const y = midY - Math.max(2, amp);
+        if (i === 0) waveCtx.moveTo(x, y);
+        else waveCtx.lineTo(x, y);
+      }
+      waveCtx.strokeStyle = isPastPass ? rawColor : rawColor + '44';
+      waveCtx.lineWidth = 1.5;
+      waveCtx.globalAlpha = isPastPass ? 1 : 0.4;
+      waveCtx.stroke();
+
+      waveCtx.beginPath();
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const x = (i / (BAR_COUNT - 1)) * W;
+        const amp = (smoothedBars[i] / 255) * (H * 0.44);
+        const y = midY + Math.max(2, amp);
+        if (i === 0) waveCtx.moveTo(x, y);
+        else waveCtx.lineTo(x, y);
+      }
+      waveCtx.stroke();
+
+      waveCtx.restore();
     }
 
-    // Rounded top/bottom using arc
-    const r = Math.min(barW / 2, 2);
+    // Playhead line
+    waveCtx.globalAlpha = 0.9;
     waveCtx.beginPath();
-    waveCtx.roundRect
-      ? waveCtx.roundRect(x, y, Math.max(1, barW), barH, r)
-      : waveCtx.rect(x, y, Math.max(1, barW), barH);
-    waveCtx.fill();
-  }
-  waveCtx.globalAlpha = 1;
+    waveCtx.moveTo(playheadX, 4);
+    waveCtx.lineTo(playheadX, H - 4);
+    waveCtx.strokeStyle = rawColor;
+    waveCtx.lineWidth = 2;
+    waveCtx.stroke();
 
-  // Playhead dot
-  const px = progress * W;
-  waveCtx.beginPath();
-  waveCtx.arc(px, H / 2, 3.5, 0, Math.PI * 2);
-  waveCtx.fillStyle = rawColor;
-  waveCtx.globalAlpha = 0.95;
-  waveCtx.fill();
-  waveCtx.globalAlpha = 1;
+    // Playhead dot
+    waveCtx.beginPath();
+    waveCtx.arc(playheadX, midY, 4, 0, Math.PI * 2);
+    waveCtx.fillStyle = rawColor;
+    waveCtx.globalAlpha = 1;
+    waveCtx.fill();
+
+  } else {
+    // ── Original bar waveform ──
+    const gap = 2.5;
+    const barW = (W - gap * (BAR_COUNT - 1)) / BAR_COUNT;
+
+    for (let i = 0; i < BAR_COUNT; i++) {
+      const barProgress = i / BAR_COUNT;
+      const rawH = (smoothedBars[i] / 255) * H;
+      const barH = Math.max(3, rawH);
+      const x = i * (barW + gap);
+      const y = (H - barH) / 2;
+
+      const isPast = barProgress <= progress;
+      waveCtx.globalAlpha = isPast ? 0.92 : 0.18;
+
+      if (isPast) {
+        const grad = waveCtx.createLinearGradient(x, y + barH, x, y);
+        grad.addColorStop(0, rawColor + '99');
+        grad.addColorStop(1, rawColor);
+        waveCtx.fillStyle = grad;
+      } else {
+        waveCtx.fillStyle = rawColor;
+      }
+
+      const r = Math.min(barW / 2, 2);
+      waveCtx.beginPath();
+      waveCtx.roundRect
+        ? waveCtx.roundRect(x, y, Math.max(1, barW), barH, r)
+        : waveCtx.rect(x, y, Math.max(1, barW), barH);
+      waveCtx.fill();
+    }
+    waveCtx.globalAlpha = 1;
+
+    // Playhead dot
+    const px = progress * W;
+    waveCtx.beginPath();
+    waveCtx.arc(px, H / 2, 3.5, 0, Math.PI * 2);
+    waveCtx.fillStyle = rawColor;
+    waveCtx.globalAlpha = 0.95;
+    waveCtx.fill();
+    waveCtx.globalAlpha = 1;
+  }
 
   waveAnimFrame = requestAnimationFrame(drawWaveform);
 }
@@ -1573,12 +1831,15 @@ function saveFromCloudinary() {
   const title  = document.getElementById('inp-title-c').value.trim();
   const url    = document.getElementById('inp-url-c').value.trim();
   const tags   = document.getElementById('inp-tags-c').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const coverArt = getCoverCloudinary();
   if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
   if (!url) { showToast('CLOUDINARY URL REQUIRED', 'error'); return; }
   if (!/cloudinary\.com/i.test(url) && !confirm('URL doesn\'t look like a Cloudinary link — add anyway?')) return;
-  addTrack({ artist, title, url, tags, type:'cloudinary' });
+  addTrack({ artist, title, url, tags, type:'cloudinary', coverArt: coverArt || undefined });
   // Clear cloudinary fields
-  ['inp-artist-c','inp-title-c','inp-url-c','inp-tags-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('cover-preview-c').classList.remove('visible');
+  document.getElementById('cover-results-c').classList.remove('visible');
 }
 
 function saveFromLink() {
@@ -1586,17 +1847,19 @@ function saveFromLink() {
   const title = document.getElementById('inp-title').value.trim();
   const url = document.getElementById('inp-url').value.trim();
   const tags = document.getElementById('inp-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const coverArt = getCoverLink();
   if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
-  addTrack({ artist, title, url, tags, type:'url' });
+  addTrack({ artist, title, url, tags, type:'url', coverArt: coverArt || undefined });
 }
 
 function saveFromFile() {
   const artist = document.getElementById('inp-artist-f').value.trim();
   const title = document.getElementById('inp-title-f').value.trim();
   const tags = document.getElementById('inp-tags-f').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const coverArt = getCoverFile();
   if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
   if (!uploadedDataUrl) { showToast('NO FILE SELECTED', 'error'); return; }
-  addTrack({ artist, title, url: uploadedDataUrl, tags, type:'file' });
+  addTrack({ artist, title, url: uploadedDataUrl, tags, type:'file', coverArt: coverArt || undefined });
 }
 
 function addTrack(data) {
@@ -1606,7 +1869,8 @@ function addTrack(data) {
   renderFilters();
   renderTracks();
   // Reset
-  ['inp-artist','inp-title','inp-url','inp-tags','inp-artist-f','inp-title-f','inp-tags-f','inp-artist-c','inp-title-c','inp-url-c','inp-tags-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['inp-artist','inp-title','inp-url','inp-tags','inp-cover','inp-artist-f','inp-title-f','inp-tags-f','inp-cover-f','inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['cover-preview','cover-preview-c','cover-preview-f','cover-results','cover-results-c','cover-results-f'].forEach(id => { const el=document.getElementById(id); if(el) el.classList.remove('visible'); });
   document.getElementById('upload-preview').classList.remove('visible');
   uploadedFile = null; uploadedDataUrl = null;
   closeModal('modal');
@@ -1900,6 +2164,130 @@ document.getElementById('gh-import-input').addEventListener('change', e => {
   reader.readAsText(f);
   e.target.value = '';
 });
+
+// ===== WAVEFORM STYLE TOGGLE =====
+let waveformStyle = 'bars'; // 'bars' | 'line'
+document.getElementById('wave-bars-btn').addEventListener('click', () => {
+  waveformStyle = 'bars';
+  document.getElementById('wave-bars-btn').classList.add('active');
+  document.getElementById('wave-line-btn').classList.remove('active');
+});
+document.getElementById('wave-line-btn').addEventListener('click', () => {
+  waveformStyle = 'line';
+  document.getElementById('wave-line-btn').classList.add('active');
+  document.getElementById('wave-bars-btn').classList.remove('active');
+});
+
+// ===== VINYL ART CARD CLICK =====
+let vacOpen = false;
+document.getElementById('player-vinyl').addEventListener('click', () => {
+  const card = document.getElementById('vinyl-art-card');
+  vacOpen = !vacOpen;
+  card.classList.toggle('open', vacOpen);
+});
+// Close when clicking outside
+document.addEventListener('click', (e) => {
+  if (vacOpen && !e.target.closest('#player-vinyl') && !e.target.closest('#vinyl-art-card')) {
+    vacOpen = false;
+    document.getElementById('vinyl-art-card').classList.remove('open');
+  }
+});
+
+function updateVinylCard(track, coverUrl) {
+  document.getElementById('vac-title').textContent = track.title;
+  document.getElementById('vac-artist').textContent = track.artist.toUpperCase();
+  const img = document.getElementById('vac-img');
+  const noArt = document.getElementById('vac-no-art');
+  if (coverUrl) {
+    img.src = coverUrl;
+    img.style.display = 'block';
+    noArt.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    noArt.style.display = 'flex';
+  }
+}
+
+// ===== COVER ART SEARCH — ADMIN ADD TRACK MODAL =====
+// Returns iTunes results for a search query
+async function searchCoverArt(query) {
+  try {
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&limit=8&entity=song`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.results || [])
+      .filter(r => r.artworkUrl100)
+      .map(r => ({
+        url: r.artworkUrl100.replace('100x100bb', '600x600bb'),
+        label: `${r.artistName} — ${r.collectionName || r.trackName}`
+      }));
+  } catch(e) { return []; }
+}
+
+// Generic cover art picker setup for a tab
+function setupCoverPicker({ btnId, artistId, titleId, coverInputId, resultsId, previewId, previewImgId, clearId }) {
+  let selectedCover = null;
+
+  const btn = document.getElementById(btnId);
+  const resultsEl = document.getElementById(resultsId);
+  const previewEl = document.getElementById(previewId);
+  const previewImg = document.getElementById(previewImgId);
+  const coverInput = document.getElementById(coverInputId);
+  const clearBtn = document.getElementById(clearId);
+
+  function selectCover(url) {
+    selectedCover = url;
+    coverInput.value = url;
+    previewImg.src = url;
+    previewEl.classList.add('visible');
+    resultsEl.querySelectorAll('.cover-option').forEach(o => o.classList.toggle('selected', o.dataset.url === url));
+  }
+
+  clearBtn.addEventListener('click', () => {
+    selectedCover = null;
+    coverInput.value = '';
+    previewEl.classList.remove('visible');
+    resultsEl.querySelectorAll('.cover-option').forEach(o => o.classList.remove('selected'));
+  });
+
+  // If user manually pastes a URL, show preview
+  coverInput.addEventListener('change', () => {
+    const v = coverInput.value.trim();
+    if (v && /^https?:\/\//.test(v)) {
+      previewImg.src = v;
+      previewEl.classList.add('visible');
+      selectedCover = v;
+    }
+  });
+
+  btn.addEventListener('click', async () => {
+    const artist = document.getElementById(artistId)?.value.trim() || '';
+    const title = document.getElementById(titleId)?.value.trim() || '';
+    if (!artist && !title) { showToast('ENTER ARTIST/TITLE FIRST', 'error'); return; }
+    btn.disabled = true;
+    btn.textContent = '…';
+    const results = await searchCoverArt(`${artist} ${title}`);
+    btn.disabled = false;
+    btn.textContent = '🔍 Find Art';
+    if (!results.length) { showToast('NO COVER ART FOUND', 'error'); return; }
+    resultsEl.innerHTML = results.slice(0, 6).map(r => `<img class="cover-option" src="${r.url}" data-url="${r.url}" title="${r.label}" loading="lazy">`).join('');
+    resultsEl.classList.add('visible');
+    resultsEl.querySelectorAll('.cover-option').forEach(img => {
+      img.addEventListener('click', () => selectCover(img.dataset.url));
+    });
+    // Auto-select first
+    selectCover(results[0].url);
+  });
+
+  // Return getter for selected cover
+  return () => coverInput.value.trim() || selectedCover;
+}
+
+// Set up all three tabs
+const getCoverLink       = setupCoverPicker({ btnId:'find-cover-btn',   artistId:'inp-artist',   titleId:'inp-title',   coverInputId:'inp-cover',   resultsId:'cover-results',   previewId:'cover-preview',   previewImgId:'cover-preview-img',   clearId:'cover-clear-btn' });
+const getCoverCloudinary = setupCoverPicker({ btnId:'find-cover-btn-c', artistId:'inp-artist-c', titleId:'inp-title-c', coverInputId:'inp-cover-c', resultsId:'cover-results-c', previewId:'cover-preview-c', previewImgId:'cover-preview-img-c', clearId:'cover-clear-btn-c' });
+const getCoverFile       = setupCoverPicker({ btnId:'find-cover-btn-f', artistId:'inp-artist-f', titleId:'inp-title-f', coverInputId:'inp-cover-f', resultsId:'cover-results-f', previewId:'cover-preview-f', previewImgId:'cover-preview-img-f', clearId:'cover-clear-btn-f' });
 
 // ===== INIT =====
 resizeCanvas();
