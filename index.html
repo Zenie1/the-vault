@@ -1006,6 +1006,11 @@ const ADMIN_PASSWORD = 'vault2024';
 
 // ===== GITHUB CONFIG =====
 // These are loaded from localStorage so you set them once in the GitHub Settings modal
+// GUEST_REPO: set this once so guests can load tracks without a token
+// Format: 'owner/repo' e.g. 'zenie1/the-vault'  — leave blank if not using GitHub
+const GUEST_REPO = ''; // <-- FILL THIS IN e.g. 'zenie1/the-vault'
+const GUEST_BRANCH = 'main';
+
 function getGHConfig() {
   return {
     token: localStorage.getItem('vault-gh-token') || '',
@@ -1017,6 +1022,17 @@ function getGHConfig() {
 function ghConfigured() {
   const c = getGHConfig();
   return c.token && c.owner && c.repo;
+}
+
+// Derive public repo from admin config or GUEST_REPO constant
+function getPublicRepo() {
+  const c = getGHConfig();
+  if (c.owner && c.repo) return { owner: c.owner, repo: c.repo, branch: c.branch || 'main' };
+  if (GUEST_REPO) {
+    const [owner, repo] = GUEST_REPO.split('/');
+    return { owner, repo, branch: GUEST_BRANCH };
+  }
+  return null;
 }
 
 const ARTIST_COLORS = {
@@ -1058,13 +1074,24 @@ async function loadTracks() {
         const data = await res.json();
         ghFileSha = data.sha;
         const decoded = JSON.parse(atob(data.content.replace(/\n/g,'')));
-        // Mirror to localStorage as backup
         localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
         return decoded;
       }
-      // 404 = file doesn't exist yet, will be created on first save
       if (res.status === 404) { ghFileSha = null; return getLocalTracks(); }
     } catch(e) { console.warn('GitHub load failed, using localStorage', e); }
+  } else {
+    // Guest with no token — try public raw GitHub URL
+    const pub = getPublicRepo();
+    if (pub) {
+      try {
+        const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
+        if (res.ok) {
+          const decoded = await res.json();
+          localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
+          return decoded;
+        }
+      } catch(e) { console.warn('Raw GitHub load failed', e); }
+    }
   }
   return getLocalTracks();
 }
@@ -1077,7 +1104,16 @@ function getLocalTracks() {
 }
 
 async function saveTracks(t) {
-  // Always save to localStorage immediately
+  // Strip base64 file data URLs before saving — they're too large for GitHub
+  // and file tracks only work locally anyway
+  const forGithub = t.map(track => {
+    if (track.type === 'file' && track.url && track.url.startsWith('data:')) {
+      return { ...track, url: '', _localOnly: true };
+    }
+    return track;
+  });
+
+  // Always save full version (with data URLs) to localStorage
   try { localStorage.setItem('vault-tracks-v2', JSON.stringify(t)); } catch(e) {}
 
   if (!ghConfigured()) {
@@ -1086,7 +1122,19 @@ async function saveTracks(t) {
   }
 
   const c = getGHConfig();
-  const content = btoa(unescape(encodeURIComponent(JSON.stringify(t, null, 2))));
+  let content;
+  try {
+    // Use TextEncoder for safe base64 encoding (handles all Unicode)
+    const json = JSON.stringify(forGithub, null, 2);
+    const bytes = new TextEncoder().encode(json);
+    const binStr = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
+    content = btoa(binStr);
+  } catch(e) {
+    console.error('Encoding error', e);
+    showToast('ENCODING ERROR — SAVED LOCALLY ONLY', 'error');
+    return;
+  }
+
   const body = {
     message: `vault: update tracks.json [${new Date().toISOString().split('T')[0]}]`,
     content,
@@ -1115,7 +1163,8 @@ async function saveTracks(t) {
     } else {
       const err = await res.json();
       console.error('GitHub save error', err);
-      showToast('GITHUB SAVE FAILED — CHECK CONSOLE', 'error');
+      const reason = err.message || 'unknown error';
+      showToast(`GITHUB SAVE FAILED: ${reason.slice(0,40).toUpperCase()}`, 'error');
     }
   } catch(e) {
     console.error(e);
