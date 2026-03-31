@@ -832,7 +832,7 @@ audio { display:none; }
 </div>
 
 <div class="toast" id="toast"></div>
-<audio id="audio-player"></audio>
+<audio id="audio-player" crossorigin="anonymous"></audio>
 
 <script>
 // ===== CONFIG =====
@@ -1144,9 +1144,25 @@ function playAtIndex(idx) {
   const t = playlist[idx];
   if (!t.url) { showToast('NO AUDIO SOURCE — ADD A URL OR FILE', 'error'); return; }
   currentTrackIdx = idx;
+
+  // Set src and call load() so CORS headers are sent on the request
   audio.src = t.url;
+  audio.load();
   audio.volume = parseFloat(document.getElementById('volume-slider').value);
-  audio.play().catch(() => showToast('CANNOT PLAY — CHECK AUDIO SOURCE', 'error'));
+
+  const playPromise = audio.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(err => {
+      // If CORS/Web Audio caused it, try detaching Web Audio and replaying clean
+      if (audioCtx && sourceNode) {
+        try { sourceNode.disconnect(); } catch(e) {}
+        sourceNode = null; audioCtx = null; analyser = null;
+      }
+      audio.src = t.url;
+      audio.load();
+      audio.play().catch(() => showToast('CANNOT PLAY — CHECK AUDIO SOURCE OR CORS SETTINGS', 'error'));
+    });
+  }
   isPlaying = true;
 
   const color = getArtistColor(t.artist);
@@ -1160,7 +1176,6 @@ function playAtIndex(idx) {
   document.getElementById('player-vinyl').classList.add('spinning');
   playerBar.classList.add('visible');
   setArtistBG(t.artist);
-  startWaveform();
 
   // Load cover art into vinyl
   const vinylImg = document.getElementById('player-cover-img');
@@ -1193,7 +1208,7 @@ document.getElementById('play-pause-btn').addEventListener('click', () => {
     audio.play(); isPlaying = true;
     ppBtn.innerHTML = '⏸'; ppBtn.classList.add('is-playing');
     document.getElementById('player-vinyl').classList.add('spinning');
-    startWaveform();
+    // startWaveform fires via 'playing' event
   }
   renderTracks();
 });
@@ -1342,6 +1357,23 @@ waveCanvas.addEventListener('click', (e) => {
 });
 
 window.addEventListener('resize', resizeWaveCanvas);
+
+// Start waveform only once audio is actually playing (avoids CORS race)
+audio.addEventListener('playing', () => {
+  startWaveform();
+});
+
+// If audio errors out, show a helpful toast
+audio.addEventListener('error', (e) => {
+  const codes = { 1:'ABORTED', 2:'NETWORK ERROR', 3:'DECODE ERROR', 4:'FORMAT NOT SUPPORTED' };
+  const msg = codes[audio.error && audio.error.code] || 'UNKNOWN ERROR';
+  showToast(`AUDIO ERROR: ${msg}`, 'error');
+  isPlaying = false;
+  document.getElementById('play-pause-btn').innerHTML = '▶';
+  document.getElementById('play-pause-btn').classList.remove('is-playing');
+  document.getElementById('player-vinyl').classList.remove('spinning');
+  stopWaveform();
+});
 
 audio.addEventListener('timeupdate', () => {
   if (!audio.duration) return;
