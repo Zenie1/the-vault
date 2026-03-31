@@ -1460,9 +1460,9 @@ function setupAudioContext() {
   if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 256;           // 128 frequency bins
-  analyser.smoothingTimeConstant = 0.75;
-  freqData = new Uint8Array(analyser.frequencyBinCount);
+  analyser.fftSize = 512;          // 256 bins — better bass resolution
+  analyser.smoothingTimeConstant = 0.7;
+  freqData = new Uint8Array(analyser.frequencyBinCount); // 256 bins with fftSize 512
   sourceNode = audioCtx.createMediaElementSource(audio);
   sourceNode.connect(analyser);
   analyser.connect(audioCtx.destination);
@@ -1488,16 +1488,29 @@ function drawWaveform() {
   const BAR_COUNT = 60;
   if (analyser && isPlaying) {
     analyser.getByteFrequencyData(freqData);
-    const step = Math.floor(freqData.length / BAR_COUNT);
     if (smoothedBars.length !== BAR_COUNT)
       smoothedBars = new Array(BAR_COUNT).fill(0);
+
+    // Non-linear freq mapping: expand bass end, squash highs
+    // So bars 0–20 cover sub/bass (808s, kicks) instead of being 2 tiny bins
+    const binCount = freqData.length; // 128 bins
     for (let i = 0; i < BAR_COUNT; i++) {
+      const t = i / BAR_COUNT;
+      const binIdx = Math.floor(Math.pow(t, 1.8) * binCount);
+      const binStart = Math.max(0, binIdx - 1);
+      const binEnd   = Math.min(binCount - 1, binIdx + 1);
       let sum = 0;
-      for (let j = 0; j < step; j++) sum += freqData[i * step + j] || 0;
-      const target = sum / step;
+      for (let b = binStart; b <= binEnd; b++) sum += freqData[b] || 0;
+      let target = sum / (binEnd - binStart + 1);
+
+      // Boost sub-bass (bars 0–7 = 808/kick range) — really punch through
+      if (i < 8)       target = Math.min(255, target * 2.4);
+      // Boost bass/low-mid (bars 8–20)
+      else if (i < 20) target = Math.min(255, target * 1.5);
+
       smoothedBars[i] = smoothedBars[i] < target
-        ? smoothedBars[i] * 0.4 + target * 0.6
-        : smoothedBars[i] * 0.82 + target * 0.18;
+        ? smoothedBars[i] * 0.3 + target * 0.7   // fast attack
+        : smoothedBars[i] * 0.78 + target * 0.22; // decay
     }
   } else if (!smoothedBars.length) {
     smoothedBars = new Array(BAR_COUNT).fill(8);
