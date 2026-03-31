@@ -310,7 +310,7 @@ header {
 #player-bar::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--current-color,var(--accent)),transparent); }
 
 .player-vinyl {
-  width: 46px; height: 46px;
+  width: 52px; height: 52px;
   border-radius: 50%;
   background: conic-gradient(from 0deg, #1a1a2a, #2a2a3a, #1a1a2a);
   border: 2px solid var(--border2);
@@ -321,10 +321,34 @@ header {
   position: relative;
   font-size: 6px;
   color: var(--muted);
+  overflow: hidden;
 }
-.player-vinyl.spinning { animation: spin 3s linear infinite; }
+.player-vinyl.spinning { animation: spin 4s linear infinite; }
+.player-vinyl-img {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.player-vinyl-img.loaded { opacity: 1; }
 @keyframes spin { to { transform:rotate(360deg); } }
-.vinyl-dot { width:8px; height:8px; border-radius:50%; background:var(--bg); border:1.5px solid var(--border2); position:absolute; }
+.vinyl-dot { width:8px; height:8px; border-radius:50%; background:var(--bg); border:1.5px solid var(--border2); position:absolute; z-index:2; }
+
+/* COVER ART ON TRACK CARD */
+.track-cover {
+  width: 48px; height: 48px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: none;
+  border: 1px solid var(--border);
+}
+.track-cover.loaded { display: block; }
+.track-card-top { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+.track-card-meta { flex: 1; min-width: 0; }
 
 .player-info { min-width:0; flex:1; }
 .player-title { font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -339,14 +363,18 @@ header {
   border: none;
   color: #000;
   cursor: pointer;
-  font-size:16px;
+  font-size:15px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   transition: all 0.2s;
   flex-shrink:0;
+  line-height: 1;
+  padding: 0;
+  padding-left: 2px; /* optical: ▶ glyph sits slightly left of center */
 }
+.play-pause.is-playing { padding-left: 0; } /* ⏸ is naturally centered */
 .play-pause:hover { transform:scale(1.08); }
 
 .ctrl-btn { background:transparent; border:none; color:var(--muted); font-size:14px; cursor:pointer; padding:4px; transition:color 0.2s; }
@@ -361,10 +389,11 @@ header {
 /* WAVEFORM */
 #waveform-canvas {
   width: 100%;
-  height: 36px;
+  height: 44px;
   display: block;
   cursor: pointer;
-  opacity: 0.85;
+  opacity: 0.9;
+  border-radius: 2px;
 }
 
 .volume-wrap { display:flex; align-items:center; gap:8px; }
@@ -585,7 +614,7 @@ audio { display:none; }
 
 <!-- PLAYER BAR -->
 <div id="player-bar">
-  <div class="player-vinyl" id="player-vinyl"><div class="vinyl-dot"></div></div>
+  <div class="player-vinyl" id="player-vinyl"><div class="vinyl-dot"></div><img class="player-vinyl-img" id="player-cover-img" src="" alt=""></div>
   <div class="player-info">
     <div class="player-title" id="player-title">—</div>
     <div class="player-artist" id="player-artist">—</div>
@@ -606,7 +635,7 @@ audio { display:none; }
     <span class="volume-icon" id="vol-icon">🔊</span>
     <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
   </div>
-  <button class="dl-btn" id="download-link" onclick="if(currentTrackIdx>=0){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);}">↓ DL</button>
+  <button class="dl-btn" id="download-link" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓ DL</button>
 </div>
 
 <!-- ADD TRACK MODAL -->
@@ -1024,10 +1053,16 @@ function renderTracks() {
     const pIdx = playlist.findIndex(x=>x.id===t.id);
     const isCurrentlyPlaying = currentTrackIdx === pIdx && isPlaying;
     const sourceBadge = t.type === 'cloudinary' ? `<span class="source-badge cloudinary">☁ CDN</span>` : t.type === 'file' ? `<span class="source-badge file">📁 LOCAL</span>` : '';
+    const coverSrc = t.coverArt || '';
     return `
       <div class="track-card${isCurrentlyPlaying?' playing':''}" style="--artist-color:${color}" data-id="${t.id}">
-        <div class="track-artist">${t.artist}${sourceBadge}</div>
-        <div class="track-title">${t.title}</div>
+        <div class="track-card-top">
+          ${coverSrc ? `<img class="track-cover loaded" src="${coverSrc}" alt="cover" loading="lazy">` : `<img class="track-cover" src="" data-fetch-cover="${t.id}" alt="cover">`}
+          <div class="track-card-meta">
+            <div class="track-artist">${t.artist}${sourceBadge}</div>
+            <div class="track-title">${t.title}</div>
+          </div>
+        </div>
         <div class="track-bottom">
           <div class="track-tags">${tags}</div>
           <div class="track-actions">
@@ -1040,6 +1075,20 @@ function renderTracks() {
         ${t.added ? `<div class="track-date">${formatDate(t.added)}</div>` : ''}
       </div>`;
   }).join('');
+
+  // Lazy-fetch cover art for cards that don't have it cached yet
+  grid.querySelectorAll('[data-fetch-cover]').forEach(img => {
+    const id = parseInt(img.dataset.fetchCover);
+    const t = tracks.find(x => x.id === id);
+    if (!t) return;
+    fetchCoverArt(t.artist, t.title).then(url => {
+      if (url) {
+        img.src = url;
+        img.onload = () => img.classList.add('loaded');
+        t.coverArt = url; // cache in-memory for session
+      }
+    });
+  });
 }
 
 function showArtistHeader(artist) {
@@ -1072,42 +1121,15 @@ function formatDate(d) {
 const audio = document.getElementById('audio-player');
 const playerBar = document.getElementById('player-bar');
 
-async function downloadTrack(id) {
-  const t = tracks.find(x => x.id === id);
-  if (!t || !t.url) return;
-  showToast('DOWNLOADING…', '');
-  try {
-    const res = await fetch(t.url);
-    if (!res.ok) throw new Error('fetch failed');
-    const blob = await res.blob();
-    const ext = t.url.split('?')[0].split('.').pop().split('/').pop() || 'mp3';
-    const filename = `${t.artist} - ${t.title}.${ext}`;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    showToast('DOWNLOAD STARTED ✓', 'success');
-  } catch(e) {
-    // Fallback: open in same tab with download attribute
-    const a = document.createElement('a');
-    a.href = t.url;
-    a.download = `${t.artist} - ${t.title}`;
-    a.target = '_self';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }
-}
-
 function handlePlay(id) {
   const playlist = getPlaylist();
   const idx = playlist.findIndex(t=>t.id===id);
   if (idx === -1) return;
   if (currentTrackIdx === idx && isPlaying) {
     audio.pause(); isPlaying = false;
-    document.getElementById('play-pause-btn').innerHTML = '▶';
+    const ppBtn = document.getElementById('play-pause-btn');
+    ppBtn.innerHTML = '▶';
+    ppBtn.classList.remove('is-playing');
     document.getElementById('player-vinyl').classList.remove('spinning');
     stopWaveform();
   } else {
@@ -1131,19 +1153,48 @@ function playAtIndex(idx) {
   document.getElementById('player-bar').style.setProperty('--current-color', color);
   document.getElementById('player-title').textContent = t.title;
   document.getElementById('player-artist').textContent = t.artist.toUpperCase();
-  document.getElementById('play-pause-btn').innerHTML = '⏸';
-  document.getElementById('play-pause-btn').style.background = color;
+  const ppBtn = document.getElementById('play-pause-btn');
+  ppBtn.innerHTML = '⏸';
+  ppBtn.classList.add('is-playing');
+  ppBtn.style.background = color;
   document.getElementById('player-vinyl').classList.add('spinning');
   playerBar.classList.add('visible');
   setArtistBG(t.artist);
   startWaveform();
+
+  // Load cover art into vinyl
+  const vinylImg = document.getElementById('player-cover-img');
+  vinylImg.classList.remove('loaded');
+  if (t.coverArt) {
+    vinylImg.src = t.coverArt;
+    vinylImg.onload = () => vinylImg.classList.add('loaded');
+  } else {
+    fetchCoverArt(t.artist, t.title).then(url => {
+      if (url) {
+        t.coverArt = url;
+        vinylImg.src = url;
+        vinylImg.onload = () => vinylImg.classList.add('loaded');
+      }
+    });
+  }
+
   renderTracks();
 }
 
 document.getElementById('play-pause-btn').addEventListener('click', () => {
   if (!audio.src) return;
-  if (isPlaying) { audio.pause(); isPlaying = false; document.getElementById('play-pause-btn').innerHTML = '▶'; document.getElementById('player-vinyl').classList.remove('spinning'); stopWaveform(); }
-  else { audio.play(); isPlaying = true; document.getElementById('play-pause-btn').innerHTML = '⏸'; document.getElementById('player-vinyl').classList.add('spinning'); startWaveform(); }
+  const ppBtn = document.getElementById('play-pause-btn');
+  if (isPlaying) {
+    audio.pause(); isPlaying = false;
+    ppBtn.innerHTML = '▶'; ppBtn.classList.remove('is-playing');
+    document.getElementById('player-vinyl').classList.remove('spinning');
+    stopWaveform();
+  } else {
+    audio.play(); isPlaying = true;
+    ppBtn.innerHTML = '⏸'; ppBtn.classList.add('is-playing');
+    document.getElementById('player-vinyl').classList.add('spinning');
+    startWaveform();
+  }
   renderTracks();
 });
 
@@ -1166,27 +1217,29 @@ audio.addEventListener('ended', () => {
   playAtIndex(newIdx);
 });
 
-// ===== WAVEFORM VISUALIZER =====
+// ===== WAVEFORM VISUALIZER (live frequency-reactive) =====
 const waveCanvas = document.getElementById('waveform-canvas');
 const waveCtx = waveCanvas.getContext('2d');
-let analyser, sourceNode, audioCtx, waveData, waveAnimFrame;
-let waveformBars = [];
+let analyser, sourceNode, audioCtx, freqData, waveAnimFrame;
+let smoothedBars = [];
 
 function setupAudioContext() {
   if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 128;
-  waveData = new Uint8Array(analyser.frequencyBinCount);
+  analyser.fftSize = 256;           // 128 frequency bins
+  analyser.smoothingTimeConstant = 0.75;
+  freqData = new Uint8Array(analyser.frequencyBinCount);
   sourceNode = audioCtx.createMediaElementSource(audio);
   sourceNode.connect(analyser);
   analyser.connect(audioCtx.destination);
 }
 
 function resizeWaveCanvas() {
-  waveCanvas.width = waveCanvas.offsetWidth * window.devicePixelRatio;
-  waveCanvas.height = waveCanvas.offsetHeight * window.devicePixelRatio;
-  waveCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  const dpr = window.devicePixelRatio || 1;
+  waveCanvas.width  = waveCanvas.offsetWidth  * dpr;
+  waveCanvas.height = waveCanvas.offsetHeight * dpr;
+  waveCtx.scale(dpr, dpr);
 }
 
 function drawWaveform() {
@@ -1194,60 +1247,92 @@ function drawWaveform() {
   const H = waveCanvas.offsetHeight;
   waveCtx.clearRect(0, 0, W, H);
 
-  const color = getComputedStyle(document.getElementById('player-bar')).getPropertyValue('--current-color').trim() || '#c8ff00';
+  const rawColor = getComputedStyle(document.getElementById('player-bar'))
+    .getPropertyValue('--current-color').trim() || '#c8ff00';
   const progress = audio.duration ? audio.currentTime / audio.duration : 0;
 
+  // Pull live freq data
+  const BAR_COUNT = 60;
   if (analyser && isPlaying) {
-    analyser.getByteFrequencyData(waveData);
-    // Cache bar heights smoothly
-    if (!waveformBars.length) waveformBars = Array.from(waveData).map(v => v);
-    waveformBars = waveformBars.map((b, i) => b * 0.7 + (waveData[i] || 0) * 0.3);
+    analyser.getByteFrequencyData(freqData);
+    // Downsample freqData to BAR_COUNT bars
+    const step = Math.floor(freqData.length / BAR_COUNT);
+    if (smoothedBars.length !== BAR_COUNT)
+      smoothedBars = new Array(BAR_COUNT).fill(0);
+    for (let i = 0; i < BAR_COUNT; i++) {
+      // Average a small window for smoother look
+      let sum = 0;
+      for (let j = 0; j < step; j++) sum += freqData[i * step + j] || 0;
+      const target = sum / step;
+      // Ease toward target — fast attack, slow decay
+      smoothedBars[i] = smoothedBars[i] < target
+        ? smoothedBars[i] * 0.4 + target * 0.6   // fast attack
+        : smoothedBars[i] * 0.82 + target * 0.18; // slow decay
+    }
+  } else if (!smoothedBars.length) {
+    smoothedBars = new Array(BAR_COUNT).fill(8);
   }
 
-  const barCount = waveformBars.length || 64;
-  const gap = 2;
-  const barW = (W - gap * (barCount - 1)) / barCount;
+  const gap = 2.5;
+  const barW = (W - gap * (BAR_COUNT - 1)) / BAR_COUNT;
 
-  for (let i = 0; i < barCount; i++) {
-    const barProgress = i / barCount;
-    const rawH = waveformBars[i] !== undefined ? (waveformBars[i] / 255) * H : H * 0.15;
-    const barH = Math.max(2, rawH);
+  for (let i = 0; i < BAR_COUNT; i++) {
+    const barProgress = i / BAR_COUNT;
+    const rawH = (smoothedBars[i] / 255) * H;
+    const barH = Math.max(3, rawH);
     const x = i * (barW + gap);
     const y = (H - barH) / 2;
 
-    if (barProgress <= progress) {
-      waveCtx.fillStyle = color;
-      waveCtx.globalAlpha = 0.9;
+    const isPast = barProgress <= progress;
+    waveCtx.globalAlpha = isPast ? 0.92 : 0.18;
+
+    // Gradient per bar: brighter at tip
+    if (isPast) {
+      const grad = waveCtx.createLinearGradient(x, y + barH, x, y);
+      grad.addColorStop(0, rawColor + '99');
+      grad.addColorStop(1, rawColor);
+      waveCtx.fillStyle = grad;
     } else {
-      waveCtx.fillStyle = color;
-      waveCtx.globalAlpha = 0.18;
+      waveCtx.fillStyle = rawColor;
     }
-    waveCtx.fillRect(x, y, Math.max(1, barW), barH);
+
+    // Rounded top/bottom using arc
+    const r = Math.min(barW / 2, 2);
+    waveCtx.beginPath();
+    waveCtx.roundRect
+      ? waveCtx.roundRect(x, y, Math.max(1, barW), barH, r)
+      : waveCtx.rect(x, y, Math.max(1, barW), barH);
+    waveCtx.fill();
   }
   waveCtx.globalAlpha = 1;
 
-  // Playhead line
+  // Playhead dot
   const px = progress * W;
-  waveCtx.strokeStyle = color;
-  waveCtx.lineWidth = 1.5;
-  waveCtx.globalAlpha = 0.7;
-  waveCtx.beginPath(); waveCtx.moveTo(px, 0); waveCtx.lineTo(px, H); waveCtx.stroke();
+  waveCtx.beginPath();
+  waveCtx.arc(px, H / 2, 3.5, 0, Math.PI * 2);
+  waveCtx.fillStyle = rawColor;
+  waveCtx.globalAlpha = 0.95;
+  waveCtx.fill();
   waveCtx.globalAlpha = 1;
 
   waveAnimFrame = requestAnimationFrame(drawWaveform);
 }
 
 function startWaveform() {
-  try { setupAudioContext(); if (audioCtx.state === 'suspended') audioCtx.resume(); } catch(e) {}
+  try {
+    setupAudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch(e) {}
   if (waveAnimFrame) cancelAnimationFrame(waveAnimFrame);
   resizeWaveCanvas();
-  if (!waveformBars.length) waveformBars = new Array(64).fill(0).map(() => Math.random() * 60 + 10);
+  if (!smoothedBars.length) smoothedBars = new Array(60).fill(0).map(() => Math.random() * 20 + 5);
   drawWaveform();
 }
 
 function stopWaveform() {
   if (waveAnimFrame) cancelAnimationFrame(waveAnimFrame);
-  waveformBars = [];
+  // Gradually fade bars to zero by letting them decay on their own
+  smoothedBars = smoothedBars.map(b => b * 0.5);
 }
 
 waveCanvas.addEventListener('click', (e) => {
@@ -1279,6 +1364,60 @@ document.getElementById('vol-icon').addEventListener('click', () => {
 function fmt(s) {
   const m = Math.floor(s/60), sec = Math.floor(s%60);
   return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+// ===== COVER ART (iTunes Search API — free, no key, CORS-open) =====
+const coverArtCache = {};
+async function fetchCoverArt(artist, title) {
+  const key = `${artist}||${title}`.toLowerCase();
+  if (coverArtCache[key] !== undefined) return coverArtCache[key];
+  coverArtCache[key] = null; // mark as in-flight to avoid duplicate requests
+  try {
+    // Try artist + title first, fall back to artist-only
+    const queries = [
+      `${artist} ${title}`,
+      artist,
+    ];
+    for (const q of queries) {
+      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&limit=5&entity=song`;
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const result = data.results && data.results[0];
+      if (result && result.artworkUrl100) {
+        // Bump resolution from 100x100 to 600x600
+        const art = result.artworkUrl100.replace('100x100bb', '600x600bb');
+        coverArtCache[key] = art;
+        return art;
+      }
+    }
+  } catch(e) {}
+  coverArtCache[key] = null;
+  return null;
+}
+
+// ===== DOWNLOAD TRACK =====
+async function downloadTrack(id) {
+  const t = tracks.find(x => x.id === id);
+  if (!t || !t.url) return;
+  showToast('DOWNLOADING…', '');
+  try {
+    const res = await fetch(t.url);
+    if (!res.ok) throw new Error('fetch failed');
+    const blob = await res.blob();
+    const ext = (t.url.split('?')[0].split('.').pop() || 'mp3').slice(0, 5);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${t.artist} - ${t.title}.${ext}`;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    showToast('DOWNLOAD STARTED ✓', 'success');
+  } catch(e) {
+    // Fallback: direct link
+    const a = document.createElement('a');
+    a.href = t.url; a.download = `${t.artist} - ${t.title}`; a.target = '_self';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
 }
 
 // ===== DELETE =====
