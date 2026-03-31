@@ -1,6 +1,18 @@
 [
   {
-    "id": 1774987989175,
+    "id": 1774999043975,
+    "added": "2026-03-31",
+    "artist": "Prettifun",
+    "title": "Dead",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978649/Dead_prod_Ginseng_qy0b7r.mp3",
+    "tags": [
+      "leak"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fc1fdcb43f47e4fd6a3fae201d03701fa.999x1000x1.png"
+  },
+  {
+    "id": 1774996681539,
     "added": "2026-03-31",
     "artist": "Nine Vicious",
     "title": "Gimmie A Month",
@@ -8,6 +20,7 @@
     "tags": [
       "unreleased"
     ],
-    "type": "cloudinary"
+    "type": "url",
+    "coverArt": "https://t2.genius.com/unsafe/555x0/https%3A%2F%2Fimages.genius.com%2Fdd68e4eac689e5dadead00d032a36b19.499x499x1.jpg"
   }
 ]
