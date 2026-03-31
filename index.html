@@ -554,6 +554,7 @@ audio { display:none; }
       <button class="btn" id="login-btn" title="Admin Login">⚿ Admin</button>
       <button class="btn primary" id="add-btn" style="display:none">+ Add Track</button>
       <button class="btn purple" id="gdrive-btn" style="display:none">⬡ Import Drive</button>
+      <button class="btn" id="gh-settings-btn" style="display:none" title="GitHub Settings">⚙ GitHub</button>
     </div>
   </header>
 
@@ -759,12 +760,69 @@ audio { display:none; }
   </div>
 </div>
 
+<!-- GITHUB SETTINGS MODAL -->
+<div class="modal-overlay" id="gh-modal">
+  <div class="modal" style="max-width:460px">
+    <button class="modal-close" id="gh-modal-close">×</button>
+    <h2>⚙ GITHUB SETTINGS</h2>
+    <div class="cloudinary-info" style="margin-bottom:20px">
+      <strong>HOW IT WORKS</strong><br>
+      Your tracks are saved to <code style="color:var(--accent4)">tracks.json</code> in your repo automatically every time you add or delete a track. All your friends load the same file — no localStorage needed.<br><br>
+      <strong style="color:var(--accent3)">⚠ TOKEN STAYS IN YOUR BROWSER ONLY</strong> — never committed to the repo.
+    </div>
+    <div class="form-group">
+      <label>GitHub Personal Access Token</label>
+      <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:6px;letter-spacing:0.5px">
+        github.com → Settings → Developer settings → Personal access tokens → Fine-grained → Contents: Read & Write
+      </div>
+    </div>
+    <div class="form-group">
+      <label>GitHub Username</label>
+      <input type="text" id="gh-owner" placeholder="e.g. yourname">
+    </div>
+    <div class="form-group">
+      <label>Repository Name</label>
+      <input type="text" id="gh-repo" placeholder="e.g. the-vault">
+    </div>
+    <div class="form-group">
+      <label>Branch</label>
+      <input type="text" id="gh-branch" placeholder="main">
+    </div>
+    <div id="gh-status" style="font-family:var(--font-mono);font-size:10px;margin-top:4px;letter-spacing:1px;display:none"></div>
+    <div class="modal-actions">
+      <button class="btn primary" id="gh-save-btn">SAVE & TEST CONNECTION</button>
+      <button class="btn" id="gh-cancel-btn">CANCEL</button>
+    </div>
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" id="gh-export-btn">↓ Export tracks.json</button>
+      <button class="btn" id="gh-import-btn">↑ Import tracks.json</button>
+      <input type="file" id="gh-import-input" accept=".json" style="display:none">
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <audio id="audio-player"></audio>
 
 <script>
 // ===== CONFIG =====
-const ADMIN_PASSWORD = 'vault2024'; // 🔐 CHANGE THIS
+const ADMIN_PASSWORD = 'vault2024';
+
+// ===== GITHUB CONFIG =====
+// These are loaded from localStorage so you set them once in the GitHub Settings modal
+function getGHConfig() {
+  return {
+    token: localStorage.getItem('vault-gh-token') || '',
+    owner: localStorage.getItem('vault-gh-owner') || '',
+    repo:  localStorage.getItem('vault-gh-repo')  || '',
+    branch: localStorage.getItem('vault-gh-branch') || 'main',
+  };
+}
+function ghConfigured() {
+  const c = getGHConfig();
+  return c.token && c.owner && c.repo;
+}
 
 const ARTIST_COLORS = {
   'playboi carti': '#ff3c3c',
@@ -789,20 +847,85 @@ function getArtistColor(artist) {
   return colors[hash % colors.length];
 }
 
-// ===== STORAGE =====
-function loadTracks() {
+// ===== STORAGE — GitHub API + localStorage fallback =====
+let ghFileSha = null; // tracks the SHA of tracks.json for updates
+
+async function loadTracks() {
+  // Always try GitHub first if configured
+  if (ghConfigured()) {
+    try {
+      const c = getGHConfig();
+      const res = await fetch(
+        `https://api.github.com/repos/${c.owner}/${c.repo}/contents/tracks.json?ref=${c.branch}&t=${Date.now()}`,
+        { headers: { 'Authorization': `token ${c.token}`, 'Accept': 'application/vnd.github.v3+json' } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        ghFileSha = data.sha;
+        const decoded = JSON.parse(atob(data.content.replace(/\n/g,'')));
+        // Mirror to localStorage as backup
+        localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
+        return decoded;
+      }
+      // 404 = file doesn't exist yet, will be created on first save
+      if (res.status === 404) { ghFileSha = null; return getLocalTracks(); }
+    } catch(e) { console.warn('GitHub load failed, using localStorage', e); }
+  }
+  return getLocalTracks();
+}
+
+function getLocalTracks() {
   try {
     const s = localStorage.getItem('vault-tracks-v2');
-    return s ? JSON.parse(s) : getDefaultTracks();
-  } catch { return getDefaultTracks(); }
+    return s ? JSON.parse(s) : [];
+  } catch { return []; }
 }
-function saveTracks(t) {
-  try { localStorage.setItem('vault-tracks-v2', JSON.stringify(t)); } catch(e) {
-    showToast('STORAGE FULL — TRY REMOVING SOME TRACKS', 'error');
+
+async function saveTracks(t) {
+  // Always save to localStorage immediately
+  try { localStorage.setItem('vault-tracks-v2', JSON.stringify(t)); } catch(e) {}
+
+  if (!ghConfigured()) {
+    showToast('SAVED LOCALLY — SET UP GITHUB TO PERSIST', 'error');
+    return;
   }
-}
-function getDefaultTracks() {
-  return [];
+
+  const c = getGHConfig();
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(t, null, 2))));
+  const body = {
+    message: `vault: update tracks.json [${new Date().toISOString().split('T')[0]}]`,
+    content,
+    branch: c.branch,
+  };
+  if (ghFileSha) body.sha = ghFileSha;
+
+  try {
+    showToast('SAVING TO GITHUB…', '');
+    const res = await fetch(
+      `https://api.github.com/repos/${c.owner}/${c.repo}/contents/tracks.json`,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `token ${c.token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      ghFileSha = data.content.sha;
+      showToast('SAVED TO GITHUB ✓', 'success');
+    } else {
+      const err = await res.json();
+      console.error('GitHub save error', err);
+      showToast('GITHUB SAVE FAILED — CHECK CONSOLE', 'error');
+    }
+  } catch(e) {
+    console.error(e);
+    showToast('NETWORK ERROR — SAVED LOCALLY ONLY', 'error');
+  }
 }
 
 // ===== ADMIN =====
@@ -819,6 +942,7 @@ function setAdmin(val) {
     statusText.textContent = 'ADMIN';
     addBtn.style.display = 'flex';
     gdriveBtn.style.display = 'flex';
+    document.getElementById('gh-settings-btn').style.display = 'flex';
     loginBtn.textContent = '⚿ Logout';
     document.body.classList.add('admin-mode');
   } else {
@@ -826,6 +950,7 @@ function setAdmin(val) {
     statusText.textContent = 'GUEST';
     addBtn.style.display = 'none';
     gdriveBtn.style.display = 'none';
+    document.getElementById('gh-settings-btn').style.display = 'none';
     loginBtn.textContent = '⚿ Admin';
     document.body.classList.remove('admin-mode');
   }
@@ -1134,7 +1259,7 @@ function deleteTrack(id) {
   if (!isAdmin) return;
   if (!confirm('Remove this track from the vault?')) return;
   tracks = tracks.filter(t => t.id !== id);
-  saveTracks(tracks);
+  saveTracks(tracks); // async
   renderFilters();
   renderTracks();
   showToast('TRACK REMOVED', 'success');
@@ -1279,7 +1404,7 @@ function saveFromFile() {
 function addTrack(data) {
   const newTrack = { id:Date.now(), added: new Date().toISOString().split('T')[0], ...data };
   tracks.unshift(newTrack);
-  saveTracks(tracks);
+  saveTracks(tracks); // async — fires and continues
   renderFilters();
   renderTracks();
   // Reset
@@ -1485,13 +1610,114 @@ function setDefaultBG() {
   drawBG('#c8ff00');
 }
 
+// ===== GITHUB SETTINGS MODAL =====
+document.getElementById('gh-settings-btn').addEventListener('click', () => {
+  if (!isAdmin) return;
+  const c = getGHConfig();
+  document.getElementById('gh-token').value  = c.token;
+  document.getElementById('gh-owner').value  = c.owner;
+  document.getElementById('gh-repo').value   = c.repo;
+  document.getElementById('gh-branch').value = c.branch || 'main';
+  document.getElementById('gh-status').style.display = 'none';
+  openModal('gh-modal');
+});
+document.getElementById('gh-modal-close').addEventListener('click', () => closeModal('gh-modal'));
+document.getElementById('gh-cancel-btn').addEventListener('click',  () => closeModal('gh-modal'));
+
+document.getElementById('gh-save-btn').addEventListener('click', async () => {
+  const token  = document.getElementById('gh-token').value.trim();
+  const owner  = document.getElementById('gh-owner').value.trim();
+  const repo   = document.getElementById('gh-repo').value.trim();
+  const branch = document.getElementById('gh-branch').value.trim() || 'main';
+  const status = document.getElementById('gh-status');
+
+  if (!token || !owner || !repo) {
+    status.style.display = 'block';
+    status.style.color = 'var(--accent3)';
+    status.textContent = '✕ All fields required';
+    return;
+  }
+
+  status.style.display = 'block';
+  status.style.color = 'var(--muted2)';
+  status.textContent = 'Testing connection…';
+
+  // Test by fetching repo info
+  try {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!res.ok) throw new Error(`${res.status}`);
+
+    // Save to localStorage
+    localStorage.setItem('vault-gh-token',  token);
+    localStorage.setItem('vault-gh-owner',  owner);
+    localStorage.setItem('vault-gh-repo',   repo);
+    localStorage.setItem('vault-gh-branch', branch);
+
+    status.style.color = 'var(--accent)';
+    status.textContent = `✓ Connected to ${owner}/${repo}`;
+
+    // Push current tracks immediately
+    await saveTracks(tracks);
+    setTimeout(() => closeModal('gh-modal'), 1200);
+  } catch(e) {
+    status.style.color = 'var(--accent3)';
+    status.textContent = `✕ Connection failed: ${e.message} — check token/repo name`;
+  }
+});
+
+// Export
+document.getElementById('gh-export-btn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(tracks, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tracks.json';
+  a.click();
+  showToast('TRACKS EXPORTED', 'success');
+});
+
+// Import
+document.getElementById('gh-import-btn').addEventListener('click', () => {
+  document.getElementById('gh-import-input').click();
+});
+document.getElementById('gh-import-input').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!Array.isArray(imported)) throw new Error('Not an array');
+      tracks = imported;
+      await saveTracks(tracks);
+      renderFilters();
+      renderTracks();
+      showToast(`${tracks.length} TRACKS IMPORTED`, 'success');
+      closeModal('gh-modal');
+    } catch(err) {
+      showToast('INVALID tracks.json FILE', 'error');
+    }
+  };
+  reader.readAsText(f);
+  e.target.value = '';
+});
+
 // ===== INIT =====
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
-tracks = loadTracks();
 setDefaultBG();
 renderFilters();
 renderTracks();
+// Load tracks async (GitHub first, localStorage fallback)
+loadTracks().then(loaded => {
+  tracks = loaded;
+  renderFilters();
+  renderTracks();
+  if (!ghConfigured() && isAdmin) {
+    showToast('GITHUB NOT SET UP — CLICK ⚙ TO CONFIGURE', 'error');
+  }
+});
 </script>
 </body>
 </html>
