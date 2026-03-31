@@ -606,7 +606,7 @@ audio { display:none; }
     <span class="volume-icon" id="vol-icon">🔊</span>
     <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
   </div>
-  <a class="dl-btn" id="download-link" href="#" download>↓ DL</a>
+  <button class="dl-btn" id="download-link" onclick="if(currentTrackIdx>=0){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);}">↓ DL</button>
 </div>
 
 <!-- ADD TRACK MODAL -->
@@ -1020,7 +1020,7 @@ function renderTracks() {
   grid.innerHTML = list.map((t, idx) => {
     const color = getArtistColor(t.artist);
     const tags = (t.tags||[]).map(tag=>`<span class="tag">${tag}</span>`).join('');
-    const hasAudio = t.url && (t.type==='file' || /\.(mp3|wav|ogg|m4a|flac|aac|wma|aif|aiff|midi|mid|mpa)/i.test(t.url));
+    const hasAudio = !!t.url;
     const pIdx = playlist.findIndex(x=>x.id===t.id);
     const isCurrentlyPlaying = currentTrackIdx === pIdx && isPlaying;
     const sourceBadge = t.type === 'cloudinary' ? `<span class="source-badge cloudinary">☁ CDN</span>` : t.type === 'file' ? `<span class="source-badge file">📁 LOCAL</span>` : '';
@@ -1032,7 +1032,7 @@ function renderTracks() {
           <div class="track-tags">${tags}</div>
           <div class="track-actions">
             ${hasAudio ? `<button class="icon-btn play-btn${isCurrentlyPlaying?' active':''}" onclick="handlePlay(${t.id})" title="${isCurrentlyPlaying?'Pause':'Play'}">${isCurrentlyPlaying?'⏸':'▶'}</button>` : ''}
-            ${t.url && t.type!=='file' ? `<a href="${t.url}" download class="icon-btn" title="Download" style="text-decoration:none;display:flex;align-items:center;justify-content:center;color:var(--muted)">↓</a>` : ''}
+            ${t.url && t.type!=='file' ? `<button class="icon-btn" title="Download" style="color:var(--muted)" onclick="downloadTrack(${t.id})">↓</button>` : ''}
             <button class="icon-btn" onclick="copyLink(${t.id})" title="Copy">⟁</button>
             <button class="icon-btn delete-btn" onclick="deleteTrack(${t.id})" title="Delete">✕</button>
           </div>
@@ -1072,6 +1072,35 @@ function formatDate(d) {
 const audio = document.getElementById('audio-player');
 const playerBar = document.getElementById('player-bar');
 
+async function downloadTrack(id) {
+  const t = tracks.find(x => x.id === id);
+  if (!t || !t.url) return;
+  showToast('DOWNLOADING…', '');
+  try {
+    const res = await fetch(t.url);
+    if (!res.ok) throw new Error('fetch failed');
+    const blob = await res.blob();
+    const ext = t.url.split('?')[0].split('.').pop().split('/').pop() || 'mp3';
+    const filename = `${t.artist} - ${t.title}.${ext}`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    showToast('DOWNLOAD STARTED ✓', 'success');
+  } catch(e) {
+    // Fallback: open in same tab with download attribute
+    const a = document.createElement('a');
+    a.href = t.url;
+    a.download = `${t.artist} - ${t.title}`;
+    a.target = '_self';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+}
+
 function handlePlay(id) {
   const playlist = getPlaylist();
   const idx = playlist.findIndex(t=>t.id===id);
@@ -1104,8 +1133,6 @@ function playAtIndex(idx) {
   document.getElementById('player-artist').textContent = t.artist.toUpperCase();
   document.getElementById('play-pause-btn').innerHTML = '⏸';
   document.getElementById('play-pause-btn').style.background = color;
-  document.getElementById('download-link').href = t.url;
-  document.getElementById('download-link').download = `${t.artist} - ${t.title}`;
   document.getElementById('player-vinyl').classList.add('spinning');
   playerBar.classList.add('visible');
   setArtistBG(t.artist);
