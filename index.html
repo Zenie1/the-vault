@@ -247,6 +247,20 @@ header {
 .admin-mode .icon-btn.delete-btn { display:flex; }
 .icon-btn.delete-btn:hover { background:rgba(255,45,120,0.15); border-color:rgba(255,45,120,0.4); color:var(--accent3); }
 
+.source-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 1px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  margin-left: 6px;
+  vertical-align: middle;
+  text-transform: uppercase;
+}
+.source-badge.cloudinary { background: rgba(0,229,255,0.1); color: var(--accent4); border: 1px solid rgba(0,229,255,0.2); }
+.source-badge.file { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+
 .track-date { font-family:var(--font-mono); font-size:9px; color:var(--muted); margin-top:10px; letter-spacing:1px; }
 
 /* SECTION LABEL */
@@ -488,6 +502,31 @@ header {
 ::-webkit-scrollbar-thumb { background:var(--surface3); }
 ::-webkit-scrollbar-thumb:hover { background:var(--muted); }
 
+/* CLOUDINARY TAB */
+.cloudinary-info {
+  background: rgba(0,229,255,0.06);
+  border: 1px solid rgba(0,229,255,0.18);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted2);
+  line-height: 1.7;
+  letter-spacing: 0.5px;
+}
+.cloudinary-info strong { color: var(--accent4); }
+.cloudinary-info em { color: var(--accent); font-style: normal; }
+.cloudinary-note {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--accent4);
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(0,229,255,0.05);
+  border-left: 2px solid var(--accent4);
+}
+
 audio { display:none; }
 
 /* RESPONSIVE */
@@ -577,6 +616,7 @@ audio { display:none; }
 
     <div class="tab-switcher">
       <button class="tab-btn active" data-tab="link">🔗 URL / Link</button>
+      <button class="tab-btn" data-tab="cloudinary">☁ Cloudinary</button>
       <button class="tab-btn" data-tab="file">📁 Upload File</button>
     </div>
 
@@ -596,6 +636,34 @@ audio { display:none; }
       <div class="form-group">
         <label>Tags (comma separated)</label>
         <input type="text" id="inp-tags" placeholder="unreleased, leak, snippet">
+      </div>
+    </div>
+
+    <!-- CLOUDINARY TAB -->
+    <div id="tab-cloudinary" style="display:none">
+      <div class="cloudinary-info">
+        <strong>☁ CLOUDINARY CDN</strong><br>
+        Paste a direct Cloudinary audio URL (mp3, wav, etc.).<br>
+        These links are permanent — they live on Cloudinary's CDN and will <em>never</em> be lost when you push to GitHub.
+      </div>
+      <div class="form-group">
+        <label>Artist Name</label>
+        <input type="text" id="inp-artist-c" placeholder="e.g. Playboi Carti">
+      </div>
+      <div class="form-group">
+        <label>Track Title</label>
+        <input type="text" id="inp-title-c" placeholder="e.g. Magnolia (Unreleased)">
+      </div>
+      <div class="form-group">
+        <label>Cloudinary Audio URL</label>
+        <input type="url" id="inp-url-c" placeholder="https://res.cloudinary.com/…/audio/upload/….mp3">
+      </div>
+      <div class="form-group">
+        <label>Tags (comma separated)</label>
+        <input type="text" id="inp-tags-c" placeholder="unreleased, leak, snippet">
+      </div>
+      <div class="cloudinary-note">
+        ✓ Track saved as a Cloudinary entry — survives all Git pushes
       </div>
     </div>
 
@@ -687,9 +755,7 @@ audio { display:none; }
       <button class="btn primary" id="login-submit-btn">UNLOCK VAULT</button>
       <button class="btn" id="login-cancel-btn">CANCEL</button>
     </div>
-    <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:20px;letter-spacing:1px;border-top:1px solid var(--border);padding-top:16px">
-      DEFAULT PASSWORD: <span style="color:var(--accent2)">vault2024</span> — Change in code: <code style="color:var(--muted2)">ADMIN_PASSWORD</code>
-    </div>
+
   </div>
 </div>
 
@@ -832,9 +898,10 @@ function renderTracks() {
     const hasAudio = t.url && (t.type==='file' || /\.(mp3|wav|ogg|m4a|flac|aac|wma|aif|aiff|midi|mid|mpa)/i.test(t.url));
     const pIdx = playlist.findIndex(x=>x.id===t.id);
     const isCurrentlyPlaying = currentTrackIdx === pIdx && isPlaying;
+    const sourceBadge = t.type === 'cloudinary' ? `<span class="source-badge cloudinary">☁ CDN</span>` : t.type === 'file' ? `<span class="source-badge file">📁 LOCAL</span>` : '';
     return `
       <div class="track-card${isCurrentlyPlaying?' playing':''}" style="--artist-color:${color}" data-id="${t.id}">
-        <div class="track-artist">${t.artist}</div>
+        <div class="track-artist">${t.artist}${sourceBadge}</div>
         <div class="track-title">${t.title}</div>
         <div class="track-bottom">
           <div class="track-tags">${tags}</div>
@@ -1128,6 +1195,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     activeTab = btn.dataset.tab;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===activeTab));
     document.getElementById('tab-link').style.display = activeTab==='link' ? 'block' : 'none';
+    document.getElementById('tab-cloudinary').style.display = activeTab==='cloudinary' ? 'block' : 'none';
     document.getElementById('tab-file').style.display = activeTab==='file' ? 'block' : 'none';
   });
 });
@@ -1173,8 +1241,22 @@ function handleFileSelect(file) {
 document.getElementById('save-track-btn').addEventListener('click', () => {
   if (!isAdmin) return;
   if (activeTab === 'link') saveFromLink();
+  else if (activeTab === 'cloudinary') saveFromCloudinary();
   else saveFromFile();
 });
+
+function saveFromCloudinary() {
+  const artist = document.getElementById('inp-artist-c').value.trim();
+  const title  = document.getElementById('inp-title-c').value.trim();
+  const url    = document.getElementById('inp-url-c').value.trim();
+  const tags   = document.getElementById('inp-tags-c').value.split(',').map(t=>t.trim()).filter(Boolean);
+  if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
+  if (!url) { showToast('CLOUDINARY URL REQUIRED', 'error'); return; }
+  if (!/cloudinary\.com/i.test(url) && !confirm('URL doesn\'t look like a Cloudinary link — add anyway?')) return;
+  addTrack({ artist, title, url, tags, type:'cloudinary' });
+  // Clear cloudinary fields
+  ['inp-artist-c','inp-title-c','inp-url-c','inp-tags-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+}
 
 function saveFromLink() {
   const artist = document.getElementById('inp-artist').value.trim();
@@ -1201,7 +1283,7 @@ function addTrack(data) {
   renderFilters();
   renderTracks();
   // Reset
-  ['inp-artist','inp-title','inp-url','inp-tags','inp-artist-f','inp-title-f','inp-tags-f'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['inp-artist','inp-title','inp-url','inp-tags','inp-artist-f','inp-title-f','inp-tags-f','inp-artist-c','inp-title-c','inp-url-c','inp-tags-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('upload-preview').classList.remove('visible');
   uploadedFile = null; uploadedDataUrl = null;
   closeModal('modal');
