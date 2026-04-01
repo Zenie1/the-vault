@@ -1577,6 +1577,12 @@ function formatDate(d) {
 const audio = document.getElementById('audio-player');
 const playerBar = document.getElementById('player-bar');
 
+// CORS FIX: must be set ONCE before any src is ever assigned.
+// This makes the browser send CORS headers on every audio request,
+// which Cloudinary supports. Without this, the Web Audio API (AudioContext)
+// will refuse to process the stream even if playback itself works.
+audio.crossOrigin = 'anonymous';
+
 function handlePlay(id) {
   const playlist = getPlaylist();
   const idx = playlist.findIndex(t=>t.id===id);
@@ -1601,7 +1607,8 @@ function playAtIndex(idx) {
   if (!t.url) { showToast('NO AUDIO SOURCE — ADD A URL OR FILE', 'error'); return; }
   currentTrackIdx = idx;
 
-  // Set src and call load() so CORS headers are sent on the request
+  // crossOrigin is already set to 'anonymous' at init time (above).
+  // We just assign src and play — no retry needed.
   audio.src = t.url;
   audio.load();
   audio.volume = parseFloat(document.getElementById('volume-slider').value);
@@ -1609,14 +1616,11 @@ function playAtIndex(idx) {
   const playPromise = audio.play();
   if (playPromise !== undefined) {
     playPromise.catch(err => {
-      // If CORS/Web Audio caused it, try detaching Web Audio and replaying clean
-      if (audioCtx && sourceNode) {
-        try { sourceNode.disconnect(); } catch(e) {}
-        sourceNode = null; audioCtx = null; analyser = null;
-      }
-      audio.src = t.url;
-      audio.load();
-      audio.play().catch(() => showToast('CANNOT PLAY — CHECK AUDIO SOURCE OR CORS SETTINGS', 'error'));
+      showToast('CANNOT PLAY — CHECK AUDIO SOURCE', 'error');
+      isPlaying = false;
+      document.getElementById('play-pause-btn').innerHTML = '▶';
+      document.getElementById('play-pause-btn').classList.remove('is-playing');
+      document.getElementById('player-vinyl').classList.remove('spinning');
     });
   }
   isPlaying = true;
@@ -1706,15 +1710,26 @@ let analyser, sourceNode, audioCtx, freqData, waveAnimFrame;
 let smoothedBars = [];
 
 function setupAudioContext() {
-  if (audioCtx) return;
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 512;          // 256 bins — better bass resolution
-  analyser.smoothingTimeConstant = 0.7;
-  freqData = new Uint8Array(analyser.frequencyBinCount); // 256 bins with fftSize 512
-  sourceNode = audioCtx.createMediaElementSource(audio);
-  sourceNode.connect(analyser);
-  analyser.connect(audioCtx.destination);
+  if (audioCtx && sourceNode) return; // already wired up — do nothing
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.7;
+    freqData = new Uint8Array(analyser.frequencyBinCount);
+    // Only create the source node once — recreating it after audio plays taints the element
+    if (!sourceNode) {
+      sourceNode = audioCtx.createMediaElementSource(audio);
+    }
+    sourceNode.connect(analyser);
+    analyser.connect(audioCtx.destination);
+  } catch(e) {
+    // If Web Audio setup fails entirely, waveform won't animate but audio still plays
+    console.warn('Web Audio setup failed:', e);
+    audioCtx = null; sourceNode = null; analyser = null;
+  }
 }
 
 function resizeWaveCanvas() {
