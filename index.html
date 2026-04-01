@@ -2,12 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050507">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="THE VAULT">
+<meta name="mobile-web-app-capable" content="yes">
 <title>THE VAULT</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23050507'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='38' font-family='Arial Black,sans-serif' fill='%23c8ff00'%3EV%3C/text%3E%3C/svg%3E" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Archivo+Black&display=swap" rel="stylesheet">
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
 
 :root {
   --bg: #050507;
@@ -229,6 +234,7 @@ header {
 .track-actions { display:flex; gap:6px; flex-shrink:0; }
 .icon-btn {
   width:30px; height:30px;
+  min-width: 30px;
   background: transparent;
   border: 1px solid var(--border);
   color: var(--muted);
@@ -239,6 +245,8 @@ header {
   font-size: 12px;
   transition: all 0.2s;
   text-decoration: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .icon-btn:hover { background:var(--surface3); color:var(--text); border-color:rgba(255,255,255,0.2); }
 .icon-btn.play-btn:hover { background:var(--accent); color:#000; border-color:var(--accent); }
@@ -298,11 +306,15 @@ header {
   background: rgba(5,5,7,0.97);
   border-top: 1px solid var(--border2);
   padding: 12px 28px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  padding-left: max(28px, env(safe-area-inset-left));
+  padding-right: max(28px, env(safe-area-inset-right));
   display: flex;
   align-items: center;
   gap: 18px;
   z-index: 100;
   backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   transform: translateY(100%);
   transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
 }
@@ -431,6 +443,7 @@ header {
   cursor: pointer;
   border-radius: 2px;
   transition: opacity 0.3s;
+  touch-action: none;
 }
 #waveform-canvas.paused { opacity: 0.5; }
 
@@ -496,6 +509,7 @@ header {
   position: relative;
   max-height: 90vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .modal-close { position:absolute; top:16px; right:16px; background:transparent; border:none; color:var(--muted); font-size:20px; cursor:pointer; line-height:1; padding:4px; }
 .modal-close:hover { color:var(--text); }
@@ -880,7 +894,7 @@ header {
 @media(max-width:700px) {
 
   /* APP SHELL */
-  .app { padding: 0 16px 180px; }
+  .app { padding: 0 16px 180px; padding-bottom: max(180px, calc(160px + env(safe-area-inset-bottom))); }
 
   /* HEADER — stack logo + buttons */
   header {
@@ -927,7 +941,8 @@ header {
   /* ── PLAYER BAR ── */
   #player-bar {
     flex-direction: column;
-    padding: 12px 16px 16px;
+    padding: 12px 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
     gap: 10px;
     align-items: stretch;
   }
@@ -1031,6 +1046,22 @@ header {
 
   /* Vinyl art card repositioned */
   .vinyl-art-card { left: 12px; bottom: 175px; width: 160px; }
+
+  /* Canvas label above player on mobile */
+  #canvas-label { bottom: auto; top: 12px; right: 12px; font-size: 7px; }
+
+  /* Canvas toggle hidden on mobile to save space */
+  .canvas-toggle-btn { display: none; }
+
+  /* Filter buttons scroll horizontally on mobile */
+  .filter-btns { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .filter-btns::-webkit-scrollbar { display: none; }
+
+  /* Inputs use 16px font to prevent iOS zoom on focus */
+  .search-wrap input,
+  .form-group input,
+  .form-group select,
+  .form-group textarea { font-size: 16px; }
 
 }
 
