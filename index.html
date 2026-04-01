@@ -1316,6 +1316,50 @@ const ADMIN_PASSWORD = 'vault2024';
 const GUEST_REPO = 'Zenie1/the-vault';
 const GUEST_BRANCH = 'main';
 
+// ===== SEED TRACKS — embedded at build time so they always show even before GitHub responds =====
+const SEED_TRACKS = [
+  {
+    "id": 1775002516005,
+    "added": "2026-04-01",
+    "artist": "Nine Vicious",
+    "title": "April 3rd",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978652/April_3rd_patrick_ahmad.mp3_mitn4b.mp3",
+    "tags": ["unreleased"],
+    "type": "url",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F472d659dc27c58164b7a9de3a3ffabf1.1000x1000x1.jpg"
+  },
+  {
+    "id": 1774999043975,
+    "added": "2026-03-31",
+    "artist": "Prettifun",
+    "title": "Dead",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978649/Dead_prod_Ginseng_qy0b7r.mp3",
+    "tags": ["leak"],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fc1fdcb43f47e4fd6a3fae201d03701fa.999x1000x1.png"
+  },
+  {
+    "id": 1774996681539,
+    "added": "2026-03-31",
+    "artist": "Nine Vicious",
+    "title": "Gimmie A Month",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978662/Gimmie_A_Month.mp3_azunww.mp3",
+    "tags": ["unreleased"],
+    "type": "url",
+    "coverArt": "https://t2.genius.com/unsafe/555x0/https%3A%2F%2Fimages.genius.com%2Fdd68e4eac689e5dadead00d032a36b19.499x499x1.jpg"
+  }
+];
+
+// Merge seed into a track list — seed fills in any tracks missing from live data
+function mergeWithSeed(liveTracks) {
+  const liveIds = new Set((liveTracks || []).map(t => t.id));
+  const missing = SEED_TRACKS.filter(t => !liveIds.has(t.id));
+  // Live tracks take priority; seed fills gaps. Sort by added date descending.
+  const merged = [...(liveTracks || []), ...missing];
+  merged.sort((a, b) => new Date(b.added) - new Date(a.added));
+  return merged;
+}
+
 function getGHConfig() {
   return {
     token: localStorage.getItem('vault-gh-token') || '',
@@ -1379,10 +1423,11 @@ async function loadTracks() {
         const data = await res.json();
         ghFileSha = data.sha;
         const decoded = JSON.parse(atob(data.content.replace(/\n/g,'')));
-        localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
-        return decoded;
+        const merged = mergeWithSeed(decoded);
+        localStorage.setItem('vault-tracks-v2', JSON.stringify(merged));
+        return merged;
       }
-      if (res.status === 404) { ghFileSha = null; return getLocalTracks(); }
+      if (res.status === 404) { ghFileSha = null; return mergeWithSeed(getLocalTracks()); }
     } catch(e) { console.warn('GitHub load failed, using localStorage', e); }
   } else {
     // Guest with no token — try public raw GitHub URL
@@ -1392,13 +1437,14 @@ async function loadTracks() {
         const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
         if (res.ok) {
           const decoded = await res.json();
-          localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
-          return decoded;
+          const merged = mergeWithSeed(decoded);
+          localStorage.setItem('vault-tracks-v2', JSON.stringify(merged));
+          return merged;
         }
       } catch(e) { console.warn('Raw GitHub load failed', e); }
     }
   }
-  return getLocalTracks();
+  return mergeWithSeed(getLocalTracks());
 }
 
 function getLocalTracks() {
@@ -2878,6 +2924,8 @@ const getCoverFile       = setupCoverPicker({ btnId:'find-cover-btn-f', artistId
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 setDefaultBG();
+// Show seed tracks immediately so the page is never blank while waiting for GitHub
+tracks = mergeWithSeed(getLocalTracks());
 renderFilters();
 renderTracks();
 // Load tracks async (GitHub first, localStorage fallback)
@@ -2887,6 +2935,11 @@ loadTracks().then(loaded => {
   renderTracks();
   if (!ghConfigured() && isAdmin) {
     showToast('GITHUB NOT SET UP — CLICK ⚙ TO CONFIGURE', 'error');
+  }
+  // If admin and GitHub is set up, silently push merged tracks so the
+  // repo's tracks.json is up to date (fixes missing seed tracks on GitHub).
+  if (ghConfigured() && isAdmin) {
+    saveTracks(tracks);
   }
 });
 </script>
