@@ -377,7 +377,7 @@ header {
 .player-like-btn.liked { color: #ff2d78; text-shadow: 0 0 10px rgba(255,45,120,0.6); }
 .player-like-btn:hover { transform: scale(1.2); }
 
-.player-center { display:flex; flex-direction:column; align-items:center; gap:6px; flex:2; min-width:200px; }
+.player-center { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; min-width:0; overflow:hidden; }
 .player-controls { display:flex; align-items:center; gap:14px; }
 
 .play-pause {
@@ -425,6 +425,7 @@ header {
 /* WAVEFORM */
 #waveform-canvas {
   width: 100%;
+  min-width: 0;
   height: 48px;
   display: block;
   cursor: pointer;
@@ -749,6 +750,7 @@ header {
   width: 64px;
   height: 64px;
   position: relative;
+  margin-left: 8px;
 }
 #player-bar.visible #subwoofer-wrap { display: flex; }
 #sub-svg { width: 64px; height: 64px; overflow: visible; }
