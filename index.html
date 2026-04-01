@@ -357,9 +357,9 @@ header {
 .track-card-top { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
 .track-card-meta { flex: 1; min-width: 0; }
 
-.player-info { min-width:0; flex:1; }
-.player-title { font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.player-artist { font-family:var(--font-mono); font-size:9px; color:var(--muted); letter-spacing:2px; margin-top:2px; text-transform:uppercase; }
+.player-info { min-width:0; flex:1; overflow:hidden; }
+.player-title { font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.player-artist { font-family:var(--font-mono); font-size:9px; color:var(--muted); letter-spacing:2px; margin-top:2px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* Like button on player info */
 .player-like-btn {
@@ -745,6 +745,7 @@ header {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  flex-basis: 64px;
   width: 64px;
   height: 64px;
   position: relative;
@@ -2040,12 +2041,12 @@ const subDustcap  = document.getElementById('sub-dustcap');
 const subGlow     = document.getElementById('sub-glow');
 
 function getBassPower() {
-  if (!analyser || !waveData) return 0;
-  analyser.getByteFrequencyData(waveData);
-  // bins 0-6 cover ~20-250hz depending on fftSize 128 & 44.1kHz sample rate
+  if (!analyser || !freqData) return 0;
+  analyser.getByteFrequencyData(freqData);
+  // bins 0-6 cover ~20-250hz depending on fftSize 512 & 44.1kHz sample rate
   let sum = 0;
-  const bins = Math.min(7, waveData.length);
-  for (let i = 0; i < bins; i++) sum += waveData[i];
+  const bins = Math.min(12, freqData.length); // more bins with fftSize 512
+  for (let i = 0; i < bins; i++) sum += freqData[i];
   return sum / bins / 255; // 0..1
 }
 
@@ -2939,44 +2940,6 @@ loadTracks().then(loaded => {
   }
   if (isAdmin && !ghConfigured()) {
     showToast('GITHUB NOT SET UP — CLICK ⚙ TO CONFIGURE', 'error');
-  }
-});
-</script>
-
-<script>
-// Subwoofer animation script
-const audioElement = document.querySelector('audio');
-let audioCtx, source, analyser;
-
-audioElement.addEventListener('play', () => {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    source = audioCtx.createMediaElementSource(audioElement);
-    analyser = audioCtx.createAnalyser();
-
-    source.connect(analyser);
-    analyser.connect(audioCtx.destination);
-
-    analyser.fftSize = 256;
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-    const subCone = document.getElementById('sub-cone');
-    const subSurround = document.getElementById('sub-surround');
-    const subDustcap = document.getElementById('sub-dustcap');
-
-    function animateSubwoofer() {
-      requestAnimationFrame(animateSubwoofer);
-      analyser.getByteFrequencyData(dataArray);
-
-      let bass = dataArray.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
-      let scale = 1 + bass / 200;
-
-      subCone.setAttribute("transform", `scale(${scale}) translate(${50 - 50*scale}, ${50 - 50*scale})`);
-      subSurround.setAttribute("transform", `scale(${scale}) translate(${50 - 50*scale}, ${50 - 50*scale})`);
-      subDustcap.setAttribute("transform", `scale(${scale}) translate(${50 - 50*scale}, ${50 - 50*scale})`);
-    }
-
-    animateSubwoofer();
   }
 });
 </script>
