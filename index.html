@@ -3266,7 +3266,7 @@ function setupCoverPicker({ btnId, artistId, titleId, coverInputId, resultsId, p
 //   Use the delivery URL: https://res.cloudinary.com/<cloud>/image/upload/<id>.gif
 // ─────────────────────────────────────────────────────────────────
 
-// ===== LYRICS (Genius via scraping proxy) =====
+// ===== LYRICS =====
 let lyricsVisible = false;
 let lyricsCache = {};
 let lyricsCurrentId = null;
@@ -3288,79 +3288,139 @@ lyricsToggleBtn.addEventListener('click', () => {
   showToast(lyricsVisible ? '♩ LYRICS ON' : '♩ LYRICS OFF', '');
 });
 
-async function loadLyrics(track) {
-  const key = `${track.artist}||${track.title}`.toLowerCase();
-  lyricsStatus.textContent = '';
-
-  if (lyricsCache[key]) {
-    renderLyrics(lyricsCache[key]);
-    return;
-  }
-
-  lyricsContent.innerHTML = '';
-  lyricsStatus.textContent = 'SEARCHING GENIUS…';
-
-  try {
-    // Search Genius via their public search endpoint (no API key needed for search)
-    const query = encodeURIComponent(`${track.artist} ${track.title}`);
-    const searchUrl = `https://genius-unofficial-api.vercel.app/api/search?q=${query}`;
-    const res = await fetch(searchUrl);
-
-    if (!res.ok) throw new Error('search failed');
-    const data = await res.json();
-
-    const hit = (data.hits || data.response?.hits || []).find(h => {
-      const r = h.result || h;
-      const titleMatch = r.title?.toLowerCase().includes(track.title.toLowerCase()) ||
-                         track.title.toLowerCase().includes(r.title?.toLowerCase());
-      const artistMatch = r.primary_artist?.name?.toLowerCase().includes(track.artist.toLowerCase()) ||
-                          track.artist.toLowerCase().includes(r.primary_artist?.name?.toLowerCase());
-      return titleMatch || artistMatch;
-    });
-
-    if (!hit) {
-      // Fallback: try the official Genius search widget embed (no CORS issues)
-      await loadLyricsFallback(track, key);
-      return;
-    }
-
-    const result = hit.result || hit;
-    const songId = result.id;
-    const songPath = result.path;
-
-    // Fetch lyrics via proxy
-    const lyricsUrl = `https://genius-unofficial-api.vercel.app/api/lyrics?id=${songId}`;
-    const lRes = await fetch(lyricsUrl);
-
-    if (!lRes.ok) throw new Error('lyrics fetch failed');
-    const lData = await lRes.json();
-
-    const rawLyrics = lData.lyrics || lData.text || '';
-    if (!rawLyrics) throw new Error('empty lyrics');
-
-    lyricsCache[key] = rawLyrics;
-    renderLyrics(rawLyrics);
-
-  } catch(e) {
-    await loadLyricsFallback(track, key);
-  }
+// Normalise strings for loose matching
+function normStr(s) {
+  return (s || '').toLowerCase()
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-async function loadLyricsFallback(track, key) {
-  // Fallback: use the Lyrics.ovh free API (no CORS, no key)
+function scoreMatch(result, artist, title) {
+  const rTitle  = normStr(result.title);
+  const rArtist = normStr(result.primary_artist?.name);
+  const nTitle  = normStr(title);
+  const nArtist = normStr(artist);
+  let score = 0;
+  if (rTitle === nTitle)               score += 4;
+  else if (rTitle.includes(nTitle))    score += 2;
+  else if (nTitle.includes(rTitle))    score += 1;
+  if (rArtist === nArtist)             score += 3;
+  else if (rArtist.includes(nArtist))  score += 2;
+  else if (nArtist.includes(rArtist))  score += 1;
+  return score;
+}
+
+async function loadLyrics(track) {
+  const key = normStr(track.artist) + '||' + normStr(track.title);
+  lyricsStatus.textContent = '';
+
+  if (lyricsCache[key]) { renderLyrics(lyricsCache[key]); return; }
+
+  lyricsContent.innerHTML = '';
+  lyricsStatus.textContent = 'SEARCHING…';
+
+  // ── Stage 1: Genius via corsproxy.io → official Genius search API ──
   try {
-    const artist = encodeURIComponent(track.artist);
-    const title  = encodeURIComponent(track.title);
-    const res = await fetch(`https://api.lyrics.ovh/v1/${artist}/${title}`);
-    if (!res.ok) throw new Error('ovh failed');
-    const data = await res.json();
-    if (!data.lyrics) throw new Error('no lyrics');
-    lyricsCache[key] = data.lyrics;
-    renderLyrics(data.lyrics);
-  } catch(e) {
-    lyricsStatus.textContent = 'LYRICS NOT FOUND';
-    lyricsContent.innerHTML = '';
+    const query = encodeURIComponent(`${track.artist} ${track.title}`);
+    const GENIUS_TOKEN = 'SiSBNQfBDiPAGbEPFnTCDgGfMoFyAVBJfiBnZJfKxpXCEfEFSmrwkrMVqvVJFnTq';
+    const apiUrl = `https://corsproxy.io/?url=${encodeURIComponent('https://api.genius.com/search?q=' + query)}`;
+    const res = await fetch(apiUrl, {
+      headers: { 'Authorization': `Bearer ${GENIUS_TOKEN}` }
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const hits = data.response?.hits || [];
+
+      // Score every result and pick the best
+      let best = null, bestScore = 0;
+      hits.forEach(h => {
+        const r = h.result;
+        const s = scoreMatch(r, track.artist, track.title);
+        if (s > bestScore) { bestScore = s; best = r; }
+      });
+
+      if (best && bestScore >= 2) {
+        // ── Stage 2: scrape Genius page via allorigins proxy ──
+        const pageUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('https://genius.com' + best.path)}`;
+        const pRes = await fetch(pageUrl);
+        if (pRes.ok) {
+          const pData = await pRes.json();
+          const html = pData.contents || '';
+          const lyrics = extractGeniusLyrics(html);
+          if (lyrics) {
+            lyricsCache[key] = lyrics;
+            renderLyrics(lyrics);
+            return;
+          }
+        }
+      }
+    }
+  } catch(e) { /* fall through */ }
+
+  // ── Stage 3: lyrics.ovh fallback ──
+  try {
+    const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(track.artist)}/${encodeURIComponent(track.title)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.lyrics && data.lyrics.trim()) {
+        lyricsCache[key] = data.lyrics;
+        renderLyrics(data.lyrics);
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // ── Stage 4: try alternate title forms (strip featured artists etc) ──
+  const cleanTitle = track.title.replace(/\(.*?\)/g,'').replace(/feat\.?.*/i,'').trim();
+  if (cleanTitle !== track.title) {
+    try {
+      const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(track.artist)}/${encodeURIComponent(cleanTitle)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.lyrics && data.lyrics.trim()) {
+          lyricsCache[key] = data.lyrics;
+          renderLyrics(data.lyrics);
+          return;
+        }
+      }
+    } catch(e) {}
   }
+
+  lyricsStatus.textContent = 'LYRICS NOT FOUND';
+  lyricsContent.innerHTML = '';
+}
+
+function extractGeniusLyrics(html) {
+  // Genius embeds lyrics as JSON in a <script> tag — parse it out
+  try {
+    const jsonMatch = html.match(/"lyrics":{"body":{"html":"(.*?)"}}/s);
+    if (jsonMatch) {
+      const escaped = jsonMatch[1];
+      const unescaped = escaped
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .replace(/<br\/?>/gi, '\n')
+        .replace(/<[^>]+>/g, '');
+      return unescaped.trim();
+    }
+  } catch(e) {}
+
+  // Fallback: look for data-lyrics-container divs in the HTML
+  try {
+    const matches = [...html.matchAll(/data-lyrics-container[^>]*>([\s\S]*?)<\/div>/g)];
+    if (matches.length) {
+      const raw = matches.map(m => m[1])
+        .join('\n')
+        .replace(/<br\/?>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+      if (raw.trim().length > 50) return raw.trim();
+    }
+  } catch(e) {}
+
+  return null;
 }
 
 function renderLyrics(raw) {
