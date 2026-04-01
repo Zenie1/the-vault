@@ -2942,5 +2942,44 @@ loadTracks().then(loaded => {
   }
 });
 </script>
+
+<script>
+// Subwoofer animation script
+const audioElement = document.querySelector('audio');
+let audioCtx, source, analyser;
+
+audioElement.addEventListener('play', () => {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    source = audioCtx.createMediaElementSource(audioElement);
+    analyser = audioCtx.createAnalyser();
+
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+
+    analyser.fftSize = 256;
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    const subCone = document.getElementById('sub-cone');
+    const subSurround = document.getElementById('sub-surround');
+    const subDustcap = document.getElementById('sub-dustcap');
+
+    function animateSubwoofer() {
+      requestAnimationFrame(animateSubwoofer);
+      analyser.getByteFrequencyData(dataArray);
+
+      let bass = dataArray.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
+      let scale = 1 + bass / 200;
+
+      subCone.setAttribute("transform", `scale(${scale}) translate(${50 - 50*scale}, ${50 - 50*scale})`);
+      subSurround.setAttribute("transform", `scale(${scale}) translate(${50 - 50*scale}, ${50 - 50*scale})`);
+      subDustcap.setAttribute("transform", `scale(${scale}) translate(${50 - 50*scale}, ${50 - 50*scale})`);
+    }
+
+    animateSubwoofer();
+  }
+});
+</script>
+
 </body>
 </html>
