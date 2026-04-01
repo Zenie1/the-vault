@@ -739,6 +739,36 @@ header {
 .wave-style-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
 .wave-style-btn.active { background: rgba(200,255,0,0.1); border-color: rgba(200,255,0,0.4); color: var(--accent); }
 
+/* SUBWOOFER */
+#subwoofer-wrap {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  position: relative;
+}
+#player-bar.visible #subwoofer-wrap { display: flex; }
+#sub-svg { width: 64px; height: 64px; overflow: visible; }
+
+/* basket/frame — never moves */
+.sub-basket { fill: none; stroke: rgba(255,255,255,0.12); stroke-width: 2; }
+.sub-spider  { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 1.2; }
+/* magnet body */
+.sub-magnet  { fill: #111118; stroke: rgba(255,255,255,0.1); stroke-width: 1; }
+
+/* these move with bass */
+#sub-surround { fill: none; stroke-width: 3; transition: none; }
+#sub-cone     { fill: none; stroke-width: 1.2; transition: none; }
+#sub-dustcap  { stroke-width: 1.5; transition: none; }
+#sub-glow     { transition: none; }
+
+@media(max-width:700px) {
+  #subwoofer-wrap { width:48px; height:48px; }
+  #sub-svg { width:48px; height:48px; }
+}
+
 /* RESPONSIVE */
 /* ================================================
    MOBILE — full layout overhaul
@@ -1003,6 +1033,34 @@ header {
       <button class="ctrl-btn" id="next-btn" title="Next">⏭</button>
       <button class="ctrl-btn loop-btn" id="loop-btn" title="Loop">↺</button>
     </div>
+  </div>
+
+  <!-- SUBWOOFER VISUALIZER -->
+  <div id="subwoofer-wrap">
+    <svg id="sub-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <!-- Outer frame / basket rim -->
+      <circle class="sub-basket" cx="32" cy="32" r="30"/>
+      <!-- Inner basket web lines -->
+      <line class="sub-spider" x1="32" y1="2"  x2="32" y2="14"/>
+      <line class="sub-spider" x1="32" y1="50" x2="32" y2="62"/>
+      <line class="sub-spider" x1="2"  y1="32" x2="14" y2="32"/>
+      <line class="sub-spider" x1="50" y1="32" x2="62" y2="32"/>
+      <line class="sub-spider" x1="8"  y1="10" x2="17" y2="19"/>
+      <line class="sub-spider" x1="56" y1="10" x2="47" y2="19"/>
+      <line class="sub-spider" x1="8"  y1="54" x2="17" y2="45"/>
+      <line class="sub-spider" x1="56" y1="54" x2="47" y2="45"/>
+      <!-- Magnet / voice coil base -->
+      <circle class="sub-magnet" cx="32" cy="32" r="10"/>
+      <!-- MOVING PARTS (animated by JS) -->
+      <!-- Surround ring — stroke only, scales with bass -->
+      <circle id="sub-surround" cx="32" cy="32" r="22"/>
+      <!-- Cone outline — inner ring -->
+      <circle id="sub-cone" cx="32" cy="32" r="16"/>
+      <!-- Dust cap — fills with accent color -->
+      <circle id="sub-dustcap" cx="32" cy="32" r="8"/>
+      <!-- Glow bloom behind the whole driver -->
+      <circle id="sub-glow" cx="32" cy="32" r="22" fill="transparent"/>
+    </svg>
   </div>
 </div>
 
@@ -1961,6 +2019,7 @@ function startWaveform() {
   waveCanvas.classList.remove('paused');
   if (!smoothedBars.length) smoothedBars = new Array(60).fill(0).map(() => Math.random() * 20 + 5);
   drawWaveform();
+  startSubwoofer();
 }
 
 function stopWaveform() {
@@ -1970,6 +2029,88 @@ function stopWaveform() {
   const flatTarget = 6;
   smoothedBars = smoothedBars.map(() => flatTarget);
 }
+
+// ===== SUBWOOFER BASS ANIMATION =====
+let bassAnimFrame = null;
+let smoothBass = 0;
+
+const subSurround = document.getElementById('sub-surround');
+const subCone     = document.getElementById('sub-cone');
+const subDustcap  = document.getElementById('sub-dustcap');
+const subGlow     = document.getElementById('sub-glow');
+
+function getBassPower() {
+  if (!analyser || !waveData) return 0;
+  analyser.getByteFrequencyData(waveData);
+  // bins 0-6 cover ~20-250hz depending on fftSize 128 & 44.1kHz sample rate
+  let sum = 0;
+  const bins = Math.min(7, waveData.length);
+  for (let i = 0; i < bins; i++) sum += waveData[i];
+  return sum / bins / 255; // 0..1
+}
+
+function animateSub() {
+  bassAnimFrame = requestAnimationFrame(animateSub);
+
+  const color = getComputedStyle(document.getElementById('player-bar'))
+    .getPropertyValue('--current-color').trim() || '#c8ff00';
+
+  // get raw bass 0..1
+  const raw = isPlaying ? getBassPower() : 0;
+
+  // smooth: fast attack, slow decay
+  smoothBass = raw > smoothBass
+    ? smoothBass * 0.25 + raw * 0.75
+    : smoothBass * 0.88 + raw * 0.12;
+
+  const b = smoothBass; // 0..1
+
+  // --- Surround ring ---
+  // radius breathes between 21 and 24 (resting = 22)
+  const surroundR = 22 - b * 3.5;
+  // stroke width pulses 3 -> 5
+  const surroundSW = 3 + b * 2.5;
+  // opacity
+  const surroundOpacity = 0.25 + b * 0.65;
+
+  subSurround.setAttribute('r', surroundR.toFixed(2));
+  subSurround.setAttribute('stroke-width', surroundSW.toFixed(2));
+  subSurround.setAttribute('stroke', color);
+  subSurround.setAttribute('opacity', surroundOpacity.toFixed(3));
+
+  // --- Cone ring ---
+  const coneR = 16 - b * 2.5;
+  subCone.setAttribute('r', coneR.toFixed(2));
+  subCone.setAttribute('stroke', color);
+  subCone.setAttribute('opacity', (0.15 + b * 0.45).toFixed(3));
+
+  // --- Dust cap ---
+  // pushes inward (radius shrinks as cone moves forward)
+  const capR = 8 - b * 2.8;
+  const capFill = b > 0.08 ? color : 'rgba(255,255,255,0.06)';
+  const capOpacity = 0.18 + b * 0.72;
+  subDustcap.setAttribute('r', Math.max(3, capR).toFixed(2));
+  subDustcap.setAttribute('fill', capFill);
+  subDustcap.setAttribute('stroke', color);
+  subDustcap.setAttribute('opacity', capOpacity.toFixed(3));
+
+  // --- Glow bloom ---
+  const glowR = 22 + b * 10;
+  const glowOpacity = b * 0.18;
+  subGlow.setAttribute('r', glowR.toFixed(2));
+  subGlow.setAttribute('fill', color);
+  subGlow.setAttribute('opacity', glowOpacity.toFixed(3));
+}
+
+function startSubwoofer() {
+  if (bassAnimFrame) cancelAnimationFrame(bassAnimFrame);
+  animateSub();
+}
+
+function stopSubwoofer() {
+  // let it decay naturally via smoothBass draining to 0
+}
+
 
 // ===== WAVEFORM SCRUB — drag to seek with tooltip =====
 let isScrubbing = false;
