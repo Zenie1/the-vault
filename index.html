@@ -297,10 +297,10 @@ header {
   bottom: 0; left: 0; right: 0;
   background: rgba(5,5,7,0.97);
   border-top: 1px solid var(--border2);
-  padding: 14px 32px;
+  padding: 12px 28px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 18px;
   z-index: 100;
   backdrop-filter: blur(30px);
   transform: translateY(100%);
@@ -308,6 +308,8 @@ header {
 }
 #player-bar.visible { transform: translateY(0); }
 #player-bar::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--current-color,var(--accent)),transparent); }
+/* Subtle glow under active track color */
+#player-bar::after { content:''; position:absolute; bottom:0; left:0; right:0; height:60px; background:radial-gradient(ellipse at 50% 100%, var(--current-color,var(--accent))08, transparent 70%); pointer-events:none; }
 
 .player-vinyl {
   width: 52px; height: 52px;
@@ -322,8 +324,13 @@ header {
   font-size: 6px;
   color: var(--muted);
   overflow: hidden;
+  box-shadow: 0 0 0 0 var(--current-color, var(--accent));
+  transition: box-shadow 0.3s;
 }
-.player-vinyl.spinning { animation: spin 4s linear infinite; }
+.player-vinyl.spinning {
+  animation: spin 4s linear infinite;
+  box-shadow: 0 0 18px -4px var(--current-color, var(--accent));
+}
 .player-vinyl-img {
   position: absolute;
   inset: 0;
@@ -354,8 +361,24 @@ header {
 .player-title { font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .player-artist { font-family:var(--font-mono); font-size:9px; color:var(--muted); letter-spacing:2px; margin-top:2px; text-transform:uppercase; }
 
-.player-center { display:flex; flex-direction:column; align-items:center; gap:8px; flex:2; min-width:200px; }
-.player-controls { display:flex; align-items:center; gap:16px; }
+/* Like button on player info */
+.player-like-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 0;
+  transition: all 0.2s;
+  display: block;
+  margin-top: 4px;
+  line-height: 1;
+}
+.player-like-btn.liked { color: #ff2d78; text-shadow: 0 0 10px rgba(255,45,120,0.6); }
+.player-like-btn:hover { transform: scale(1.2); }
+
+.player-center { display:flex; flex-direction:column; align-items:center; gap:6px; flex:2; min-width:200px; }
+.player-controls { display:flex; align-items:center; gap:14px; }
 
 .play-pause {
   width:42px; height:42px;
@@ -372,37 +395,81 @@ header {
   flex-shrink:0;
   line-height: 1;
   padding: 0;
-  padding-left: 2px; /* optical: ▶ glyph sits slightly left of center */
+  padding-left: 2px;
+  box-shadow: 0 0 20px -5px var(--current-color, var(--accent));
 }
-.play-pause.is-playing { padding-left: 0; } /* ⏸ is naturally centered */
-.play-pause:hover { transform:scale(1.08); }
+.play-pause.is-playing { padding-left: 0; }
+.play-pause:hover { transform:scale(1.1); filter:brightness(1.15); }
 
-.ctrl-btn { background:transparent; border:none; color:var(--muted); font-size:14px; cursor:pointer; padding:4px; transition:color 0.2s; }
+.ctrl-btn {
+  background:transparent; border:none; color:var(--muted);
+  font-size:14px; cursor:pointer; padding:4px;
+  transition: all 0.2s; border-radius: 2px;
+}
 .ctrl-btn:hover { color:var(--text); }
+.ctrl-btn.active { color: var(--current-color, var(--accent)); }
 
-.player-progress { display:flex; align-items:center; gap:10px; width:100%; }
-.progress-bar { flex:1; height:3px; background:rgba(255,255,255,0.08); position:relative; cursor:pointer; border-radius:2px; }
-.progress-fill { height:100%; background:var(--current-color,var(--accent)); width:0%; transition:width 0.1s; border-radius:2px; }
-.progress-bar:hover .progress-fill { filter:brightness(1.2); }
+/* Shuffle & loop */
+.ctrl-btn.shuffle-btn, .ctrl-btn.loop-btn {
+  font-size: 12px;
+  opacity: 0.5;
+}
+.ctrl-btn.shuffle-btn.active, .ctrl-btn.loop-btn.active {
+  opacity: 1;
+  color: var(--current-color, var(--accent));
+}
+
+.player-progress { display:flex; align-items:center; gap:10px; width:100%; position: relative; }
 .time-label { font-family:var(--font-mono); font-size:9px; color:var(--muted); min-width:30px; }
 
 /* WAVEFORM */
 #waveform-canvas {
   width: 100%;
-  height: 44px;
+  height: 48px;
   display: block;
   cursor: pointer;
-  opacity: 0.9;
   border-radius: 2px;
+  transition: opacity 0.3s;
+}
+#waveform-canvas.paused { opacity: 0.5; }
+
+/* Scrub tooltip */
+#scrub-tooltip {
+  position: absolute;
+  bottom: 58px;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 4px 8px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  z-index: 200;
+}
+#scrub-tooltip.visible { opacity: 1; }
+#scrub-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--border2);
 }
 
 .volume-wrap { display:flex; align-items:center; gap:8px; }
 .volume-icon { font-size:14px; color:var(--muted); cursor:pointer; }
 .volume-slider { -webkit-appearance:none; width:70px; height:3px; background:rgba(255,255,255,0.1); outline:none; border-radius:2px; cursor:pointer; }
-.volume-slider::-webkit-slider-thumb { -webkit-appearance:none; width:10px; height:10px; border-radius:50%; background:var(--muted2); cursor:pointer; }
+.volume-slider::-webkit-slider-thumb { -webkit-appearance:none; width:10px; height:10px; border-radius:50%; background:var(--muted2); cursor:pointer; transition: background 0.2s; }
+.volume-slider:hover::-webkit-slider-thumb { background: var(--current-color, var(--accent)); }
 
 .dl-btn { font-family:var(--font-mono); font-size:9px; letter-spacing:2px; padding:7px 14px; border:1px solid var(--border2); background:transparent; color:var(--muted2); cursor:pointer; text-transform:uppercase; text-decoration:none; display:flex; align-items:center; gap:5px; transition:all 0.2s; flex-shrink:0; }
-.dl-btn:hover { background:var(--surface2); color:var(--text); }
+.dl-btn:hover { background:var(--surface2); color:var(--text); border-color: var(--current-color, var(--border2)); }
 
 /* MODALS */
 .modal-overlay {
@@ -741,15 +808,19 @@ audio { display:none; }
   <div class="player-info">
     <div class="player-title" id="player-title">—</div>
     <div class="player-artist" id="player-artist">—</div>
+    <button class="player-like-btn" id="player-like-btn" title="Like">♡</button>
   </div>
   <div class="player-center">
     <div class="player-controls">
+      <button class="ctrl-btn shuffle-btn" id="shuffle-btn" title="Shuffle">⇄</button>
       <button class="ctrl-btn" id="prev-btn" title="Previous">⏮</button>
       <button class="play-pause" id="play-pause-btn">▶</button>
       <button class="ctrl-btn" id="next-btn" title="Next">⏭</button>
+      <button class="ctrl-btn loop-btn" id="loop-btn" title="Loop">↺</button>
     </div>
     <div class="player-progress">
       <span class="time-label" id="time-current">0:00</span>
+      <div id="scrub-tooltip">0:00</div>
       <canvas id="waveform-canvas" height="36"></canvas>
       <span class="time-label" id="time-total">0:00</span>
       <div class="wave-toggle">
@@ -1412,6 +1483,7 @@ function playAtIndex(idx) {
   }
 
   renderTracks();
+  updateLikeBtn();
 }
 
 document.getElementById('play-pause-btn').addEventListener('click', () => {
@@ -1434,19 +1506,26 @@ document.getElementById('play-pause-btn').addEventListener('click', () => {
 document.getElementById('prev-btn').addEventListener('click', () => {
   const playlist = getPlaylist();
   if (playlist.length === 0) return;
-  const newIdx = currentTrackIdx <= 0 ? playlist.length - 1 : currentTrackIdx - 1;
+  const newIdx = isShuffled
+    ? Math.floor(Math.random() * playlist.length)
+    : (currentTrackIdx <= 0 ? playlist.length - 1 : currentTrackIdx - 1);
   playAtIndex(newIdx);
 });
 document.getElementById('next-btn').addEventListener('click', () => {
   const playlist = getPlaylist();
   if (playlist.length === 0) return;
-  const newIdx = currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1;
+  const newIdx = isShuffled
+    ? Math.floor(Math.random() * playlist.length)
+    : (currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1);
   playAtIndex(newIdx);
 });
 
 audio.addEventListener('ended', () => {
+  if (isLooping) return; // audio.loop handles it
   const playlist = getPlaylist();
-  const newIdx = currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1;
+  const newIdx = isShuffled
+    ? Math.floor(Math.random() * playlist.length)
+    : (currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1);
   playAtIndex(newIdx);
 });
 
@@ -1482,7 +1561,8 @@ function drawWaveform() {
 
   const rawColor = getComputedStyle(document.getElementById('player-bar'))
     .getPropertyValue('--current-color').trim() || '#c8ff00';
-  const progress = audio.duration ? audio.currentTime / audio.duration : 0;
+  // Use scrub position while dragging, else actual playback position
+  const progress = isScrubbing ? scrubProgress : (audio.duration ? audio.currentTime / audio.duration : 0);
 
   // Pull live freq data
   const BAR_COUNT = 60;
@@ -1660,20 +1740,76 @@ function startWaveform() {
   } catch(e) {}
   if (waveAnimFrame) cancelAnimationFrame(waveAnimFrame);
   resizeWaveCanvas();
+  waveCanvas.classList.remove('paused');
   if (!smoothedBars.length) smoothedBars = new Array(60).fill(0).map(() => Math.random() * 20 + 5);
   drawWaveform();
 }
 
 function stopWaveform() {
-  if (waveAnimFrame) cancelAnimationFrame(waveAnimFrame);
-  // Gradually fade bars to zero by letting them decay on their own
-  smoothedBars = smoothedBars.map(b => b * 0.5);
+  // Don't kill the animation frame — keep drawing so bars animate down to flat
+  waveCanvas.classList.add('paused');
+  // Drive bars to a low flat resting state
+  const flatTarget = 6;
+  smoothedBars = smoothedBars.map(() => flatTarget);
 }
+
+// ===== WAVEFORM SCRUB — drag to seek with tooltip =====
+let isScrubbing = false;
+let scrubProgress = 0;
+
+const scrubTooltip = document.getElementById('scrub-tooltip');
+
+function getScrubPos(e) {
+  const rect = waveCanvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+}
+
+function showScrubTooltip(pos, e) {
+  if (!audio.duration) return;
+  const time = pos * audio.duration;
+  scrubTooltip.textContent = fmt(time);
+  const rect = waveCanvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  scrubTooltip.style.left = (clientX - rect.left) + 'px';
+  scrubTooltip.classList.add('visible');
+}
+
+waveCanvas.addEventListener('mousedown', (e) => {
+  if (!audio.duration) return;
+  isScrubbing = true;
+  scrubProgress = getScrubPos(e);
+  showScrubTooltip(scrubProgress, e);
+  waveCanvas.style.cursor = 'grabbing';
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isScrubbing) {
+    // Just hover — show tooltip
+    if (audio.duration && waveCanvas.matches(':hover')) {
+      showScrubTooltip(getScrubPos(e), e);
+    }
+    return;
+  }
+  scrubProgress = getScrubPos(e);
+  showScrubTooltip(scrubProgress, e);
+});
+
+window.addEventListener('mouseup', (e) => {
+  if (!isScrubbing) return;
+  isScrubbing = false;
+  waveCanvas.style.cursor = 'pointer';
+  scrubTooltip.classList.remove('visible');
+  if (audio.duration) audio.currentTime = getScrubPos(e) * audio.duration;
+});
+
+waveCanvas.addEventListener('mouseleave', () => {
+  if (!isScrubbing) scrubTooltip.classList.remove('visible');
+});
 
 waveCanvas.addEventListener('click', (e) => {
   if (!audio.duration) return;
-  const rect = waveCanvas.getBoundingClientRect();
-  audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+  audio.currentTime = getScrubPos(e) * audio.duration;
 });
 
 window.addEventListener('resize', resizeWaveCanvas);
@@ -2226,6 +2362,57 @@ document.getElementById('gh-import-input').addEventListener('change', e => {
   reader.readAsText(f);
   e.target.value = '';
 });
+
+// ===== SHUFFLE, LOOP, LIKE =====
+let isShuffled = false;
+let isLooping = false;
+let likedTracks = new Set(JSON.parse(localStorage.getItem('vault-liked') || '[]'));
+
+function saveLiked() {
+  localStorage.setItem('vault-liked', JSON.stringify([...likedTracks]));
+}
+
+document.getElementById('shuffle-btn').addEventListener('click', () => {
+  isShuffled = !isShuffled;
+  document.getElementById('shuffle-btn').classList.toggle('active', isShuffled);
+  showToast(isShuffled ? 'SHUFFLE ON' : 'SHUFFLE OFF', '');
+});
+
+document.getElementById('loop-btn').addEventListener('click', () => {
+  isLooping = !isLooping;
+  audio.loop = isLooping;
+  document.getElementById('loop-btn').classList.toggle('active', isLooping);
+  showToast(isLooping ? 'LOOP ON' : 'LOOP OFF', '');
+});
+
+document.getElementById('player-like-btn').addEventListener('click', () => {
+  const playlist = getPlaylist();
+  const t = playlist[currentTrackIdx];
+  if (!t) return;
+  const btn = document.getElementById('player-like-btn');
+  if (likedTracks.has(t.id)) {
+    likedTracks.delete(t.id);
+    btn.textContent = '♡';
+    btn.classList.remove('liked');
+    showToast('REMOVED FROM LIKED', '');
+  } else {
+    likedTracks.add(t.id);
+    btn.textContent = '♥';
+    btn.classList.add('liked');
+    showToast('ADDED TO LIKED ♥', 'success');
+  }
+  saveLiked();
+});
+
+function updateLikeBtn() {
+  const playlist = getPlaylist();
+  const t = playlist[currentTrackIdx];
+  const btn = document.getElementById('player-like-btn');
+  if (!t || !btn) return;
+  const liked = likedTracks.has(t.id);
+  btn.textContent = liked ? '♥' : '♡';
+  btn.classList.toggle('liked', liked);
+}
 
 // ===== WAVEFORM STYLE TOGGLE =====
 let waveformStyle = 'bars'; // 'bars' | 'line'
