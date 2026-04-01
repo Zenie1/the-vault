@@ -1367,7 +1367,7 @@ function getArtistColor(artist) {
 let ghFileSha = null; // tracks the SHA of tracks.json for updates
 
 async function loadTracks() {
-  // Always try GitHub first if configured
+  // Admin path — use authenticated GitHub API
   if (ghConfigured()) {
     try {
       const c = getGHConfig();
@@ -1382,22 +1382,26 @@ async function loadTracks() {
         localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
         return decoded;
       }
-      if (res.status === 404) { ghFileSha = null; return getLocalTracks(); }
-    } catch(e) { console.warn('GitHub load failed, using localStorage', e); }
-  } else {
-    // Guest with no token — try public raw GitHub URL
-    const pub = getPublicRepo();
-    if (pub) {
-      try {
-        const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
-        if (res.ok) {
-          const decoded = await res.json();
+      if (res.status === 404) { ghFileSha = null; }
+    } catch(e) { console.warn('GitHub API load failed', e); }
+  }
+
+  // Guest path (and admin fallback) — always try public raw URL
+  const pub = getPublicRepo();
+  if (pub) {
+    try {
+      const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
+      if (res.ok) {
+        const decoded = await res.json();
+        if (decoded && decoded.length > 0) {
           localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
           return decoded;
         }
-      } catch(e) { console.warn('Raw GitHub load failed', e); }
-    }
+      }
+    } catch(e) { console.warn('Raw GitHub load failed', e); }
   }
+
+  // Final fallback: localStorage, then DEFAULT_TRACKS
   return getLocalTracks();
 }
 
@@ -2936,12 +2940,14 @@ resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 setDefaultBG();
 
-// Seed default tracks immediately so the page never shows empty
+// Show tracks immediately — use localStorage if available, else DEFAULT_TRACKS
 tracks = getLocalTracks();
+// If localStorage was empty or stale, seed with DEFAULT_TRACKS so page never shows blank
+if (!tracks || tracks.length === 0) tracks = DEFAULT_TRACKS;
 renderFilters();
 renderTracks();
 
-// Then async-load from GitHub (may update the list with newer tracks)
+// Then async-load from GitHub — always update whatever comes back
 loadTracks().then(loaded => {
   if (loaded && loaded.length > 0) {
     tracks = loaded;
