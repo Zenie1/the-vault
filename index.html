@@ -300,7 +300,7 @@ header {
   padding: 12px 28px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 18px;
   z-index: 100;
   backdrop-filter: blur(30px);
   transform: translateY(100%);
@@ -739,44 +739,6 @@ header {
 .wave-style-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
 .wave-style-btn.active { background: rgba(200,255,0,0.1); border-color: rgba(200,255,0,0.4); color: var(--accent); }
 
-/* SUBWOOFER ICONS */
-.subwoofer-wrap {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.sub-icon {
-  width: 48px;
-  height: 48px;
-  color: var(--current-color, var(--accent));
-  transition: color 0.3s;
-  position: relative;
-  z-index: 2;
-  /* transform driven by JS */
-  will-change: transform;
-}
-
-/* Pulse rings that expand outward on bass hit */
-.sub-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 1.5px solid var(--current-color, var(--accent));
-  opacity: 0;
-  pointer-events: none;
-  will-change: transform, opacity;
-}
-
-/* Hide subwoofers on very small screens */
-@media (max-width: 560px) {
-  .subwoofer-wrap { display: none; }
-}
-
 /* RESPONSIVE */
 /* ================================================
    MOBILE — full layout overhaul
@@ -1020,19 +982,6 @@ header {
     <button class="dl-btn" id="download-link" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓ DL</button>
   </div>
 
-  <!-- Subwoofer left -->
-  <div class="subwoofer-wrap" id="sub-left">
-    <svg class="sub-icon" id="sub-icon-left" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.35"/>
-      <circle cx="24" cy="24" r="14" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.55"/>
-      <circle cx="24" cy="24" r="9" stroke="currentColor" stroke-width="2" fill="none" opacity="0.8"/>
-      <circle cx="24" cy="24" r="4" fill="currentColor" opacity="0.9"/>
-      <circle cx="24" cy="24" r="1.5" fill="var(--bg)" opacity="1"/>
-    </svg>
-    <div class="sub-ring sub-ring-1" id="sub-ring-left-1"></div>
-    <div class="sub-ring sub-ring-2" id="sub-ring-left-2"></div>
-  </div>
-
   <!-- Center: waveform + controls (desktop flex column, mobile two rows) -->
   <div class="player-center">
     <!-- Row 2: waveform -->
@@ -1054,19 +1003,6 @@ header {
       <button class="ctrl-btn" id="next-btn" title="Next">⏭</button>
       <button class="ctrl-btn loop-btn" id="loop-btn" title="Loop">↺</button>
     </div>
-  </div>
-
-  <!-- Subwoofer right -->
-  <div class="subwoofer-wrap" id="sub-right">
-    <svg class="sub-icon" id="sub-icon-right" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.35"/>
-      <circle cx="24" cy="24" r="14" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.55"/>
-      <circle cx="24" cy="24" r="9" stroke="currentColor" stroke-width="2" fill="none" opacity="0.8"/>
-      <circle cx="24" cy="24" r="4" fill="currentColor" opacity="0.9"/>
-      <circle cx="24" cy="24" r="1.5" fill="var(--bg)" opacity="1"/>
-    </svg>
-    <div class="sub-ring sub-ring-1" id="sub-ring-right-1"></div>
-    <div class="sub-ring sub-ring-2" id="sub-ring-right-2"></div>
   </div>
 </div>
 
@@ -1316,50 +1252,6 @@ const ADMIN_PASSWORD = 'vault2024';
 const GUEST_REPO = 'Zenie1/the-vault';
 const GUEST_BRANCH = 'main';
 
-// ===== SEED TRACKS — embedded at build time so they always show even before GitHub responds =====
-const SEED_TRACKS = [
-  {
-    "id": 1775002516005,
-    "added": "2026-04-01",
-    "artist": "Nine Vicious",
-    "title": "April 3rd",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978652/April_3rd_patrick_ahmad.mp3_mitn4b.mp3",
-    "tags": ["unreleased"],
-    "type": "url",
-    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F472d659dc27c58164b7a9de3a3ffabf1.1000x1000x1.jpg"
-  },
-  {
-    "id": 1774999043975,
-    "added": "2026-03-31",
-    "artist": "Prettifun",
-    "title": "Dead",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978649/Dead_prod_Ginseng_qy0b7r.mp3",
-    "tags": ["leak"],
-    "type": "cloudinary",
-    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fc1fdcb43f47e4fd6a3fae201d03701fa.999x1000x1.png"
-  },
-  {
-    "id": 1774996681539,
-    "added": "2026-03-31",
-    "artist": "Nine Vicious",
-    "title": "Gimmie A Month",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978662/Gimmie_A_Month.mp3_azunww.mp3",
-    "tags": ["unreleased"],
-    "type": "url",
-    "coverArt": "https://t2.genius.com/unsafe/555x0/https%3A%2F%2Fimages.genius.com%2Fdd68e4eac689e5dadead00d032a36b19.499x499x1.jpg"
-  }
-];
-
-// Merge seed into a track list — seed fills in any tracks missing from live data
-function mergeWithSeed(liveTracks) {
-  const liveIds = new Set((liveTracks || []).map(t => t.id));
-  const missing = SEED_TRACKS.filter(t => !liveIds.has(t.id));
-  // Live tracks take priority; seed fills gaps. Sort by added date descending.
-  const merged = [...(liveTracks || []), ...missing];
-  merged.sort((a, b) => new Date(b.added) - new Date(a.added));
-  return merged;
-}
-
 function getGHConfig() {
   return {
     token: localStorage.getItem('vault-gh-token') || '',
@@ -1423,11 +1315,10 @@ async function loadTracks() {
         const data = await res.json();
         ghFileSha = data.sha;
         const decoded = JSON.parse(atob(data.content.replace(/\n/g,'')));
-        const merged = mergeWithSeed(decoded);
-        localStorage.setItem('vault-tracks-v2', JSON.stringify(merged));
-        return merged;
+        localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
+        return decoded;
       }
-      if (res.status === 404) { ghFileSha = null; return mergeWithSeed(getLocalTracks()); }
+      if (res.status === 404) { ghFileSha = null; return getLocalTracks(); }
     } catch(e) { console.warn('GitHub load failed, using localStorage', e); }
   } else {
     // Guest with no token — try public raw GitHub URL
@@ -1437,21 +1328,53 @@ async function loadTracks() {
         const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
         if (res.ok) {
           const decoded = await res.json();
-          const merged = mergeWithSeed(decoded);
-          localStorage.setItem('vault-tracks-v2', JSON.stringify(merged));
-          return merged;
+          localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
+          return decoded;
         }
       } catch(e) { console.warn('Raw GitHub load failed', e); }
     }
   }
-  return mergeWithSeed(getLocalTracks());
+  return getLocalTracks();
 }
+
+const DEFAULT_TRACKS = [
+  {
+    "id": 1775002516005,
+    "added": "2026-04-01",
+    "artist": "Nine Vicious",
+    "title": "April 3rd",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978652/April_3rd_patrick_ahmad.mp3_mitn4b.mp3",
+    "tags": ["unreleased"],
+    "type": "url",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F472d659dc27c58164b7a9de3a3ffabf1.1000x1000x1.jpg"
+  },
+  {
+    "id": 1774999043975,
+    "added": "2026-03-31",
+    "artist": "Prettifun",
+    "title": "Dead",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978649/Dead_prod_Ginseng_qy0b7r.mp3",
+    "tags": ["leak"],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fc1fdcb43f47e4fd6a3fae201d03701fa.999x1000x1.png"
+  },
+  {
+    "id": 1774996681539,
+    "added": "2026-03-31",
+    "artist": "Nine Vicious",
+    "title": "Gimmie A Month",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978662/Gimmie_A_Month.mp3_azunww.mp3",
+    "tags": ["unreleased"],
+    "type": "url",
+    "coverArt": "https://t2.genius.com/unsafe/555x0/https%3A%2F%2Fimages.genius.com%2Fdd68e4eac689e5dadead00d032a36b19.499x499x1.jpg"
+  }
+];
 
 function getLocalTracks() {
   try {
     const s = localStorage.getItem('vault-tracks-v2');
-    return s ? JSON.parse(s) : [];
-  } catch { return []; }
+    return s ? JSON.parse(s) : DEFAULT_TRACKS;
+  } catch { return DEFAULT_TRACKS; }
 }
 
 async function saveTracks(t) {
@@ -2025,74 +1948,10 @@ function drawWaveform() {
     waveCtx.globalAlpha = 1;
   }
 
-  animateSubwoofers();
   waveAnimFrame = requestAnimationFrame(drawWaveform);
 }
 
-// ===== SUBWOOFER ANIMATION =====
-const subLeft  = document.getElementById('sub-icon-left');
-const subRight = document.getElementById('sub-icon-right');
-const subRings = [
-  document.getElementById('sub-ring-left-1'),
-  document.getElementById('sub-ring-left-2'),
-  document.getElementById('sub-ring-right-1'),
-  document.getElementById('sub-ring-right-2'),
-];
-
-// Track ring state independently so they can stagger
-let ringPhase = [0, 0.5, 0, 0.5]; // stagger left/right pairs
-let lastBass = 0;
-let subBassSmooth = 0;
-
-function animateSubwoofers() {
-  if (!analyser || !isPlaying) {
-    // Idle: reset to neutral
-    if (subLeft)  subLeft.style.transform  = '';
-    if (subRight) subRight.style.transform = '';
-    subRings.forEach(r => { if (r) r.style.opacity = '0'; r && (r.style.transform = 'scale(1)'); });
-    return;
-  }
-
-  // Average the sub-bass bins (0–7 = kick/808 range, boosted in drawWaveform already)
-  let bassSum = 0;
-  for (let i = 0; i < 8; i++) bassSum += (freqData[i] || 0);
-  const bassRaw = bassSum / 8 / 255; // 0–1
-
-  // Smooth it: fast attack, slow decay
-  subBassSmooth = subBassSmooth < bassRaw
-    ? subBassSmooth * 0.2 + bassRaw * 0.8
-    : subBassSmooth * 0.72 + bassRaw * 0.28;
-
-  const b = subBassSmooth;
-
-  // Scale: cone "pushes" outward on bass — 1 at silence, slightly bigger on hit
-  const scale = 1 + b * 0.18;
-  // Subtle vertical squash to simulate speaker excursion (cone moves in/out)
-  const scaleY = 1 - b * 0.06;
-
-  if (subLeft)  subLeft.style.transform  = `scale(${scale}, ${scaleY})`;
-  if (subRight) subRight.style.transform = `scale(${scale}, ${scaleY})`;
-
-  // Pulse rings: advance their phase and map to opacity + size
-  subRings.forEach((ring, i) => {
-    if (!ring) return;
-    // Rings 0,1 are left; 2,3 are right — drive them when bass is strong
-    ringPhase[i] = (ringPhase[i] + b * 0.045 + 0.008) % 1;
-    const p = ringPhase[i]; // 0→1 lifecycle of one ring expansion
-    // Only show ring when bass is above threshold
-    const threshold = 0.12;
-    if (b > threshold) {
-      const opacity = (1 - p) * b * 0.7;
-      const ringScale = 1 + p * 1.1;
-      ring.style.opacity = opacity.toFixed(3);
-      ring.style.transform = `scale(${ringScale.toFixed(3)})`;
-    } else {
-      ring.style.opacity = '0';
-    }
-  });
-}
-
-
+function startWaveform() {
   try {
     setupAudioContext();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -2924,22 +2783,21 @@ const getCoverFile       = setupCoverPicker({ btnId:'find-cover-btn-f', artistId
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 setDefaultBG();
-// Show seed tracks immediately so the page is never blank while waiting for GitHub
-tracks = mergeWithSeed(getLocalTracks());
+
+// Seed default tracks immediately so the page never shows empty
+tracks = getLocalTracks();
 renderFilters();
 renderTracks();
-// Load tracks async (GitHub first, localStorage fallback)
+
+// Then async-load from GitHub (may update the list with newer tracks)
 loadTracks().then(loaded => {
-  tracks = loaded;
-  renderFilters();
-  renderTracks();
-  if (!ghConfigured() && isAdmin) {
-    showToast('GITHUB NOT SET UP — CLICK ⚙ TO CONFIGURE', 'error');
+  if (loaded && loaded.length > 0) {
+    tracks = loaded;
+    renderFilters();
+    renderTracks();
   }
-  // If admin and GitHub is set up, silently push merged tracks so the
-  // repo's tracks.json is up to date (fixes missing seed tracks on GitHub).
-  if (ghConfigured() && isAdmin) {
-    saveTracks(tracks);
+  if (isAdmin && !ghConfigured()) {
+    showToast('GITHUB NOT SET UP — CLICK ⚙ TO CONFIGURE', 'error');
   }
 });
 </script>
