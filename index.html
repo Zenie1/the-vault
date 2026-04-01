@@ -1367,7 +1367,7 @@ function getArtistColor(artist) {
 let ghFileSha = null; // tracks the SHA of tracks.json for updates
 
 async function loadTracks() {
-  // Admin path — use authenticated GitHub API
+  // Always try GitHub first if configured
   if (ghConfigured()) {
     try {
       const c = getGHConfig();
@@ -1382,24 +1382,22 @@ async function loadTracks() {
         localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
         return decoded;
       }
-      if (res.status === 404) { ghFileSha = null; }
-    } catch(e) { console.warn('GitHub API load failed', e); }
+      if (res.status === 404) { ghFileSha = null; return getLocalTracks(); }
+    } catch(e) { console.warn('GitHub load failed, using localStorage', e); }
+  } else {
+    // Guest with no token — try public raw GitHub URL
+    const pub = getPublicRepo();
+    if (pub) {
+      try {
+        const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
+        if (res.ok) {
+          const decoded = await res.json();
+          localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
+          return decoded;
+        }
+      } catch(e) { console.warn('Raw GitHub load failed', e); }
+    }
   }
-
-  // Guest path (and admin fallback) — always try public raw URL
-  const pub = getPublicRepo();
-  if (pub) {
-    try {
-      const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
-      if (res.ok) {
-        const decoded = await res.json();
-        localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
-        return decoded;
-      }
-    } catch(e) { console.warn('Raw GitHub load failed', e); }
-  }
-
-  // Final fallback: localStorage, then DEFAULT_TRACKS
   return getLocalTracks();
 }
 
@@ -1419,7 +1417,7 @@ const DEFAULT_TRACKS = [
     "added": "2026-03-31",
     "artist": "Prettifun",
     "title": "Dead",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978649/Dead_prod_Ginseng_qy0b7r.mp3",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978649/Dead_prod_Ginseng_qy0b7r.mp3",
     "tags": ["leak"],
     "type": "cloudinary",
     "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fc1fdcb43f47e4fd6a3fae201d03701fa.999x1000x1.png"
@@ -1429,30 +1427,10 @@ const DEFAULT_TRACKS = [
     "added": "2026-03-31",
     "artist": "Nine Vicious",
     "title": "Gimmie A Month",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978662/Gimmie_A_Month.mp3_azunww.mp3",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978662/Gimmie_A_Month.mp3_azunww.mp3",
     "tags": ["unreleased"],
     "type": "url",
     "coverArt": "https://t2.genius.com/unsafe/555x0/https%3A%2F%2Fimages.genius.com%2Fdd68e4eac689e5dadead00d032a36b19.499x499x1.jpg"
-  },
-  {
-    "id": 1775001000001,
-    "added": "2026-03-31",
-    "artist": "Nine Vicious",
-    "title": "Friday",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978652/Friday_Nine_Vicious.mp3",
-    "tags": ["unreleased"],
-    "type": "cloudinary",
-    "coverArt": ""
-  },
-  {
-    "id": 1775001000002,
-    "added": "2026-03-31",
-    "artist": "Che",
-    "title": "White Folks",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978649/White_Folks_Che.mp3",
-    "tags": ["unreleased"],
-    "type": "cloudinary",
-    "coverArt": ""
   }
 ];
 
@@ -2958,16 +2936,18 @@ resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 setDefaultBG();
 
-// Show DEFAULT_TRACKS immediately so the page is never blank
-tracks = DEFAULT_TRACKS;
+// Seed default tracks immediately so the page never shows empty
+tracks = getLocalTracks();
 renderFilters();
 renderTracks();
 
-// Then load from GitHub — always overwrite with whatever comes back
+// Then async-load from GitHub (may update the list with newer tracks)
 loadTracks().then(loaded => {
-  tracks = loaded && loaded.length > 0 ? loaded : DEFAULT_TRACKS;
-  renderFilters();
-  renderTracks();
+  if (loaded && loaded.length > 0) {
+    tracks = loaded;
+    renderFilters();
+    renderTracks();
+  }
   if (isAdmin && !ghConfigured()) {
     showToast('GITHUB NOT SET UP — CLICK ⚙ TO CONFIGURE', 'error');
   }
