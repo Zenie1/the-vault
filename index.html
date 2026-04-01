@@ -1393,10 +1393,8 @@ async function loadTracks() {
       const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
       if (res.ok) {
         const decoded = await res.json();
-        if (decoded && decoded.length > 0) {
-          localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
-          return decoded;
-        }
+        localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
+        return decoded;
       }
     } catch(e) { console.warn('Raw GitHub load failed', e); }
   }
@@ -1421,7 +1419,7 @@ const DEFAULT_TRACKS = [
     "added": "2026-03-31",
     "artist": "Prettifun",
     "title": "Dead",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978649/Dead_prod_Ginseng_qy0b7r.mp3",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978649/Dead_prod_Ginseng_qy0b7r.mp3",
     "tags": ["leak"],
     "type": "cloudinary",
     "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fc1fdcb43f47e4fd6a3fae201d03701fa.999x1000x1.png"
@@ -1431,10 +1429,30 @@ const DEFAULT_TRACKS = [
     "added": "2026-03-31",
     "artist": "Nine Vicious",
     "title": "Gimmie A Month",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978662/Gimmie_A_Month.mp3_azunww.mp3",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978662/Gimmie_A_Month.mp3_azunww.mp3",
     "tags": ["unreleased"],
     "type": "url",
     "coverArt": "https://t2.genius.com/unsafe/555x0/https%3A%2F%2Fimages.genius.com%2Fdd68e4eac689e5dadead00d032a36b19.499x499x1.jpg"
+  },
+  {
+    "id": 1775001000001,
+    "added": "2026-03-31",
+    "artist": "Nine Vicious",
+    "title": "Friday",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978652/Friday_Nine_Vicious.mp3",
+    "tags": ["unreleased"],
+    "type": "cloudinary",
+    "coverArt": ""
+  },
+  {
+    "id": 1775001000002,
+    "added": "2026-03-31",
+    "artist": "Che",
+    "title": "White Folks",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978649/White_Folks_Che.mp3",
+    "tags": ["unreleased"],
+    "type": "cloudinary",
+    "coverArt": ""
   }
 ];
 
@@ -2940,20 +2958,16 @@ resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 setDefaultBG();
 
-// Show tracks immediately — use localStorage if available, else DEFAULT_TRACKS
-tracks = getLocalTracks();
-// If localStorage was empty or stale, seed with DEFAULT_TRACKS so page never shows blank
-if (!tracks || tracks.length === 0) tracks = DEFAULT_TRACKS;
+// Show DEFAULT_TRACKS immediately so the page is never blank
+tracks = DEFAULT_TRACKS;
 renderFilters();
 renderTracks();
 
-// Then async-load from GitHub — always update whatever comes back
+// Then load from GitHub — always overwrite with whatever comes back
 loadTracks().then(loaded => {
-  if (loaded && loaded.length > 0) {
-    tracks = loaded;
-    renderFilters();
-    renderTracks();
-  }
+  tracks = loaded && loaded.length > 0 ? loaded : DEFAULT_TRACKS;
+  renderFilters();
+  renderTracks();
   if (isAdmin && !ghConfigured()) {
     showToast('GITHUB NOT SET UP — CLICK ⚙ TO CONFIGURE', 'error');
   }
