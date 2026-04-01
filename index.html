@@ -623,7 +623,8 @@ header {
   border-left: 2px solid var(--accent4);
 }
 
-audio { display:none; }
+.player-row1 { display:flex; align-items:center; gap:18px; flex-shrink:0; }
+.player-row2, .player-row3 { width:100%; }
 
 /* COVER ART SEARCH */
 .cover-search-row { display:flex; gap:8px; align-items:center; margin-top:6px; }
@@ -739,11 +740,172 @@ audio { display:none; }
 .wave-style-btn.active { background: rgba(200,255,0,0.1); border-color: rgba(200,255,0,0.4); color: var(--accent); }
 
 /* RESPONSIVE */
+/* ================================================
+   MOBILE — full layout overhaul
+   ================================================ */
 @media(max-width:700px) {
-  .logo { font-size:40px; }
-  #player-bar { padding:12px 16px; gap:10px; }
-  .volume-wrap { display:none; }
-  .player-center { flex:3; }
+
+  /* APP SHELL */
+  .app { padding: 0 16px 180px; }
+
+  /* HEADER — stack logo + buttons */
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px 0 20px;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .logo { font-size: 42px; }
+  .logo-sub { font-size: 9px; letter-spacing: 4px; }
+  .header-right {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .header-right .status-badge { grid-column: 1 / -1; justify-self: start; }
+  .header-right .btn,
+  .header-right .btn.primary,
+  .header-right .btn.purple { width: 100%; justify-content: center; padding: 11px 8px; font-size: 10px; }
+
+  /* SEARCH + FILTERS */
+  .controls { gap: 8px; margin-bottom: 20px; }
+  .search-wrap input { font-size: 11px; padding: 11px 14px 11px 38px; }
+  .filter-btns { gap: 6px; }
+  .filter-btn { font-size: 9px; padding: 7px 11px; }
+
+  /* TRACK GRID — single column */
+  .tracks-grid { grid-template-columns: 1fr; gap: 2px; }
+  .track-card { padding: 16px 16px 14px; }
+  .track-title { font-size: 15px; }
+  .track-cover { width: 42px; height: 42px; }
+
+  /* ARTIST HEADER */
+  .artist-header { padding: 16px; gap: 14px; }
+  .artist-info h2 { font-size: 28px; }
+  .artist-avatar { width: 56px; height: 56px; font-size: 22px; }
+  .back-btn { font-size: 8px; padding: 7px 10px; }
+
+  /* SECTION LABEL */
+  .section-label { font-size: 9px; letter-spacing: 3px; }
+
+  /* ── PLAYER BAR ── */
+  #player-bar {
+    flex-direction: column;
+    padding: 12px 16px 16px;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  /* Row 1: art + info + like */
+  .player-row1 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Row 2: waveform + times */
+  .player-row2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  /* Row 3: controls */
+  .player-row3 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0;
+  }
+
+  /* Vinyl smaller on mobile */
+  .player-vinyl { width: 44px; height: 44px; flex-shrink: 0; }
+  .vinyl-dot { width: 6px; height: 6px; }
+
+  /* Info takes remaining space */
+  .player-info { flex: 1; min-width: 0; }
+  .player-title { font-size: 13px; }
+  .player-artist { font-size: 8px; letter-spacing: 1.5px; }
+  .player-like-btn { font-size: 16px; margin-top: 2px; }
+
+  /* Player center becomes full-width rows */
+  .player-center {
+    flex: none;
+    width: 100%;
+    gap: 10px;
+  }
+
+  /* Progress row fills full width */
+  .player-progress { width: 100%; gap: 6px; }
+  #waveform-canvas { height: 38px; }
+  .time-label { font-size: 8px; min-width: 26px; }
+
+  /* Wave toggle smaller */
+  .wave-toggle { gap: 3px; }
+  .wave-style-btn { width: 20px; height: 20px; font-size: 9px; }
+
+  /* Controls row — spread across full width */
+  .player-controls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0;
+    padding: 0 4px;
+  }
+  .play-pause { width: 46px; height: 46px; font-size: 16px; }
+  .ctrl-btn { font-size: 16px; padding: 6px; }
+  .ctrl-btn.shuffle-btn, .ctrl-btn.loop-btn { font-size: 14px; }
+
+  /* Volume hidden, DL button full width */
+  .volume-wrap { display: none; }
+  .dl-btn { width: 100%; justify-content: center; padding: 10px; font-size: 10px; }
+
+  /* Scrub tooltip offset fix */
+  #scrub-tooltip { bottom: 46px; font-size: 9px; }
+
+  /* MODALS — full screen on mobile */
+  .modal-overlay { padding: 0; align-items: flex-end; }
+  .modal {
+    max-width: 100% !important;
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 0;
+    padding: 24px 20px 32px;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+  }
+  .modal h2 { font-size: 22px; margin-bottom: 18px; }
+
+  /* Tab switcher wraps */
+  .tab-switcher { flex-wrap: wrap; gap: 6px; }
+  .tab-btn { font-size: 9px; padding: 8px 12px; flex: 1; text-align: center; }
+
+  /* Cover art results grid */
+  .cover-results { gap: 6px; }
+  .cover-option { width: 64px; height: 64px; }
+
+  /* AI track rows stack */
+  .ai-track-row { flex-wrap: wrap; gap: 6px; }
+  .ai-track-row .aartist { min-width: unset; }
+
+  /* Toast sits above player */
+  .toast { bottom: 180px; font-size: 9px; padding: 8px 16px; white-space: normal; text-align:center; max-width: 80vw; }
+
+  /* Vinyl art card repositioned */
+  .vinyl-art-card { left: 12px; bottom: 175px; width: 160px; }
+
+}
+
+/* Extra small phones */
+@media(max-width:380px) {
+  .logo { font-size: 34px; }
+  .header-right { grid-template-columns: 1fr; }
+  .play-pause { width: 42px; height: 42px; }
+  .ctrl-btn { font-size: 14px; }
 }
 </style>
 </head>
@@ -804,21 +966,26 @@ audio { display:none; }
 </div>
 
 <div id="player-bar">
-  <div class="player-vinyl" id="player-vinyl" title="Click to view art" style="cursor:pointer"><div class="vinyl-dot"></div><img class="player-vinyl-img" id="player-cover-img" src="" alt=""></div>
-  <div class="player-info">
-    <div class="player-title" id="player-title">—</div>
-    <div class="player-artist" id="player-artist">—</div>
-    <button class="player-like-btn" id="player-like-btn" title="Like">♡</button>
-  </div>
-  <div class="player-center">
-    <div class="player-controls">
-      <button class="ctrl-btn shuffle-btn" id="shuffle-btn" title="Shuffle">⇄</button>
-      <button class="ctrl-btn" id="prev-btn" title="Previous">⏮</button>
-      <button class="play-pause" id="play-pause-btn">▶</button>
-      <button class="ctrl-btn" id="next-btn" title="Next">⏭</button>
-      <button class="ctrl-btn loop-btn" id="loop-btn" title="Loop">↺</button>
+  <!-- Row 1: art + info + like -->
+  <div class="player-row1">
+    <div class="player-vinyl" id="player-vinyl" title="Click to view art" style="cursor:pointer"><div class="vinyl-dot"></div><img class="player-vinyl-img" id="player-cover-img" src="" alt=""></div>
+    <div class="player-info">
+      <div class="player-title" id="player-title">—</div>
+      <div class="player-artist" id="player-artist">—</div>
+      <button class="player-like-btn" id="player-like-btn" title="Like">♡</button>
     </div>
-    <div class="player-progress">
+    <!-- Volume visible on desktop, hidden on mobile -->
+    <div class="volume-wrap">
+      <span class="volume-icon" id="vol-icon">🔊</span>
+      <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
+    </div>
+    <button class="dl-btn" id="download-link" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓ DL</button>
+  </div>
+
+  <!-- Center: waveform + controls (desktop flex column, mobile two rows) -->
+  <div class="player-center">
+    <!-- Row 2: waveform -->
+    <div class="player-progress player-row2">
       <span class="time-label" id="time-current">0:00</span>
       <div id="scrub-tooltip">0:00</div>
       <canvas id="waveform-canvas" height="36"></canvas>
@@ -828,12 +995,15 @@ audio { display:none; }
         <button class="wave-style-btn" id="wave-line-btn" title="Line waveform">〜</button>
       </div>
     </div>
+    <!-- Row 3: transport controls -->
+    <div class="player-controls player-row3">
+      <button class="ctrl-btn shuffle-btn" id="shuffle-btn" title="Shuffle">⇄</button>
+      <button class="ctrl-btn" id="prev-btn" title="Previous">⏮</button>
+      <button class="play-pause" id="play-pause-btn">▶</button>
+      <button class="ctrl-btn" id="next-btn" title="Next">⏭</button>
+      <button class="ctrl-btn loop-btn" id="loop-btn" title="Loop">↺</button>
+    </div>
   </div>
-  <div class="volume-wrap">
-    <span class="volume-icon" id="vol-icon">🔊</span>
-    <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
-  </div>
-  <button class="dl-btn" id="download-link" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓ DL</button>
 </div>
 
 <!-- ADD TRACK MODAL -->
@@ -1781,6 +1951,29 @@ waveCanvas.addEventListener('mousedown', (e) => {
   scrubProgress = getScrubPos(e);
   showScrubTooltip(scrubProgress, e);
   waveCanvas.style.cursor = 'grabbing';
+});
+
+// Touch support for mobile scrubbing
+waveCanvas.addEventListener('touchstart', (e) => {
+  if (!audio.duration) return;
+  e.preventDefault();
+  isScrubbing = true;
+  scrubProgress = getScrubPos(e);
+  showScrubTooltip(scrubProgress, e);
+}, { passive: false });
+
+waveCanvas.addEventListener('touchmove', (e) => {
+  if (!isScrubbing) return;
+  e.preventDefault();
+  scrubProgress = getScrubPos(e);
+  showScrubTooltip(scrubProgress, e);
+}, { passive: false });
+
+waveCanvas.addEventListener('touchend', (e) => {
+  if (!isScrubbing) return;
+  isScrubbing = false;
+  scrubTooltip.classList.remove('visible');
+  if (audio.duration) audio.currentTime = scrubProgress * audio.duration;
 });
 
 window.addEventListener('mousemove', (e) => {
