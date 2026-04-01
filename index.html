@@ -297,10 +297,11 @@ header {
   bottom: 0; left: 0; right: 0;
   background: rgba(5,5,7,0.97);
   border-top: 1px solid var(--border2);
-  padding: 12px 28px;
-  display: flex;
+  padding: 12px 28px 12px 20px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
   z-index: 100;
   backdrop-filter: blur(30px);
   transform: translateY(100%);
@@ -377,7 +378,7 @@ header {
 .player-like-btn.liked { color: #ff2d78; text-shadow: 0 0 10px rgba(255,45,120,0.6); }
 .player-like-btn:hover { transform: scale(1.2); }
 
-.player-center { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; min-width:0; overflow:hidden; }
+.player-center { display:flex; flex-direction:column; align-items:center; gap:6px; width:100%; min-width:0; overflow:hidden; }
 .player-controls { display:flex; align-items:center; gap:14px; }
 
 .play-pause {
@@ -624,7 +625,7 @@ header {
   border-left: 2px solid var(--accent4);
 }
 
-.player-row1 { display:flex; align-items:center; gap:18px; flex-shrink:0; }
+.player-row1 { display:flex; align-items:center; gap:14px; flex-shrink:0; min-width:0; }
 .player-row2, .player-row3 { width:100%; }
 
 /* COVER ART SEARCH */
@@ -746,11 +747,9 @@ header {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  flex-basis: 64px;
   width: 64px;
   height: 64px;
   position: relative;
-  margin-left: 8px;
 }
 #player-bar.visible #subwoofer-wrap { display: flex; }
 #sub-svg { width: 64px; height: 64px; overflow: visible; }
@@ -825,11 +824,15 @@ header {
 
   /* ── PLAYER BAR ── */
   #player-bar {
+    display: flex;
     flex-direction: column;
     padding: 12px 16px 16px;
     gap: 10px;
     align-items: stretch;
+    grid-template-columns: unset;
   }
+  /* Hide subwoofer on mobile — too cramped */
+  #subwoofer-wrap { display: none !important; }
 
   /* Row 1: art + info + like */
   .player-row1 {
@@ -1701,23 +1704,8 @@ function playAtIndex(idx) {
   if (!t.url) { showToast('NO AUDIO SOURCE — ADD A URL OR FILE', 'error'); return; }
   currentTrackIdx = idx;
 
-  // crossOrigin is already set to 'anonymous' at init time (above).
-  // We just assign src and play — no retry needed.
   audio.src = t.url;
-  audio.load();
   audio.volume = parseFloat(document.getElementById('volume-slider').value);
-
-  const playPromise = audio.play();
-  if (playPromise !== undefined) {
-    playPromise.catch(err => {
-      showToast('CANNOT PLAY — CHECK AUDIO SOURCE', 'error');
-      isPlaying = false;
-      document.getElementById('play-pause-btn').innerHTML = '▶';
-      document.getElementById('play-pause-btn').classList.remove('is-playing');
-      document.getElementById('player-vinyl').classList.remove('spinning');
-    });
-  }
-  isPlaying = true;
 
   const color = getArtistColor(t.artist);
   document.getElementById('player-bar').style.setProperty('--current-color', color);
@@ -1727,11 +1715,10 @@ function playAtIndex(idx) {
   ppBtn.innerHTML = '⏸';
   ppBtn.classList.add('is-playing');
   ppBtn.style.background = color;
-  document.getElementById('player-vinyl').classList.add('spinning');
   playerBar.classList.add('visible');
   setArtistBG(t.artist);
 
-  // Load cover art into vinyl
+  // Load cover art
   const vinylImg = document.getElementById('player-cover-img');
   vinylImg.classList.remove('loaded');
   if (t.coverArt) {
@@ -1750,9 +1737,30 @@ function playAtIndex(idx) {
     });
   }
 
-  renderTracks();
-  updateLikeBtn();
-}
+  // Wait for enough data before playing — avoids the "interrupted" error flash
+  const onCanPlay = () => {
+    audio.removeEventListener('canplay', onCanPlay);
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        isPlaying = true;
+        document.getElementById('player-vinyl').classList.add('spinning');
+        renderTracks();
+        updateLikeBtn();
+      }).catch(err => {
+        // Ignore "interrupted by new load" — only show real errors
+        if (err.name !== 'AbortError') {
+          showToast('CANNOT PLAY — CHECK AUDIO SOURCE', 'error');
+          isPlaying = false;
+          ppBtn.innerHTML = '▶';
+          ppBtn.classList.remove('is-playing');
+          document.getElementById('player-vinyl').classList.remove('spinning');
+        }
+      });
+    }
+  };
+  audio.addEventListener('canplay', onCanPlay);
+  audio.load();
 
 document.getElementById('play-pause-btn').addEventListener('click', () => {
   if (!audio.src) return;
