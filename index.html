@@ -312,9 +312,10 @@ header {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   padding-left: max(28px, env(safe-area-inset-left));
   padding-right: max(28px, env(safe-area-inset-right));
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
   z-index: 100;
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
@@ -392,7 +393,7 @@ header {
 .player-like-btn.liked { color: #ff2d78; text-shadow: 0 0 10px rgba(255,45,120,0.6); }
 .player-like-btn:hover { transform: scale(1.2); }
 
-.player-center { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; min-width:0; overflow:hidden; }
+.player-center { display:flex; flex-direction:column; align-items:center; gap:6px; min-width:0; overflow:hidden; }
 .player-controls { display:flex; align-items:center; gap:14px; }
 
 .play-pause {
@@ -641,7 +642,9 @@ header {
   border-left: 2px solid var(--accent4);
 }
 
-.player-row1 { display:flex; align-items:center; gap:18px; flex-shrink:0; }
+.player-row1 { display:flex; align-items:center; gap:12px; justify-content:flex-start; min-width:0; }
+.player-center { display:flex; flex-direction:column; align-items:center; gap:6px; min-width:0; width:100%; }
+.player-right-col { display:flex; align-items:center; justify-content:flex-end; gap:10px; }
 .player-row2, .player-row3 { width:100%; }
 
 /* COVER ART SEARCH */
@@ -1113,12 +1116,17 @@ header {
 
   /* ── PLAYER BAR ── */
   #player-bar {
+    display: flex;
     flex-direction: column;
     padding: 12px 16px;
     padding-bottom: max(16px, env(safe-area-inset-bottom));
     gap: 10px;
     align-items: stretch;
+    grid-template-columns: unset;
   }
+  /* Hide right col extras on mobile, keep DL visible */
+  .player-right-col { display: none; }
+  #subwoofer-wrap { display: none !important; }
 
   /* Row 1: art + info + like */
   .player-row1 {
@@ -1312,7 +1320,7 @@ header {
 </div>
 
 <div id="player-bar">
-  <!-- Row 1: art + info + like -->
+  <!-- LEFT: art + track info + like -->
   <div class="player-row1">
     <div class="player-vinyl" id="player-vinyl" title="Click to view art" style="cursor:pointer"><div class="vinyl-dot"></div><img class="player-vinyl-img" id="player-cover-img" src="" alt=""></div>
     <div class="player-info">
@@ -1320,19 +1328,10 @@ header {
       <div class="player-artist" id="player-artist">—</div>
       <button class="player-like-btn" id="player-like-btn" title="Like">♡</button>
     </div>
-    <!-- Volume visible on desktop, hidden on mobile -->
-    <div class="volume-wrap">
-      <span class="volume-icon" id="vol-icon">🔊</span>
-      <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
-    </div>
-    <button class="dl-btn" id="download-link" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓ DL</button>
-    <button class="canvas-toggle-btn" id="canvas-toggle-btn" title="Toggle Canvas">◈ Canvas</button>
-    <button class="lyrics-btn" id="lyrics-toggle-btn" title="Show Lyrics">♩ Lyrics</button>
   </div>
 
-  <!-- Center: waveform + controls (desktop flex column, mobile two rows) -->
+  <!-- CENTER: waveform + transport controls -->
   <div class="player-center">
-    <!-- Row 2: waveform -->
     <div class="player-progress player-row2">
       <span class="time-label" id="time-current">0:00</span>
       <div id="scrub-tooltip">0:00</div>
@@ -1343,42 +1342,43 @@ header {
         <button class="wave-style-btn" id="wave-line-btn" title="Line waveform">〜</button>
       </div>
     </div>
-    <!-- Row 3: transport controls -->
     <div class="player-controls player-row3">
-      <button class="ctrl-btn shuffle-btn" id="shuffle-btn" title="Shuffle">⇄</button>
-      <button class="ctrl-btn" id="prev-btn" title="Previous">⏮</button>
-      <button class="play-pause" id="play-pause-btn">▶</button>
-      <button class="ctrl-btn" id="next-btn" title="Next">⏭</button>
-      <button class="ctrl-btn loop-btn" id="loop-btn" title="Loop">↺</button>
+      <button class="ctrl-btn shuffle-btn" id="shuffle-btn" title="Shuffle (S)">⇄</button>
+      <button class="ctrl-btn" id="prev-btn" title="Previous (←)">⏮</button>
+      <button class="play-pause" id="play-pause-btn" title="Play/Pause (Space)">▶</button>
+      <button class="ctrl-btn" id="next-btn" title="Next (→)">⏭</button>
+      <button class="ctrl-btn loop-btn" id="loop-btn" title="Loop (L)">↺</button>
     </div>
   </div>
 
-  <!-- SUBWOOFER VISUALIZER -->
-  <div id="subwoofer-wrap">
-    <svg id="sub-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-      <!-- Outer frame / basket rim -->
-      <circle class="sub-basket" cx="32" cy="32" r="30"/>
-      <!-- Inner basket web lines -->
-      <line class="sub-spider" x1="32" y1="2"  x2="32" y2="14"/>
-      <line class="sub-spider" x1="32" y1="50" x2="32" y2="62"/>
-      <line class="sub-spider" x1="2"  y1="32" x2="14" y2="32"/>
-      <line class="sub-spider" x1="50" y1="32" x2="62" y2="32"/>
-      <line class="sub-spider" x1="8"  y1="10" x2="17" y2="19"/>
-      <line class="sub-spider" x1="56" y1="10" x2="47" y2="19"/>
-      <line class="sub-spider" x1="8"  y1="54" x2="17" y2="45"/>
-      <line class="sub-spider" x1="56" y1="54" x2="47" y2="45"/>
-      <!-- Magnet / voice coil base -->
-      <circle class="sub-magnet" cx="32" cy="32" r="10"/>
-      <!-- MOVING PARTS (animated by JS) -->
-      <!-- Surround ring — stroke only, scales with bass -->
-      <circle id="sub-surround" cx="32" cy="32" r="22"/>
-      <!-- Cone outline — inner ring -->
-      <circle id="sub-cone" cx="32" cy="32" r="16"/>
-      <!-- Dust cap — fills with accent color -->
-      <circle id="sub-dustcap" cx="32" cy="32" r="8"/>
-      <!-- Glow bloom behind the whole driver -->
-      <circle id="sub-glow" cx="32" cy="32" r="22" fill="transparent"/>
-    </svg>
+  <!-- RIGHT: volume, actions, subwoofer -->
+  <div class="player-right-col">
+    <div class="volume-wrap">
+      <span class="volume-icon" id="vol-icon">🔊</span>
+      <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
+    </div>
+    <button class="dl-btn" id="download-link" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓ DL</button>
+    <button class="canvas-toggle-btn" id="canvas-toggle-btn" title="Toggle Canvas">◈ Canvas</button>
+    <button class="lyrics-btn" id="lyrics-toggle-btn" title="Show Lyrics (K)">♩ Lyrics</button>
+    <!-- SUBWOOFER VISUALIZER -->
+    <div id="subwoofer-wrap">
+      <svg id="sub-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <circle class="sub-basket" cx="32" cy="32" r="30"/>
+        <line class="sub-spider" x1="32" y1="2"  x2="32" y2="14"/>
+        <line class="sub-spider" x1="32" y1="50" x2="32" y2="62"/>
+        <line class="sub-spider" x1="2"  y1="32" x2="14" y2="32"/>
+        <line class="sub-spider" x1="50" y1="32" x2="62" y2="32"/>
+        <line class="sub-spider" x1="8"  y1="10" x2="17" y2="19"/>
+        <line class="sub-spider" x1="56" y1="10" x2="47" y2="19"/>
+        <line class="sub-spider" x1="8"  y1="54" x2="17" y2="45"/>
+        <line class="sub-spider" x1="56" y1="54" x2="47" y2="45"/>
+        <circle class="sub-magnet" cx="32" cy="32" r="10"/>
+        <circle id="sub-surround" cx="32" cy="32" r="22"/>
+        <circle id="sub-cone" cx="32" cy="32" r="16"/>
+        <circle id="sub-dustcap" cx="32" cy="32" r="8"/>
+        <circle id="sub-glow" cx="32" cy="32" r="22" fill="transparent"/>
+      </svg>
+    </div>
   </div>
 </div>
 
@@ -3315,6 +3315,69 @@ function updateLikeBtn() {
   btn.textContent = liked ? '♥' : '♡';
   btn.classList.toggle('liked', liked);
 }
+
+// ===== KEYBOARD SHORTCUTS =====
+document.addEventListener('keydown', (e) => {
+  // Don't fire when typing in an input/textarea
+  const tag = document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable) return;
+
+  switch(e.key) {
+    case ' ':
+    case 'Spacebar':
+      e.preventDefault();
+      document.getElementById('play-pause-btn').click();
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      if (e.shiftKey) {
+        // Shift+→ skip forward 10s
+        if (audio.duration) audio.currentTime = Math.min(audio.duration, audio.currentTime + 10);
+      } else {
+        document.getElementById('next-btn').click();
+      }
+      break;
+    case 'ArrowLeft':
+      e.preventDefault();
+      if (e.shiftKey) {
+        // Shift+← skip back 10s
+        if (audio.duration) audio.currentTime = Math.max(0, audio.currentTime - 10);
+      } else {
+        document.getElementById('prev-btn').click();
+      }
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      { const s = document.getElementById('volume-slider');
+        const newVol = Math.min(1, parseFloat(s.value) + 0.1);
+        s.value = newVol; audio.volume = newVol;
+        document.getElementById('vol-icon').textContent = newVol === 0 ? '🔇' : newVol < 0.5 ? '🔉' : '🔊'; }
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      { const s = document.getElementById('volume-slider');
+        const newVol = Math.max(0, parseFloat(s.value) - 0.1);
+        s.value = newVol; audio.volume = newVol;
+        document.getElementById('vol-icon').textContent = newVol === 0 ? '🔇' : newVol < 0.5 ? '🔉' : '🔊'; }
+      break;
+    case 'm':
+    case 'M':
+      document.getElementById('vol-icon').click();
+      break;
+    case 's':
+    case 'S':
+      document.getElementById('shuffle-btn').click();
+      break;
+    case 'l':
+    case 'L':
+      document.getElementById('loop-btn').click();
+      break;
+    case 'k':
+    case 'K':
+      { const lb = document.getElementById('lyrics-toggle-btn'); if (lb) lb.click(); }
+      break;
+  }
+});
 
 // ===== WAVEFORM STYLE TOGGLE =====
 let waveformStyle = 'bars'; // 'bars' | 'line'
