@@ -890,6 +890,176 @@ header {
   background: rgba(200,255,0,0.06);
 }
 
+/* ================================================
+   LYRICS PANEL
+   ================================================ */
+#lyrics-panel {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 52vh;
+  background: rgba(5,5,7,0.97);
+  border-top: 1px solid var(--border2);
+  z-index: 99;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.38s cubic-bezier(0.16,1,0.3,1);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+}
+#lyrics-panel.open {
+  transform: translateY(0);
+}
+/* Push player bar up when lyrics open */
+#player-bar.lyrics-open {
+  bottom: 52vh;
+  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), bottom 0.38s cubic-bezier(0.16,1,0.3,1);
+}
+.lyrics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.lyrics-title-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.lyrics-track-name {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--current-color, var(--accent));
+  margin-left: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+.lyrics-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: color 0.2s;
+  line-height: 1;
+}
+.lyrics-close-btn:hover { color: var(--text); }
+.lyrics-source-badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  margin-right: 8px;
+}
+#lyrics-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px 24px;
+  scroll-behavior: smooth;
+}
+#lyrics-scroll::-webkit-scrollbar { width: 3px; }
+#lyrics-scroll::-webkit-scrollbar-track { background: transparent; }
+#lyrics-scroll::-webkit-scrollbar-thumb { background: var(--surface3); }
+.lyrics-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted2);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 20px 0;
+}
+.lyrics-loading .ring { width: 16px; height: 16px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+.lyrics-error {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 20px 0;
+  line-height: 2;
+}
+.lyrics-error a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.lyrics-error a:hover { text-decoration: underline; }
+.lyrics-body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--muted2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.lyrics-line {
+  display: block;
+  transition: color 0.35s, font-size 0.35s;
+  padding: 1px 0;
+  cursor: pointer;
+}
+.lyrics-line:hover { color: var(--text); }
+.lyrics-line.active {
+  color: var(--current-color, var(--accent));
+  font-size: 16px;
+  font-weight: 700;
+}
+.lyrics-line.passed {
+  color: rgba(238,236,255,0.35);
+}
+/* Genius attribution */
+.genius-attr {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.genius-attr a { color: var(--accent); text-decoration: none; }
+.genius-attr a:hover { text-decoration: underline; }
+
+/* Lyrics button in player */
+.lyrics-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 5px 9px;
+  cursor: pointer;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.lyrics-btn:hover { color: var(--text); border-color: var(--border2); }
+.lyrics-btn.active {
+  color: var(--current-color, var(--accent));
+  border-color: var(--current-color, var(--accent));
+  background: rgba(200,255,0,0.06);
+}
+
 /* RESPONSIVE */
 /* ================================================
    MOBILE — full layout overhaul
@@ -1157,6 +1327,7 @@ header {
     </div>
     <button class="dl-btn" id="download-link" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓ DL</button>
     <button class="canvas-toggle-btn" id="canvas-toggle-btn" title="Toggle Canvas">◈ Canvas</button>
+    <button class="lyrics-btn" id="lyrics-toggle-btn" title="Show Lyrics">♩ Lyrics</button>
   </div>
 
   <!-- Center: waveform + controls (desktop flex column, mobile two rows) -->
@@ -1250,6 +1421,11 @@ header {
       <label>Canvas URL (optional) — GIF or MP4/WebM</label>
       <input type="url" id="edit-canvas" placeholder="https://media.giphy.com/… or Cloudinary .mp4">
     </div>
+    <div class="form-group">
+      <label>Genius Lyrics URL (optional)</label>
+      <input type="url" id="edit-lyrics" placeholder="https://genius.com/artist-song-name-lyrics">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Paste the Genius.com song page URL. Lyrics will be fetched and shown in the lyrics panel.</div>
+    </div>
 
     <div class="modal-actions">
       <button class="btn primary" id="edit-save-btn">SAVE CHANGES</button>
@@ -1305,9 +1481,12 @@ header {
         <input type="url" id="inp-canvas" placeholder="https://media.giphy.com/… or https://res.cloudinary.com/…/.mp4">
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Leave blank to use the artist default. Supports GIF, MP4, WebM.</div>
       </div>
+      <div class="form-group">
+        <label>Genius Lyrics URL (optional)</label>
+        <input type="url" id="inp-lyrics" placeholder="https://genius.com/artist-song-name-lyrics">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Paste the Genius.com song page URL.</div>
+      </div>
     </div>
-
-    <!-- CLOUDINARY TAB -->
     <div id="tab-cloudinary" style="display:none">
       <div class="cloudinary-info">
         <strong>☁ CLOUDINARY CDN</strong><br>
@@ -1351,9 +1530,12 @@ header {
         <input type="url" id="inp-canvas-c" placeholder="https://media.giphy.com/… or Cloudinary .mp4 URL">
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Leave blank to use the artist default.</div>
       </div>
-    </div>
-
-    <div id="tab-file" style="display:none">
+      <div class="form-group">
+        <label>Genius Lyrics URL (optional)</label>
+        <input type="url" id="inp-lyrics-c" placeholder="https://genius.com/artist-song-name-lyrics">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Paste the Genius.com song page URL.</div>
+      </div>
+    </div> style="display:none">
       <div class="drop-zone" id="drop-zone">
         <span class="drop-icon">🎵</span>
         <div>Drop audio file here or click to browse</div>
@@ -1394,6 +1576,11 @@ header {
           <label>Canvas (optional) — GIF or MP4/WebM URL</label>
           <input type="url" id="inp-canvas-f" placeholder="https://media.giphy.com/… or Cloudinary .mp4 URL">
           <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Leave blank to use the artist default.</div>
+        </div>
+        <div class="form-group">
+          <label>Genius Lyrics URL (optional)</label>
+          <input type="url" id="inp-lyrics-f" placeholder="https://genius.com/artist-song-name-lyrics">
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Paste the Genius.com song page URL.</div>
         </div>
       </div>
     </div>
@@ -1506,6 +1693,26 @@ header {
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- LYRICS PANEL -->
+<div id="lyrics-panel">
+  <div class="lyrics-header">
+    <div style="display:flex;align-items:center;min-width:0;flex:1;gap:0">
+      <span class="lyrics-title-label">♩ LYRICS</span>
+      <span class="lyrics-track-name" id="lyrics-track-name"></span>
+    </div>
+    <span class="lyrics-source-badge" id="lyrics-source-badge">GENIUS</span>
+    <button class="lyrics-close-btn" id="lyrics-close-btn" title="Close lyrics">✕</button>
+  </div>
+  <div id="lyrics-scroll">
+    <div class="lyrics-loading" id="lyrics-loading" style="display:none">
+      <div class="ring"></div><span>FETCHING LYRICS…</span>
+    </div>
+    <div class="lyrics-error" id="lyrics-error" style="display:none"></div>
+    <div class="lyrics-body" id="lyrics-body"></div>
+  </div>
+</div>
+
 <audio id="audio-player" crossorigin="anonymous"></audio>
 
 <script>
@@ -1917,6 +2124,7 @@ function playAtIndex(idx) {
   playerBar.classList.add('visible');
   setArtistBG(t.artist);
   showCanvas(t); // ◈ Vault Canvas
+  maybeFetchLyrics(t); // ♩ Lyrics
 
   // Load cover art into vinyl
   const vinylImg = document.getElementById('player-cover-img');
@@ -2507,6 +2715,7 @@ function openEditModal(id) {
   document.getElementById('edit-tags').value    = (t.tags   || []).join(', ');
   document.getElementById('edit-cover').value   = t.coverArt || '';
   document.getElementById('edit-canvas').value  = t.canvas  || '';
+  document.getElementById('edit-lyrics').value  = t.lyricsUrl || '';
 
   // Show cover preview if URL exists
   const preview = document.getElementById('edit-cover-preview');
@@ -2536,6 +2745,7 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
   const tagsRaw = document.getElementById('edit-tags').value.trim();
   const cover   = document.getElementById('edit-cover').value.trim();
   const canvas  = document.getElementById('edit-canvas').value.trim();
+  const lyricsUrl = document.getElementById('edit-lyrics').value.trim();
 
   if (!artist || !title) { showToast('ARTIST AND TITLE REQUIRED', 'error'); return; }
 
@@ -2547,11 +2757,13 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
     tags: tagsRaw ? tagsRaw.split(',').map(s => s.trim()).filter(Boolean) : [],
     coverArt: cover || null,
     canvas:   canvas || undefined,
+    lyricsUrl: lyricsUrl || undefined,
     // re-detect type if URL changed
     type: url.includes('cloudinary.com') ? 'cloudinary' : (url.startsWith('data:') ? 'file' : 'url'),
   };
   // Clean up undefined canvas key
   if (!canvas) delete tracks[idx].canvas;
+  if (!lyricsUrl) delete tracks[idx].lyricsUrl;
 
   await saveTracks(tracks);
   renderFilters();
@@ -2715,12 +2927,13 @@ function saveFromCloudinary() {
   const tags   = document.getElementById('inp-tags-c').value.split(',').map(t=>t.trim()).filter(Boolean);
   const coverArt = getCoverCloudinary();
   const canvas = document.getElementById('inp-canvas-c').value.trim() || undefined;
+  const lyricsUrl = document.getElementById('inp-lyrics-c').value.trim() || undefined;
   if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
   if (!url) { showToast('CLOUDINARY URL REQUIRED', 'error'); return; }
   if (!/cloudinary\.com/i.test(url) && !confirm('URL doesn\'t look like a Cloudinary link — add anyway?')) return;
-  addTrack({ artist, title, url, tags, type:'cloudinary', coverArt: coverArt || undefined, canvas });
+  addTrack({ artist, title, url, tags, type:'cloudinary', coverArt: coverArt || undefined, canvas, lyricsUrl });
   // Clear cloudinary fields
-  ['inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c','inp-canvas-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c','inp-canvas-c','inp-lyrics-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('cover-preview-c').classList.remove('visible');
   document.getElementById('cover-results-c').classList.remove('visible');
 }
@@ -2732,8 +2945,9 @@ function saveFromLink() {
   const tags = document.getElementById('inp-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
   const coverArt = getCoverLink();
   const canvas = document.getElementById('inp-canvas').value.trim() || undefined;
+  const lyricsUrl = document.getElementById('inp-lyrics').value.trim() || undefined;
   if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
-  addTrack({ artist, title, url, tags, type:'url', coverArt: coverArt || undefined, canvas });
+  addTrack({ artist, title, url, tags, type:'url', coverArt: coverArt || undefined, canvas, lyricsUrl });
 }
 
 function saveFromFile() {
@@ -2742,9 +2956,10 @@ function saveFromFile() {
   const tags = document.getElementById('inp-tags-f').value.split(',').map(t=>t.trim()).filter(Boolean);
   const coverArt = getCoverFile();
   const canvas = document.getElementById('inp-canvas-f').value.trim() || undefined;
+  const lyricsUrl = document.getElementById('inp-lyrics-f').value.trim() || undefined;
   if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
   if (!uploadedDataUrl) { showToast('NO FILE SELECTED', 'error'); return; }
-  addTrack({ artist, title, url: uploadedDataUrl, tags, type:'file', coverArt: coverArt || undefined, canvas });
+  addTrack({ artist, title, url: uploadedDataUrl, tags, type:'file', coverArt: coverArt || undefined, canvas, lyricsUrl });
 }
 
 function addTrack(data) {
@@ -2754,7 +2969,7 @@ function addTrack(data) {
   renderFilters();
   renderTracks();
   // Reset
-  ['inp-artist','inp-title','inp-url','inp-tags','inp-cover','inp-canvas','inp-artist-f','inp-title-f','inp-tags-f','inp-cover-f','inp-canvas-f','inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c','inp-canvas-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['inp-artist','inp-title','inp-url','inp-tags','inp-cover','inp-canvas','inp-lyrics','inp-artist-f','inp-title-f','inp-tags-f','inp-cover-f','inp-canvas-f','inp-lyrics-f','inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c','inp-canvas-c','inp-lyrics-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   ['cover-preview','cover-preview-c','cover-preview-f','cover-results','cover-results-c','cover-results-f'].forEach(id => { const el=document.getElementById(id); if(el) el.classList.remove('visible'); });
   document.getElementById('upload-preview').classList.remove('visible');
   uploadedFile = null; uploadedDataUrl = null;
@@ -3221,7 +3436,267 @@ function setupCoverPicker({ btnId, artistId, titleId, coverInputId, resultsId, p
 }
 
 // =====================================================================
-// VAULT CANVAS — Spotify-style per-artist/per-track looping visual
+// LYRICS SYSTEM — Genius URL fetch via allorigins proxy + time-sync scroll
+// =====================================================================
+
+const lyricsPanel     = document.getElementById('lyrics-panel');
+const lyricsScroll    = document.getElementById('lyrics-scroll');
+const lyricsBody      = document.getElementById('lyrics-body');
+const lyricsLoading   = document.getElementById('lyrics-loading');
+const lyricsError     = document.getElementById('lyrics-error');
+const lyricsTrackName = document.getElementById('lyrics-track-name');
+const lyricsSourceBadge = document.getElementById('lyrics-source-badge');
+const lyricsToggleBtn = document.getElementById('lyrics-toggle-btn');
+const lyricsCloseBtn  = document.getElementById('lyrics-close-btn');
+
+let lyricsOpen = false;
+let lyricsLines = [];          // array of plain text lines
+let lyricsTrackId = null;      // which track the displayed lyrics belong to
+let lyricsScrollTimer = null;
+
+// ── Toggle open/close ─────────────────────────────────────────────
+function openLyricsPanel() {
+  lyricsOpen = true;
+  lyricsPanel.classList.add('open');
+  lyricsToggleBtn.classList.add('active');
+  playerBar.classList.add('lyrics-open');
+  document.querySelector('.app').style.paddingBottom = 'calc(120px + 52vh)';
+  // If a track is playing and it has a lyrics URL, fetch if not already loaded
+  const playlist = getPlaylist();
+  const t = playlist[currentTrackIdx];
+  if (t) loadLyricsForTrack(t);
+}
+
+function closeLyricsPanel() {
+  lyricsOpen = false;
+  lyricsPanel.classList.remove('open');
+  lyricsToggleBtn.classList.remove('active');
+  playerBar.classList.remove('lyrics-open');
+  document.querySelector('.app').style.paddingBottom = '';
+}
+
+lyricsToggleBtn.addEventListener('click', () => {
+  if (lyricsOpen) closeLyricsPanel();
+  else openLyricsPanel();
+});
+lyricsCloseBtn.addEventListener('click', closeLyricsPanel);
+
+// ── Auto-load lyrics when a new track starts ──────────────────────
+// Called inside playAtIndex after we know the track
+function maybeFetchLyrics(track) {
+  if (!lyricsOpen) return;
+  loadLyricsForTrack(track);
+}
+
+function loadLyricsForTrack(track) {
+  if (!track) return;
+  lyricsTrackName.textContent = `— ${track.artist} · ${track.title}`;
+
+  // If we already have lyrics loaded for this track, just re-sync
+  if (lyricsTrackId === track.id && lyricsLines.length) {
+    syncLyricsScroll();
+    return;
+  }
+
+  lyricsTrackId = track.id;
+  lyricsLines = [];
+  lyricsBody.innerHTML = '';
+
+  if (!track.lyricsUrl) {
+    showLyricsError(track);
+    return;
+  }
+
+  // Validate it's a Genius URL
+  if (!/genius\.com/i.test(track.lyricsUrl)) {
+    lyricsError.style.display = 'block';
+    lyricsLoading.style.display = 'none';
+    lyricsError.innerHTML = `⚠ NOT A GENIUS URL — paste a <a href="https://genius.com" target="_blank" rel="noopener">genius.com</a> song page link.`;
+    return;
+  }
+
+  fetchGeniusLyrics(track.lyricsUrl, track);
+}
+
+// ── Fetch lyrics via allorigins.win proxy (bypasses CORS) ─────────
+async function fetchGeniusLyrics(geniusUrl, track) {
+  lyricsLoading.style.display = 'flex';
+  lyricsError.style.display = 'none';
+  lyricsBody.innerHTML = '';
+
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(geniusUrl)}`;
+
+  try {
+    const res = await fetch(proxyUrl);
+    if (!res.ok) throw new Error(`proxy ${res.status}`);
+    const data = await res.json();
+    const html = data.contents;
+    if (!html) throw new Error('empty response');
+
+    const lyrics = parseGeniusHtml(html);
+
+    if (!lyrics || lyrics.trim().length < 20) {
+      throw new Error('no lyrics found');
+    }
+
+    lyricsLoading.style.display = 'none';
+    renderLyrics(lyrics, geniusUrl);
+    lyricsSourceBadge.textContent = 'GENIUS';
+
+  } catch (err) {
+    console.warn('Lyrics fetch error:', err);
+    lyricsLoading.style.display = 'none';
+    showLyricsError(track, geniusUrl, err.message);
+  }
+}
+
+// ── Parse lyrics out of Genius HTML ──────────────────────────────
+// Genius wraps lyrics in containers with data-lyrics-container="true"
+function parseGeniusHtml(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // Method 1: data-lyrics-container (current Genius markup)
+  const containers = doc.querySelectorAll('[data-lyrics-container="true"]');
+  if (containers.length) {
+    let text = '';
+    containers.forEach(c => {
+      // Replace <br> with newline before getting textContent
+      c.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+      // Remove annotation links but keep their text
+      c.querySelectorAll('a').forEach(a => a.replaceWith(a.textContent));
+      text += c.textContent + '\n\n';
+    });
+    return text.trim();
+  }
+
+  // Method 2: .lyrics class (older Genius pages)
+  const lyricsEl = doc.querySelector('.lyrics');
+  if (lyricsEl) {
+    lyricsEl.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+    return lyricsEl.textContent.trim();
+  }
+
+  // Method 3: Scrape any <p> or section that looks like lyrics
+  // Search for the lyrics JSON embedded in the page scripts
+  const scripts = doc.querySelectorAll('script');
+  for (const s of scripts) {
+    const m = s.textContent.match(/"lyrics":\s*\{[^}]*"body":\s*\{[^}]*"plain":\s*"((?:[^"\\]|\\.)*)"/);
+    if (m) {
+      try {
+        return JSON.parse(`"${m[1]}"`);
+      } catch {}
+    }
+  }
+
+  return null;
+}
+
+// ── Render lyrics as individual scrollable lines ──────────────────
+function renderLyrics(rawText, sourceUrl) {
+  // Split into lines, preserve blank lines as section breaks
+  const rawLines = rawText.split('\n');
+  lyricsLines = rawLines;
+
+  const html = rawLines.map((line, i) => {
+    if (!line.trim()) {
+      // blank line = section spacer
+      return `<span class="lyrics-line" data-idx="${i}" style="display:block;height:14px"></span>`;
+    }
+    // Section headers like [Verse 1], [Chorus] get styled
+    if (/^\[.*\]$/.test(line.trim())) {
+      return `<span class="lyrics-line lyrics-section" data-idx="${i}" style="font-family:var(--font-mono);font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-top:8px;display:block">${escHtml(line)}</span>`;
+    }
+    return `<span class="lyrics-line" data-idx="${i}">${escHtml(line)}</span>`;
+  }).join('');
+
+  const attr = sourceUrl
+    ? `<div class="genius-attr">Lyrics via <a href="${sourceUrl}" target="_blank" rel="noopener">Genius</a></div>`
+    : '';
+
+  lyricsBody.innerHTML = html + attr;
+
+  // Allow clicking a line to seek audio to estimated position
+  lyricsBody.querySelectorAll('.lyrics-line[data-idx]').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx);
+      if (!audio.duration) return;
+      const ratio = idx / Math.max(lyricsLines.length - 1, 1);
+      audio.currentTime = ratio * audio.duration;
+    });
+  });
+
+  syncLyricsScroll();
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Show error/fallback state ─────────────────────────────────────
+function showLyricsError(track, geniusUrl, reason) {
+  lyricsLoading.style.display = 'none';
+  lyricsBody.innerHTML = '';
+  lyricsError.style.display = 'block';
+
+  const searchQuery = encodeURIComponent(`${track.artist} ${track.title} lyrics`);
+  const geniusSearch = `https://genius.com/search?q=${encodeURIComponent(track.artist + ' ' + track.title)}`;
+
+  if (!track.lyricsUrl) {
+    lyricsError.innerHTML =
+      `♩ NO LYRICS URL SET FOR THIS TRACK<br><br>` +
+      `To add lyrics, click <strong>✎ Edit</strong> on the track card (admin mode) and paste a Genius URL.<br><br>` +
+      `<a href="${geniusSearch}" target="_blank" rel="noopener">🔍 Find on Genius →</a>`;
+  } else {
+    lyricsError.innerHTML =
+      `⚠ COULD NOT LOAD LYRICS${reason ? ` (${reason})` : ''}<br><br>` +
+      `The proxy may be temporarily unavailable, or the Genius page structure has changed.<br><br>` +
+      `<a href="${track.lyricsUrl}" target="_blank" rel="noopener">📖 Open on Genius →</a>`;
+  }
+}
+
+// ── Time-sync scroll — estimates lyric position from playback ─────
+// Since Genius doesn't provide timestamps, we distribute lines linearly
+// across the track duration. It's approximate but keeps the view moving.
+function syncLyricsScroll() {
+  if (!lyricsOpen || !lyricsLines.length || !audio.duration) return;
+
+  const progress = audio.currentTime / audio.duration;
+  const totalLines = lyricsLines.length;
+  const activeIdx = Math.floor(progress * (totalLines - 1));
+
+  const lineEls = lyricsBody.querySelectorAll('.lyrics-line[data-idx]');
+  lineEls.forEach(el => {
+    const idx = parseInt(el.dataset.idx);
+    el.classList.toggle('active', idx === activeIdx);
+    el.classList.toggle('passed', idx < activeIdx);
+  });
+
+  // Auto-scroll active line into view (center of panel)
+  const activeEl = lyricsBody.querySelector('.lyrics-line.active');
+  if (activeEl) {
+    const panelH = lyricsScroll.clientHeight;
+    const elTop = activeEl.offsetTop;
+    const targetScroll = elTop - panelH * 0.38;
+    lyricsScroll.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+  }
+}
+
+// ── Hook sync into timeupdate ─────────────────────────────────────
+audio.addEventListener('timeupdate', () => {
+  if (!lyricsOpen || !lyricsLines.length) return;
+  // Throttle to every ~500ms to avoid jank
+  if (lyricsScrollTimer) return;
+  lyricsScrollTimer = setTimeout(() => {
+    lyricsScrollTimer = null;
+    syncLyricsScroll();
+  }, 500);
+});
+
+// ── Hook into playAtIndex to auto-refresh lyrics ──────────────────
+// We monkey-patch by overriding a post-load hook inside playAtIndex
+// The actual hook is already wired: maybeFetchLyrics(t) is called there.
+
 // =====================================================================
 
 // ── Per-artist default canvas GIFs / videos ───────────────────────
