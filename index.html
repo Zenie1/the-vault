@@ -1939,7 +1939,7 @@ function renderTracks() {
             ${hasAudio ? `<button class="icon-btn play-btn${isCurrentlyPlaying?' active':''}" onclick="handlePlay(${t.id})" title="${isCurrentlyPlaying?'Pause':'Play'}">${isCurrentlyPlaying?'⏸':'▶'}</button>` : ''}
             ${t.url && t.type!=='file' ? `<button class="icon-btn" title="Download" style="color:var(--muted)" onclick="downloadTrack(${t.id})">↓</button>` : ''}
             <button class="icon-btn" onclick="copyLink(${t.id})" title="Copy">⟁</button>
-            <button class="icon-btn edit-btn" onclick="openEditModal(${t.id})" title="Edit" style="display:none">✎</button>
+            <button class="icon-btn edit-btn" onclick="openEditModal(${t.id})" title="Edit">✎</button>
             <button class="icon-btn delete-btn" onclick="deleteTrack(${t.id})" title="Delete">✕</button>
           </div>
         </div>
@@ -3288,102 +3288,76 @@ lyricsToggleBtn.addEventListener('click', () => {
   showToast(lyricsVisible ? '♩ LYRICS ON' : '♩ LYRICS OFF', '');
 });
 
-// Normalise strings for loose matching
 function normStr(s) {
-  return (s || '').toLowerCase()
-    .replace(/[^a-z0-9 ]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function scoreMatch(result, artist, title) {
   const rTitle  = normStr(result.title);
-  const rArtist = normStr(result.primary_artist?.name);
+  const rArtist = normStr(result.primary_artist && result.primary_artist.name);
   const nTitle  = normStr(title);
   const nArtist = normStr(artist);
   let score = 0;
-  if (rTitle === nTitle)               score += 4;
-  else if (rTitle.includes(nTitle))    score += 2;
-  else if (nTitle.includes(rTitle))    score += 1;
-  if (rArtist === nArtist)             score += 3;
-  else if (rArtist.includes(nArtist))  score += 2;
-  else if (nArtist.includes(rArtist))  score += 1;
+  if (rTitle === nTitle)              score += 4;
+  else if (rTitle.includes(nTitle))   score += 2;
+  else if (nTitle.includes(rTitle))   score += 1;
+  if (rArtist === nArtist)            score += 3;
+  else if (rArtist.includes(nArtist)) score += 2;
+  else if (nArtist.includes(rArtist)) score += 1;
   return score;
 }
 
 async function loadLyrics(track) {
   const key = normStr(track.artist) + '||' + normStr(track.title);
   lyricsStatus.textContent = '';
-
   if (lyricsCache[key]) { renderLyrics(lyricsCache[key]); return; }
-
   lyricsContent.innerHTML = '';
   lyricsStatus.textContent = 'SEARCHING…';
 
-  // ── Stage 1: Genius via corsproxy.io → official Genius search API ──
+  // Stage 1: Genius official API via corsproxy.io
   try {
-    const query = encodeURIComponent(`${track.artist} ${track.title}`);
-    const GENIUS_TOKEN = 'SiSBNQfBDiPAGbEPFnTCDgGfMoFyAVBJfiBnZJfKxpXCEfEFSmrwkrMVqvVJFnTq';
-    const apiUrl = `https://corsproxy.io/?url=${encodeURIComponent('https://api.genius.com/search?q=' + query)}`;
-    const res = await fetch(apiUrl, {
-      headers: { 'Authorization': `Bearer ${GENIUS_TOKEN}` }
-    });
-
+    const query = encodeURIComponent(track.artist + ' ' + track.title);
+    const GTOKEN = 'SiSBNQfBDiPAGbEPFnTCDgGfMoFyAVBJfiBnZJfKxpXCEfEFSmrwkrMVqvVJFnTq';
+    const apiUrl = 'https://corsproxy.io/?url=' + encodeURIComponent('https://api.genius.com/search?q=' + query);
+    const res = await fetch(apiUrl, { headers: { 'Authorization': 'Bearer ' + GTOKEN } });
     if (res.ok) {
       const data = await res.json();
-      const hits = data.response?.hits || [];
-
-      // Score every result and pick the best
+      const hits = (data.response && data.response.hits) || [];
       let best = null, bestScore = 0;
-      hits.forEach(h => {
-        const r = h.result;
-        const s = scoreMatch(r, track.artist, track.title);
-        if (s > bestScore) { bestScore = s; best = r; }
+      hits.forEach(function(h) {
+        const s = scoreMatch(h.result, track.artist, track.title);
+        if (s > bestScore) { bestScore = s; best = h.result; }
       });
-
       if (best && bestScore >= 2) {
-        // ── Stage 2: scrape Genius page via allorigins proxy ──
-        const pageUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('https://genius.com' + best.path)}`;
+        // Stage 2: fetch Genius page via allorigins
+        const pageUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://genius.com' + best.path);
         const pRes = await fetch(pageUrl);
         if (pRes.ok) {
           const pData = await pRes.json();
-          const html = pData.contents || '';
-          const lyrics = extractGeniusLyrics(html);
-          if (lyrics) {
-            lyricsCache[key] = lyrics;
-            renderLyrics(lyrics);
-            return;
-          }
+          const lyrics = extractGeniusLyrics(pData.contents || '');
+          if (lyrics) { lyricsCache[key] = lyrics; renderLyrics(lyrics); return; }
         }
       }
     }
-  } catch(e) { /* fall through */ }
+  } catch(e) { console.warn('Genius stage failed', e); }
 
-  // ── Stage 3: lyrics.ovh fallback ──
+  // Stage 3: lyrics.ovh
   try {
-    const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(track.artist)}/${encodeURIComponent(track.title)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.lyrics && data.lyrics.trim()) {
-        lyricsCache[key] = data.lyrics;
-        renderLyrics(data.lyrics);
-        return;
-      }
+    const r = await fetch('https://api.lyrics.ovh/v1/' + encodeURIComponent(track.artist) + '/' + encodeURIComponent(track.title));
+    if (r.ok) {
+      const d = await r.json();
+      if (d.lyrics && d.lyrics.trim()) { lyricsCache[key] = d.lyrics; renderLyrics(d.lyrics); return; }
     }
   } catch(e) {}
 
-  // ── Stage 4: try alternate title forms (strip featured artists etc) ──
+  // Stage 4: clean title retry (strip feat/parens)
   const cleanTitle = track.title.replace(/\(.*?\)/g,'').replace(/feat\.?.*/i,'').trim();
   if (cleanTitle !== track.title) {
     try {
-      const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(track.artist)}/${encodeURIComponent(cleanTitle)}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.lyrics && data.lyrics.trim()) {
-          lyricsCache[key] = data.lyrics;
-          renderLyrics(data.lyrics);
-          return;
-        }
+      const r = await fetch('https://api.lyrics.ovh/v1/' + encodeURIComponent(track.artist) + '/' + encodeURIComponent(cleanTitle));
+      if (r.ok) {
+        const d = await r.json();
+        if (d.lyrics && d.lyrics.trim()) { lyricsCache[key] = d.lyrics; renderLyrics(d.lyrics); return; }
       }
     } catch(e) {}
   }
@@ -3393,65 +3367,30 @@ async function loadLyrics(track) {
 }
 
 function extractGeniusLyrics(html) {
-  // Genius embeds lyrics as JSON in a <script> tag — parse it out
+  // Try JSON embedded in page
   try {
-    const jsonMatch = html.match(/"lyrics":{"body":{"html":"(.*?)"}}/s);
-    if (jsonMatch) {
-      const escaped = jsonMatch[1];
-      const unescaped = escaped
+    const m = html.match(/"lyrics":{"body":{"html":"(.*?)"}}/s);
+    if (m) {
+      return m[1]
         .replace(/\\n/g, '\n')
         .replace(/\\"/g, '"')
         .replace(/<br\/?>/gi, '\n')
-        .replace(/<[^>]+>/g, '');
-      return unescaped.trim();
+        .replace(/<[^>]+>/g, '')
+        .trim();
     }
   } catch(e) {}
-
-  // Fallback: look for data-lyrics-container divs in the HTML
+  // Try data-lyrics-container
   try {
     const matches = [...html.matchAll(/data-lyrics-container[^>]*>([\s\S]*?)<\/div>/g)];
     if (matches.length) {
-      const raw = matches.map(m => m[1])
-        .join('\n')
+      const raw = matches.map(function(m){ return m[1]; }).join('\n')
         .replace(/<br\/?>/gi, '\n')
         .replace(/<[^>]+>/g, '')
         .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
       if (raw.trim().length > 50) return raw.trim();
     }
   } catch(e) {}
-
   return null;
-}
-
-function renderLyrics(raw) {
-  lyricsStatus.textContent = '';
-  const lines = raw.split('\n');
-  lyricsContent.innerHTML = lines.map(line => {
-    const trimmed = line.trim();
-    // Section headers like [Verse 1], [Chorus] etc
-    if (/^\[.+\]$/.test(trimmed)) {
-      return `<span class="lyric-line section-header">${trimmed}</span>`;
-    }
-    if (!trimmed) return `<span class="lyric-line" style="height:1em;display:block"></span>`;
-    return `<span class="lyric-line">${trimmed}</span>`;
-  }).join('');
-
-  // Auto-scroll to top
-  document.getElementById('lyrics-scroll').scrollTop = 0;
-}
-
-function hideLyrics() {
-  lyricsOverlay.classList.remove('visible');
-  lyricsVisible = false;
-  lyricsToggleBtn.classList.remove('active');
-}
-
-// Load lyrics when track changes (if lyrics panel is open)
-function maybeRefreshLyrics(track) {
-  if (!lyricsVisible) return;
-  if (lyricsCurrentId === track.id) return;
-  lyricsCurrentId = track.id;
-  loadLyrics(track);
 }
 
 // ===== EDIT TRACK MODAL =====
