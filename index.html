@@ -1690,7 +1690,7 @@ function getArtistColor(artist) {
 let ghFileSha = null; // tracks the SHA of tracks.json for updates
 
 async function loadTracks() {
-  // Always try GitHub first if configured
+  // Admin path — use authenticated GitHub API
   if (ghConfigured()) {
     try {
       const c = getGHConfig();
@@ -1705,26 +1705,93 @@ async function loadTracks() {
         localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
         return decoded;
       }
-      if (res.status === 404) { ghFileSha = null; return getLocalTracks(); }
-    } catch(e) { console.warn('GitHub load failed, using localStorage', e); }
-  } else {
-    // Guest with no token — try public raw GitHub URL
-    const pub = getPublicRepo();
-    if (pub) {
-      try {
-        const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
-        if (res.ok) {
-          const decoded = await res.json();
-          localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
-          return decoded;
-        }
-      } catch(e) { console.warn('Raw GitHub load failed', e); }
-    }
+      if (res.status === 404) { ghFileSha = null; }
+    } catch(e) { console.warn('GitHub API load failed', e); }
   }
+
+  // Guest path (and admin fallback) — always try public raw URL
+  const pub = getPublicRepo();
+  if (pub) {
+    try {
+      const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
+      if (res.ok) {
+        const decoded = await res.json();
+        localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
+        return decoded;
+      }
+    } catch(e) { console.warn('Raw GitHub load failed', e); }
+  }
+
   return getLocalTracks();
 }
 
 const DEFAULT_TRACKS = [
+  {
+    "id": 1775076734250,
+    "added": "2026-04-01",
+    "artist": "Lil Uzi Vert",
+    "title": "Could've Died",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775076626/Could_ve_Died_a94c6g.m4a",
+    "tags": ["leak"],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F879ad4ceab3005b6b4ee05016eb9e599.750x750x1.jpg",
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3NjdqejEwYjU4ZzQxaXF0cHlyOGlrMXl1dW5xY2t5dzRiaHlvcG83MCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/XA5RzQBQrOyvhjc4c5/giphy.gif"
+  },
+  {
+    "id": 1775076388042,
+    "added": "2026-04-01",
+    "artist": "Ken Carson",
+    "title": "Peppermint",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775076230/ken_carson_-_peppermint_v1.0_mtrhlg.mp3",
+    "tags": ["leak"],
+    "type": "cloudinary",
+    "coverArt": "https://images.genius.com/75d88762f0f1310559fd62e835361502.1000x1000x1.jpg",
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3Mmc1b250cTZnY3UxY2Z6NGt4Z3gxbGx4Y2F6dmo3djZwcW9yMmdvNSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/wzuPeX8dnhvvp7KKxM/giphy.gif"
+  },
+  {
+    "id": 1775076082107,
+    "added": "2026-04-01",
+    "artist": "Destroy Lonely",
+    "title": "Over Dimes",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775075771/OVER_DIMES_rpz4nd.m4a",
+    "tags": ["leak"],
+    "type": "cloudinary",
+    "coverArt": "https://images.genius.com/b80f34d87cfcac2313bf4e0dc6aadc0b.1000x1000x1.jpg",
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOGo2aWJ4ZnIzbXdwcjg2NGR6MHBueXduZTJtdHEzZHB0dmt3ZWQwdiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/H4fV6T0bQJVnT8C5xW/giphy.gif"
+  },
+  {
+    "id": 1775075915243,
+    "added": "2026-04-01",
+    "artist": "OsamaSon",
+    "title": "Smash",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775075771/smash_sclz57.m4a",
+    "tags": ["leak"],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F94cf1b51ee3d32f120e5faaabca79228.960x960x1.jpg",
+    "canvas": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZzNmZzkxYmx3djZ2YjdmNjd4ZjBkeWZieHBzdXNkdnQ0eWpjc25kbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Xm5pOQucNsDncerjUc/giphy.gif"
+  },
+  {
+    "id": 1775074985455,
+    "added": "2026-04-01",
+    "artist": "1oneam",
+    "title": "Twin Flame",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775073823/1oneam_-_Twin_Flame_prod._tdf_wkdhro.mp3",
+    "tags": ["leak"],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F4cebd096ef9527a7dc79498de485df92.500x500x1.jpg",
+    "canvas": "https://media1.tenor.com/m/Qy9vAdfd7FwAAAAd/1oneam.gif"
+  },
+  {
+    "id": 1775074343162,
+    "added": "2026-04-01",
+    "artist": "Playboi Carti",
+    "title": "I Promise You",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775073821/13._i_promise_you_enxouv.mp3",
+    "tags": ["leak"],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fd7631f044b81be6b0884cec8e0a3e53b.500x500x1.jpg",
+    "canvas": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExanllOGN3bnBlcm8zb3MzaTQxM2k2NHJlcWx5c3VqNXlyMzUyeTh1eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/iKWCtb7guLOX4srjFC/giphy.gif"
+  },
   {
     "id": 1775065451871,
     "added": "2026-04-01",
@@ -1733,7 +1800,7 @@ const DEFAULT_TRACKS = [
     "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775065294/White_Folk_b390op.mp3",
     "tags": ["unreleased"],
     "type": "cloudinary",
-    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F4896064b9d3b479cae8a43306918c880.1000x1000x1.png"
+    "coverArt": "https://images.genius.com/4896064b9d3b479cae8a43306918c880.1000x1000x1.png"
   },
   {
     "id": 1775054388929,
@@ -1743,17 +1810,7 @@ const DEFAULT_TRACKS = [
     "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775050943/Friday_benjicold_patrick_bella.mp3_ms96b4.mp3",
     "tags": ["unreleased"],
     "type": "cloudinary",
-    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F516736724907f222aa0ec369d76e0410.1000x1000x1.jpg"
-  },
-  {
-    "id": 1775002516005,
-    "added": "2026-04-01",
-    "artist": "Nine Vicious",
-    "title": "April 3rd",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978652/April_3rd_patrick_ahmad.mp3_mitn4b.mp3",
-    "tags": ["unreleased"],
-    "type": "url",
-    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F472d659dc27c58164b7a9de3a3ffabf1.1000x1000x1.jpg"
+    "coverArt": "https://images.genius.com/516736724907f222aa0ec369d76e0410.1000x1000x1.jpg"
   },
   {
     "id": 1774999043975,
@@ -1764,16 +1821,6 @@ const DEFAULT_TRACKS = [
     "tags": ["leak"],
     "type": "cloudinary",
     "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fc1fdcb43f47e4fd6a3fae201d03701fa.999x1000x1.png"
-  },
-  {
-    "id": 1774996681539,
-    "added": "2026-03-31",
-    "artist": "Nine Vicious",
-    "title": "Gimmie A Month",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978662/Gimmie_A_Month.mp3_azunww.mp3",
-    "tags": ["unreleased"],
-    "type": "url",
-    "coverArt": "https://t2.genius.com/unsafe/555x0/https%3A%2F%2Fimages.genius.com%2Fdd68e4eac689e5dadead00d032a36b19.499x499x1.jpg"
   }
 ];
 
@@ -2086,11 +2133,17 @@ function playAtIndex(idx) {
   vinylImg.classList.remove('loaded');
 
   function setVinylCover(url) {
-    const src = proxyImg(url);
-    vinylImg.src = src;
+    // Use raw URL directly — proxyImg (weserv.nl) breaks vinyl image loading
+    vinylImg.src = url;
     vinylImg.onload = () => vinylImg.classList.add('loaded');
-    vinylImg.onerror = () => { vinylImg.classList.remove('loaded'); };
-    updateVinylCard(t, src);
+    vinylImg.onerror = () => {
+      // If direct URL fails, try weserv.nl as fallback
+      if (!url.includes('weserv.nl')) {
+        vinylImg.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(url) + '&w=400&output=jpg&q=90';
+        vinylImg.onload = () => vinylImg.classList.add('loaded');
+      }
+    };
+    updateVinylCard(t, url);
   }
 
   if (t.coverArt) {
@@ -3685,18 +3738,16 @@ resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 setDefaultBG();
 
-// Seed default tracks immediately so the page never shows empty
-tracks = getLocalTracks();
+// Always show DEFAULT_TRACKS immediately — never blank on load
+tracks = DEFAULT_TRACKS;
 renderFilters();
 renderTracks();
 
-// Then async-load from GitHub (may update the list with newer tracks)
+// Then load from GitHub — always overwrite with live data
 loadTracks().then(loaded => {
-  if (loaded && loaded.length > 0) {
-    tracks = loaded;
-    renderFilters();
-    renderTracks();
-  }
+  tracks = (loaded && loaded.length > 0) ? loaded : DEFAULT_TRACKS;
+  renderFilters();
+  renderTracks();
   if (isAdmin && !ghConfigured()) {
     showToast('GITHUB NOT SET UP — CLICK ⚙ TO CONFIGURE', 'error');
   }
