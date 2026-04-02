@@ -1423,7 +1423,12 @@ header {
     <div class="form-group">
       <label>Genius Lyrics URL (optional)</label>
       <input type="url" id="edit-lyrics" placeholder="https://genius.com/artist-song-name-lyrics">
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Paste the Genius.com song page URL. Lyrics will be fetched and shown in the lyrics panel.</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Used as a last resort if no synced lyrics are found automatically.</div>
+    </div>
+    <div class="form-group">
+      <label>LRC Sync File (optional) — for unreleased/leak tracks</label>
+      <input type="text" id="edit-lrcfile" placeholder="e.g. friday-nine-vicious.lrc">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Upload a <code style="color:var(--accent4)">.lrc</code> file to your repo's <code style="color:var(--accent4)">lrc/</code> folder, then enter just the filename here. Gives perfect time-synced highlighting.</div>
     </div>
 
     <div class="modal-actions">
@@ -2715,6 +2720,7 @@ function openEditModal(id) {
   document.getElementById('edit-cover').value   = t.coverArt || '';
   document.getElementById('edit-canvas').value  = t.canvas  || '';
   document.getElementById('edit-lyrics').value  = t.lyricsUrl || '';
+  document.getElementById('edit-lrcfile').value = t.lrcFile || '';
 
   // Show cover preview if URL exists
   const preview = document.getElementById('edit-cover-preview');
@@ -2745,6 +2751,7 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
   const cover   = document.getElementById('edit-cover').value.trim();
   const canvas  = document.getElementById('edit-canvas').value.trim();
   const lyricsUrl = document.getElementById('edit-lyrics').value.trim();
+  const lrcFile   = document.getElementById('edit-lrcfile').value.trim().replace(/^lrc\//,''); // strip folder prefix if pasted
 
   if (!artist || !title) { showToast('ARTIST AND TITLE REQUIRED', 'error'); return; }
 
@@ -2757,12 +2764,14 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
     coverArt: cover || null,
     canvas:   canvas || undefined,
     lyricsUrl: lyricsUrl || undefined,
+    lrcFile:   lrcFile || undefined,
     // re-detect type if URL changed
     type: url.includes('cloudinary.com') ? 'cloudinary' : (url.startsWith('data:') ? 'file' : 'url'),
   };
-  // Clean up undefined canvas key
+  // Clean up undefined keys
   if (!canvas) delete tracks[idx].canvas;
   if (!lyricsUrl) delete tracks[idx].lyricsUrl;
+  if (!lrcFile) delete tracks[idx].lrcFile;
 
   await saveTracks(tracks);
   renderFilters();
@@ -3498,7 +3507,10 @@ function setupCoverPicker({ btnId, artistId, titleId, coverInputId, resultsId, p
 }
 
 // =====================================================================
-// LYRICS SYSTEM — Genius URL fetch via allorigins proxy + time-sync scroll
+// LYRICS SYSTEM — 3-tier sync:
+//   1. LRCLIB   — free API, timestamped LRC for mainstream tracks (auto)
+//   2. LRC file — manual .lrc in repo /lrc/ folder (for unreleased)
+//   3. Genius   — plain unsynced text fallback (last resort)
 // =====================================================================
 
 const lyricsPanel     = document.getElementById('lyrics-panel');
@@ -3512,8 +3524,9 @@ const lyricsToggleBtn = document.getElementById('lyrics-toggle-btn');
 const lyricsCloseBtn  = document.getElementById('lyrics-close-btn');
 
 let lyricsOpen = false;
-let lyricsLines = [];          // array of plain text lines
-let lyricsTrackId = null;      // which track the displayed lyrics belong to
+let lyricsLines = [];        // [{time: seconds, text: string}] for synced, or [{text}] for plain
+let lyricsIsSynced = false;  // true = has real timestamps
+let lyricsTrackId = null;
 let lyricsScrollTimer = null;
 
 // ── Toggle open/close ─────────────────────────────────────────────
@@ -3523,7 +3536,6 @@ function openLyricsPanel() {
   lyricsToggleBtn.classList.add('active');
   playerBar.classList.add('lyrics-open');
   document.querySelector('.app').style.paddingBottom = 'calc(120px + 52vh)';
-  // If a track is playing and it has a lyrics URL, fetch if not already loaded
   const playlist = getPlaylist();
   const t = playlist[currentTrackIdx];
   if (t) loadLyricsForTrack(t);
@@ -3543,18 +3555,17 @@ lyricsToggleBtn.addEventListener('click', () => {
 });
 lyricsCloseBtn.addEventListener('click', closeLyricsPanel);
 
-// ── Auto-load lyrics when a new track starts ──────────────────────
-// Called inside playAtIndex after we know the track
 function maybeFetchLyrics(track) {
   if (!lyricsOpen) return;
   loadLyricsForTrack(track);
 }
 
-function loadLyricsForTrack(track) {
+// ── Main entry point — tries each tier in order ───────────────────
+async function loadLyricsForTrack(track) {
   if (!track) return;
   lyricsTrackName.textContent = `— ${track.artist} · ${track.title}`;
 
-  // If we already have lyrics loaded for this track, just re-sync
+  // Already loaded for this track — just re-sync scroll
   if (lyricsTrackId === track.id && lyricsLines.length) {
     syncLyricsScroll();
     return;
@@ -3562,146 +3573,163 @@ function loadLyricsForTrack(track) {
 
   lyricsTrackId = track.id;
   lyricsLines = [];
+  lyricsIsSynced = false;
   lyricsBody.innerHTML = '';
-
-  if (!track.lyricsUrl) {
-    showLyricsError(track);
-    return;
-  }
-
-  // Validate it's a Genius URL
-  if (!/genius\.com/i.test(track.lyricsUrl)) {
-    lyricsError.style.display = 'block';
-    lyricsLoading.style.display = 'none';
-    lyricsError.innerHTML = `⚠ NOT A GENIUS URL — paste a <a href="https://genius.com" target="_blank" rel="noopener">genius.com</a> song page link.`;
-    return;
-  }
-
-  fetchGeniusLyrics(track.lyricsUrl, track);
-}
-
-// ── Fetch lyrics via proxy chain — tries multiple CORS proxies ─────
-async function fetchGeniusLyrics(geniusUrl, track) {
-  lyricsLoading.style.display = 'flex';
   lyricsError.style.display = 'none';
-  lyricsBody.innerHTML = '';
+  lyricsLoading.style.display = 'flex';
 
-  // Try these proxies in order until one works
-  const proxies = [
-    url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-    url => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
-  ];
+  // ── TIER 1: LRCLIB (auto, timestamped, mainstream tracks) ────────
+  const lrclibResult = await fetchLRCLIB(track.artist, track.title);
+  if (lrclibResult) {
+    lyricsLoading.style.display = 'none';
+    const parsed = parseLRC(lrclibResult);
+    if (parsed.length) {
+      lyricsLines = parsed;
+      lyricsIsSynced = true;
+      renderSyncedLyrics();
+      lyricsSourceBadge.textContent = 'LRCLIB ✓';
+      lyricsSourceBadge.title = 'Time-synced via LRCLIB';
+      return;
+    }
+  }
 
-  let html = null;
-  let lastErr = '';
-
-  for (const makeUrl of proxies) {
-    try {
-      const res = await fetch(makeUrl(geniusUrl), { signal: AbortSignal.timeout(6000) });
-      if (!res.ok) { lastErr = `proxy ${res.status}`; continue; }
-      const ct = res.headers.get('content-type') || '';
-      // allorigins wraps in JSON, others return raw HTML
-      if (ct.includes('application/json')) {
-        const data = await res.json();
-        html = data.contents || data.body || null;
-      } else {
-        html = await res.text();
+  // ── TIER 2: Manual LRC file from /lrc/ folder in the repo ────────
+  if (track.lrcFile) {
+    const lrcResult = await fetchLRCFile(track.lrcFile);
+    if (lrcResult) {
+      lyricsLoading.style.display = 'none';
+      const parsed = parseLRC(lrcResult);
+      if (parsed.length) {
+        lyricsLines = parsed;
+        lyricsIsSynced = true;
+        renderSyncedLyrics();
+        lyricsSourceBadge.textContent = 'LRC SYNC ✓';
+        lyricsSourceBadge.title = 'Time-synced via manual LRC file';
+        return;
       }
-      if (html && html.length > 500) break; // got something useful
-      html = null;
-      lastErr = 'empty response';
-    } catch (e) {
-      lastErr = e.name === 'TimeoutError' ? 'timeout' : e.message;
-      continue;
     }
   }
 
+  // ── TIER 3: Genius plain text ─────────────────────────────────────
+  if (track.lyricsUrl && /genius\.com/i.test(track.lyricsUrl)) {
+    const geniusResult = await fetchGeniusLyrics(track.lyricsUrl);
+    if (geniusResult) {
+      lyricsLoading.style.display = 'none';
+      lyricsLines = geniusResult.split('\n').map(text => ({ text }));
+      lyricsIsSynced = false;
+      renderPlainLyrics(geniusResult, track.lyricsUrl);
+      lyricsSourceBadge.textContent = 'GENIUS';
+      lyricsSourceBadge.title = 'Unsynced — approximate scroll only';
+      return;
+    }
+  }
+
+  // ── All tiers failed ──────────────────────────────────────────────
+  lyricsLoading.style.display = 'none';
+  showLyricsError(track);
+}
+
+// ── TIER 1: LRCLIB fetch ──────────────────────────────────────────
+async function fetchLRCLIB(artist, title) {
   try {
-    if (!html) throw new Error(lastErr || 'all proxies failed');
-
-    const lyrics = parseGeniusHtml(html);
-    if (!lyrics || lyrics.trim().length < 20) throw new Error('no lyrics found in page');
-
-    lyricsLoading.style.display = 'none';
-    renderLyrics(lyrics, geniusUrl);
-    lyricsSourceBadge.textContent = 'GENIUS';
-
-  } catch (err) {
-    console.warn('Lyrics fetch error:', err);
-    lyricsLoading.style.display = 'none';
-    showLyricsError(track, geniusUrl, err.message);
+    const params = new URLSearchParams({ artist_name: artist, track_name: title });
+    const res = await fetch(`https://lrclib.net/api/get?${params}`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    // Prefer synced lyrics (has timestamps) over plain
+    return data.syncedLyrics || null;
+  } catch(e) {
+    return null;
   }
 }
 
-// ── Parse lyrics out of Genius HTML ──────────────────────────────
-// Genius wraps lyrics in containers with data-lyrics-container="true"
-function parseGeniusHtml(html) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-
-  // Method 1: data-lyrics-container (current Genius markup)
-  const containers = doc.querySelectorAll('[data-lyrics-container="true"]');
-  if (containers.length) {
-    let text = '';
-    containers.forEach(c => {
-      // Replace <br> with newline before getting textContent
-      c.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
-      // Remove annotation links but keep their text
-      c.querySelectorAll('a').forEach(a => a.replaceWith(a.textContent));
-      text += c.textContent + '\n\n';
-    });
-    return text.trim();
+// ── TIER 2: LRC file from GitHub repo /lrc/ folder ───────────────
+async function fetchLRCFile(filename) {
+  try {
+    // Build raw GitHub URL from the GUEST_REPO constant
+    const pub = getPublicRepo();
+    if (!pub) return null;
+    const url = `https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/lrc/${filename}?t=${Date.now()}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch(e) {
+    return null;
   }
+}
 
-  // Method 2: .lyrics class (older Genius pages)
-  const lyricsEl = doc.querySelector('.lyrics');
-  if (lyricsEl) {
-    lyricsEl.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
-    return lyricsEl.textContent.trim();
-  }
+// ── Parse LRC format into [{time, text}] array ────────────────────
+// LRC format: [mm:ss.xx] lyric line
+function parseLRC(lrcText) {
+  const lines = lrcText.split('\n');
+  const result = [];
+  const timeRegex = /^\[(\d{1,2}):(\d{2})\.(\d{2,3})\](.*)/;
 
-  // Method 3: Scrape any <p> or section that looks like lyrics
-  // Search for the lyrics JSON embedded in the page scripts
-  const scripts = doc.querySelectorAll('script');
-  for (const s of scripts) {
-    const m = s.textContent.match(/"lyrics":\s*\{[^}]*"body":\s*\{[^}]*"plain":\s*"((?:[^"\\]|\\.)*)"/);
+  for (const line of lines) {
+    const m = line.match(timeRegex);
     if (m) {
-      try {
-        return JSON.parse(`"${m[1]}"`);
-      } catch {}
+      const mins = parseInt(m[1]);
+      const secs = parseInt(m[2]);
+      const ms   = parseInt(m[3].padEnd(3, '0')); // normalize to ms
+      const time = mins * 60 + secs + ms / 1000;
+      const text = m[4].trim();
+      result.push({ time, text });
     }
   }
 
-  return null;
+  // Sort by time in case lines are out of order
+  result.sort((a, b) => a.time - b.time);
+  return result;
 }
 
-// ── Render lyrics as individual scrollable lines ──────────────────
-function renderLyrics(rawText, sourceUrl) {
-  // Split into lines, preserve blank lines as section breaks
-  const rawLines = rawText.split('\n');
-  lyricsLines = rawLines;
-
-  const html = rawLines.map((line, i) => {
-    if (!line.trim()) {
-      // blank line = section spacer
+// ── Render synced lyrics (LRC — has real timestamps) ─────────────
+function renderSyncedLyrics() {
+  const html = lyricsLines.map((line, i) => {
+    if (!line.text) {
       return `<span class="lyrics-line" data-idx="${i}" style="display:block;height:14px"></span>`;
     }
-    // Section headers like [Verse 1], [Chorus] get styled
-    if (/^\[.*\]$/.test(line.trim())) {
-      return `<span class="lyrics-line lyrics-section" data-idx="${i}" style="font-family:var(--font-mono);font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-top:8px;display:block">${escHtml(line)}</span>`;
+    if (/^\[.*\]$/.test(line.text)) {
+      return `<span class="lyrics-line lyrics-section" data-idx="${i}">${escHtml(line.text)}</span>`;
     }
+    return `<span class="lyrics-line" data-idx="${i}">${escHtml(line.text)}</span>`;
+  }).join('');
+
+  lyricsBody.innerHTML = html;
+
+  // Click a line to seek to its exact timestamp
+  lyricsBody.querySelectorAll('.lyrics-line[data-idx]').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx);
+      const line = lyricsLines[idx];
+      if (line && line.time !== undefined && audio.duration) {
+        audio.currentTime = line.time;
+      }
+    });
+  });
+
+  syncLyricsScroll();
+}
+
+// ── Render plain lyrics (Genius — no timestamps) ─────────────────
+function renderPlainLyrics(rawText, sourceUrl) {
+  const rawLines = rawText.split('\n');
+  lyricsLines = rawLines.map(text => ({ text }));
+
+  const html = rawLines.map((line, i) => {
+    if (!line.trim()) return `<span class="lyrics-line" data-idx="${i}" style="display:block;height:14px"></span>`;
+    if (/^\[.*\]$/.test(line.trim())) return `<span class="lyrics-line lyrics-section" data-idx="${i}">${escHtml(line)}</span>`;
     return `<span class="lyrics-line" data-idx="${i}">${escHtml(line)}</span>`;
   }).join('');
 
   const attr = sourceUrl
-    ? `<div class="genius-attr">Lyrics via <a href="${sourceUrl}" target="_blank" rel="noopener">Genius</a></div>`
+    ? `<div class="genius-attr">Lyrics via <a href="${sourceUrl}" target="_blank" rel="noopener">Genius</a> · <span style="color:var(--muted)">scroll is approximate</span></div>`
     : '';
 
   lyricsBody.innerHTML = html + attr;
 
-  // Allow clicking a line to seek audio to estimated position
+  // Click a line to seek to approximate position
   lyricsBody.querySelectorAll('.lyrics-line[data-idx]').forEach(el => {
     el.addEventListener('click', () => {
       const idx = parseInt(el.dataset.idx);
@@ -3714,41 +3742,106 @@ function renderLyrics(rawText, sourceUrl) {
   syncLyricsScroll();
 }
 
+// ── TIER 3: Genius fetch via CORS proxy chain ─────────────────────
+async function fetchGeniusLyrics(geniusUrl) {
+  const proxies = [
+    url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  ];
+
+  for (const makeUrl of proxies) {
+    try {
+      const res = await fetch(makeUrl(geniusUrl), { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) continue;
+      const ct = res.headers.get('content-type') || '';
+      let html;
+      if (ct.includes('application/json')) {
+        const data = await res.json();
+        html = data.contents || data.body || null;
+      } else {
+        html = await res.text();
+      }
+      if (html && html.length > 500) {
+        const lyrics = parseGeniusHtml(html);
+        if (lyrics && lyrics.trim().length > 20) return lyrics;
+      }
+    } catch(e) { continue; }
+  }
+  return null;
+}
+
+// ── Parse Genius HTML → plain text ───────────────────────────────
+function parseGeniusHtml(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  const containers = doc.querySelectorAll('[data-lyrics-container="true"]');
+  if (containers.length) {
+    let text = '';
+    containers.forEach(c => {
+      c.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+      c.querySelectorAll('a').forEach(a => a.replaceWith(a.textContent));
+      text += c.textContent + '\n\n';
+    });
+    return text.trim();
+  }
+
+  const lyricsEl = doc.querySelector('.lyrics');
+  if (lyricsEl) {
+    lyricsEl.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+    return lyricsEl.textContent.trim();
+  }
+
+  return null;
+}
+
 function escHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ── Show error/fallback state ─────────────────────────────────────
-function showLyricsError(track, geniusUrl, reason) {
-  lyricsLoading.style.display = 'none';
+// ── Error / no-lyrics state ───────────────────────────────────────
+function showLyricsError(track) {
   lyricsBody.innerHTML = '';
   lyricsError.style.display = 'block';
-
-  const searchQuery = encodeURIComponent(`${track.artist} ${track.title} lyrics`);
   const geniusSearch = `https://genius.com/search?q=${encodeURIComponent(track.artist + ' ' + track.title)}`;
 
-  if (!track.lyricsUrl) {
+  if (!track.lyricsUrl && !track.lrcFile) {
     lyricsError.innerHTML =
-      `♩ NO LYRICS URL SET FOR THIS TRACK<br><br>` +
-      `To add lyrics, click <strong>✎ Edit</strong> on the track card (admin mode) and paste a Genius URL.<br><br>` +
-      `<a href="${geniusSearch}" target="_blank" rel="noopener">🔍 Find on Genius →</a>`;
+      `♩ NO LYRICS SET FOR THIS TRACK<br><br>` +
+      `<strong style="color:var(--text)">For mainstream tracks</strong> — lyrics sync automatically via LRCLIB, nothing needed.<br><br>` +
+      `<strong style="color:var(--text)">For unreleased/leak tracks</strong> — click <strong>✎ Edit</strong> on the card and either:<br>` +
+      `&nbsp;• Add a Genius URL for plain lyrics<br>` +
+      `&nbsp;• Upload an <code style="color:var(--accent4)">.lrc</code> file to your repo's <code style="color:var(--accent4)">lrc/</code> folder for perfect sync<br><br>` +
+      `<a href="${geniusSearch}" target="_blank" rel="noopener">🔍 Search Genius →</a>`;
   } else {
     lyricsError.innerHTML =
-      `⚠ COULD NOT LOAD LYRICS${reason ? ` (${reason})` : ''}<br><br>` +
-      `The proxy may be temporarily unavailable, or the Genius page structure has changed.<br><br>` +
-      `<a href="${track.lyricsUrl}" target="_blank" rel="noopener">📖 Open on Genius →</a>`;
+      `⚠ COULD NOT LOAD LYRICS<br><br>` +
+      `LRCLIB didn't have this track, the LRC file wasn't found, and the Genius proxy failed.<br><br>` +
+      `<a href="${geniusSearch}" target="_blank" rel="noopener">🔍 Open Genius →</a>`;
   }
 }
 
-// ── Time-sync scroll — estimates lyric position from playback ─────
-// Since Genius doesn't provide timestamps, we distribute lines linearly
-// across the track duration. It's approximate but keeps the view moving.
+// ── Core sync function — uses real timestamps when available ──────
 function syncLyricsScroll() {
   if (!lyricsOpen || !lyricsLines.length || !audio.duration) return;
 
-  const progress = audio.currentTime / audio.duration;
-  const totalLines = lyricsLines.length;
-  const activeIdx = Math.floor(progress * (totalLines - 1));
+  let activeIdx = 0;
+
+  if (lyricsIsSynced) {
+    // Find the last line whose timestamp is <= current playback time
+    const now = audio.currentTime;
+    for (let i = lyricsLines.length - 1; i >= 0; i--) {
+      if (lyricsLines[i].time !== undefined && lyricsLines[i].time <= now) {
+        activeIdx = i;
+        break;
+      }
+    }
+  } else {
+    // Plain lyrics — linear distribution (approximate)
+    const progress = audio.currentTime / audio.duration;
+    activeIdx = Math.floor(progress * (lyricsLines.length - 1));
+  }
 
   const lineEls = lyricsBody.querySelectorAll('.lyrics-line[data-idx]');
   lineEls.forEach(el => {
@@ -3757,12 +3850,11 @@ function syncLyricsScroll() {
     el.classList.toggle('passed', idx < activeIdx);
   });
 
-  // Auto-scroll active line into view (center of panel)
+  // Scroll active line to ~38% from top of panel
   const activeEl = lyricsBody.querySelector('.lyrics-line.active');
   if (activeEl) {
     const panelH = lyricsScroll.clientHeight;
-    const elTop = activeEl.offsetTop;
-    const targetScroll = elTop - panelH * 0.38;
+    const targetScroll = activeEl.offsetTop - panelH * 0.38;
     lyricsScroll.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
   }
 }
@@ -3770,17 +3862,22 @@ function syncLyricsScroll() {
 // ── Hook sync into timeupdate ─────────────────────────────────────
 audio.addEventListener('timeupdate', () => {
   if (!lyricsOpen || !lyricsLines.length) return;
-  // Throttle to every ~500ms to avoid jank
-  if (lyricsScrollTimer) return;
-  lyricsScrollTimer = setTimeout(() => {
-    lyricsScrollTimer = null;
-    syncLyricsScroll();
-  }, 500);
+  if (lyricsIsSynced) {
+    // Synced: update every ~250ms for tight tracking
+    if (lyricsScrollTimer) return;
+    lyricsScrollTimer = setTimeout(() => {
+      lyricsScrollTimer = null;
+      syncLyricsScroll();
+    }, 250);
+  } else {
+    // Plain: throttle to 500ms — no need to rush
+    if (lyricsScrollTimer) return;
+    lyricsScrollTimer = setTimeout(() => {
+      lyricsScrollTimer = null;
+      syncLyricsScroll();
+    }, 500);
+  }
 });
-
-// ── Hook into playAtIndex to auto-refresh lyrics ──────────────────
-// We monkey-patch by overriding a post-load hook inside playAtIndex
-// The actual hook is already wired: maybeFetchLyrics(t) is called there.
 
 // =====================================================================
 
