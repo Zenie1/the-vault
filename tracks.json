@@ -23,7 +23,8 @@
     ],
     "type": "cloudinary",
     "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F879ad4ceab3005b6b4ee05016eb9e599.750x750x1.jpg",
-    "canvas": "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3NjdqejEwYjU4ZzQxaXF0cHlyOGlrMXl1dW5xY2t5dzRiaHlvcG83MCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/XA5RzQBQrOyvhjc4c5/giphy.gif"
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3NjdqejEwYjU4ZzQxaXF0cHlyOGlrMXl1dW5xY2t5dzRiaHlvcG83MCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/XA5RzQBQrOyvhjc4c5/giphy.gif",
+    "lyricsUrl": "https://genius.com/Lil-uzi-vert-couldve-died-lyrics"
   },
   {
     "id": 1775076388042,
@@ -100,7 +101,8 @@
       "unreleased"
     ],
     "type": "cloudinary",
-    "coverArt": "https://images.genius.com/4896064b9d3b479cae8a43306918c880.1000x1000x1.png"
+    "coverArt": "https://images.genius.com/4896064b9d3b479cae8a43306918c880.1000x1000x1.png",
+    "canvas": "https://media1.tenor.com/m/YriWNnhwbJQAAAAC/che-sayso-says.gif"
   },
   {
     "id": 1775054388929,
@@ -112,7 +114,8 @@
       "unreleased"
     ],
     "type": "cloudinary",
-    "coverArt": "https://images.genius.com/516736724907f222aa0ec369d76e0410.1000x1000x1.jpg"
+    "coverArt": "https://images.genius.com/516736724907f222aa0ec369d76e0410.1000x1000x1.jpg",
+    "canvas": "https://media1.tenor.com/m/pg72pNFkKDMAAAAd/nine-vicious-for-nothing.gif"
   },
   {
     "id": 1774999043975,
@@ -124,6 +127,7 @@
       "leak"
     ],
     "type": "cloudinary",
-    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fc1fdcb43f47e4fd6a3fae201d03701fa.999x1000x1.png"
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fc1fdcb43f47e4fd6a3fae201d03701fa.999x1000x1.png",
+    "canvas": "https://media1.tenor.com/m/33g97YilvJ8AAAAC/light-pretti.gif"
   }
 ]
