@@ -683,19 +683,24 @@ header {
 
 /* VINYL ART CARD — click disc to reveal */
 .vinyl-art-card {
-  position: absolute;
-  bottom: 80px;
+  position: fixed;
+  bottom: 90px;
   left: 20px;
-  width: 200px;
+  width: 220px;
   background: var(--surface2);
   border: 1px solid var(--border2);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.7);
-  z-index: 150;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.8);
+  z-index: 300;
   display: none;
   flex-direction: column;
   overflow: hidden;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: 4px;
+  animation: cardPop 0.18s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes cardPop {
+  from { opacity:0; transform: translateY(10px) scale(0.96); }
+  to   { opacity:1; transform: translateY(0)    scale(1); }
 }
 .vinyl-art-card.open { display: flex; }
 .vinyl-art-card img {
@@ -1923,7 +1928,10 @@ function renderTracks() {
     const pIdx = playlist.findIndex(x=>x.id===t.id);
     const isCurrentlyPlaying = currentTrackIdx === pIdx && isPlaying;
     const sourceBadge = t.type === 'cloudinary' ? `<span class="source-badge cloudinary">☁ CDN</span>` : t.type === 'file' ? `<span class="source-badge file">📁 LOCAL</span>` : '';
-    const coverSrc = t.coverArt || '';
+    const rawCover = t.coverArt || '';
+    const coverSrc = rawCover && (rawCover.includes('genius.com') || rawCover.includes('t2.genius'))
+      ? 'https://images.weserv.nl/?url=' + encodeURIComponent(rawCover) + '&w=300&output=jpg'
+      : rawCover;
     return `
       <div class="track-card${isCurrentlyPlaying?' playing':''}" style="--artist-color:${color}" data-id="${t.id}">
         <div class="track-card-top">
@@ -2057,18 +2065,32 @@ function playAtIndex(idx) {
   // Load cover art into vinyl
   const vinylImg = document.getElementById('player-cover-img');
   vinylImg.classList.remove('loaded');
-  if (t.coverArt) {
-    vinylImg.src = t.coverArt;
+
+  function proxyImg(url) {
+    if (!url) return '';
+    // Proxy genius/external images through weserv to avoid hotlink blocks
+    if (url.includes('genius.com') || url.includes('t2.genius')) {
+      return 'https://images.weserv.nl/?url=' + encodeURIComponent(url) + '&w=300&output=jpg';
+    }
+    return url;
+  }
+
+  function setVinylCover(url) {
+    const src = proxyImg(url);
+    vinylImg.src = src;
     vinylImg.onload = () => vinylImg.classList.add('loaded');
-    updateVinylCard(t, t.coverArt);
+    vinylImg.onerror = () => { vinylImg.classList.remove('loaded'); };
+    updateVinylCard(t, src);
+  }
+
+  if (t.coverArt) {
+    setVinylCover(t.coverArt);
   } else {
     updateVinylCard(t, null);
     fetchCoverArt(t.artist, t.title).then(url => {
       if (url) {
         t.coverArt = url;
-        vinylImg.src = url;
-        vinylImg.onload = () => vinylImg.classList.add('loaded');
-        updateVinylCard(t, url);
+        setVinylCover(url);
       }
     });
   }
@@ -3160,8 +3182,9 @@ function updateVinylCard(track, coverUrl) {
   const img = document.getElementById('vac-img');
   const noArt = document.getElementById('vac-no-art');
   if (coverUrl) {
-    img.src = coverUrl;
+    img.src = coverUrl; // already proxied by caller
     img.style.display = 'block';
+    img.onerror = () => { img.style.display = 'none'; noArt.style.display = 'flex'; };
     noArt.style.display = 'none';
   } else {
     img.style.display = 'none';
@@ -3291,7 +3314,6 @@ lyricsToggleBtn.addEventListener('click', () => {
 function normStr(s) {
   return (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
-
 function scoreMatch(result, artist, title) {
   const rTitle  = normStr(result.title);
   const rArtist = normStr(result.primary_artist && result.primary_artist.name);
@@ -3329,7 +3351,6 @@ async function loadLyrics(track) {
         if (s > bestScore) { bestScore = s; best = h.result; }
       });
       if (best && bestScore >= 2) {
-        // Stage 2: fetch Genius page via allorigins
         const pageUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://genius.com' + best.path);
         const pRes = await fetch(pageUrl);
         if (pRes.ok) {
@@ -3350,7 +3371,7 @@ async function loadLyrics(track) {
     }
   } catch(e) {}
 
-  // Stage 4: clean title retry (strip feat/parens)
+  // Stage 4: clean title
   const cleanTitle = track.title.replace(/\(.*?\)/g,'').replace(/feat\.?.*/i,'').trim();
   if (cleanTitle !== track.title) {
     try {
@@ -3367,25 +3388,18 @@ async function loadLyrics(track) {
 }
 
 function extractGeniusLyrics(html) {
-  // Try JSON embedded in page
   try {
     const m = html.match(/"lyrics":{"body":{"html":"(.*?)"}}/s);
     if (m) {
-      return m[1]
-        .replace(/\\n/g, '\n')
-        .replace(/\\"/g, '"')
-        .replace(/<br\/?>/gi, '\n')
-        .replace(/<[^>]+>/g, '')
-        .trim();
+      return m[1].replace(/\\n/g,'\n').replace(/\\"/g,'"')
+        .replace(/<br\/?>/gi,'\n').replace(/<[^>]+>/g,'').trim();
     }
   } catch(e) {}
-  // Try data-lyrics-container
   try {
     const matches = [...html.matchAll(/data-lyrics-container[^>]*>([\s\S]*?)<\/div>/g)];
     if (matches.length) {
       const raw = matches.map(function(m){ return m[1]; }).join('\n')
-        .replace(/<br\/?>/gi, '\n')
-        .replace(/<[^>]+>/g, '')
+        .replace(/<br\/?>/gi,'\n').replace(/<[^>]+>/g,'')
         .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
       if (raw.trim().length > 50) return raw.trim();
     }
