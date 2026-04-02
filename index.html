@@ -3580,26 +3580,49 @@ function loadLyricsForTrack(track) {
   fetchGeniusLyrics(track.lyricsUrl, track);
 }
 
-// ── Fetch lyrics via allorigins.win proxy (bypasses CORS) ─────────
+// ── Fetch lyrics via proxy chain — tries multiple CORS proxies ─────
 async function fetchGeniusLyrics(geniusUrl, track) {
   lyricsLoading.style.display = 'flex';
   lyricsError.style.display = 'none';
   lyricsBody.innerHTML = '';
 
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(geniusUrl)}`;
+  // Try these proxies in order until one works
+  const proxies = [
+    url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    url => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
+  ];
+
+  let html = null;
+  let lastErr = '';
+
+  for (const makeUrl of proxies) {
+    try {
+      const res = await fetch(makeUrl(geniusUrl), { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) { lastErr = `proxy ${res.status}`; continue; }
+      const ct = res.headers.get('content-type') || '';
+      // allorigins wraps in JSON, others return raw HTML
+      if (ct.includes('application/json')) {
+        const data = await res.json();
+        html = data.contents || data.body || null;
+      } else {
+        html = await res.text();
+      }
+      if (html && html.length > 500) break; // got something useful
+      html = null;
+      lastErr = 'empty response';
+    } catch (e) {
+      lastErr = e.name === 'TimeoutError' ? 'timeout' : e.message;
+      continue;
+    }
+  }
 
   try {
-    const res = await fetch(proxyUrl);
-    if (!res.ok) throw new Error(`proxy ${res.status}`);
-    const data = await res.json();
-    const html = data.contents;
-    if (!html) throw new Error('empty response');
+    if (!html) throw new Error(lastErr || 'all proxies failed');
 
     const lyrics = parseGeniusHtml(html);
-
-    if (!lyrics || lyrics.trim().length < 20) {
-      throw new Error('no lyrics found');
-    }
+    if (!lyrics || lyrics.trim().length < 20) throw new Error('no lyrics found in page');
 
     lyricsLoading.style.display = 'none';
     renderLyrics(lyrics, geniusUrl);
