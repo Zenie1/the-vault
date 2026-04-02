@@ -2,12 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050507">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="THE VAULT">
+<meta name="mobile-web-app-capable" content="yes">
 <title>THE VAULT</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23050507'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='38' font-family='Arial Black,sans-serif' fill='%23c8ff00'%3EV%3C/text%3E%3C/svg%3E" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Archivo+Black&display=swap" rel="stylesheet">
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
 
 :root {
   --bg: #050507;
@@ -229,6 +234,7 @@ header {
 .track-actions { display:flex; gap:6px; flex-shrink:0; }
 .icon-btn {
   width:30px; height:30px;
+  min-width: 30px;
   background: transparent;
   border: 1px solid var(--border);
   color: var(--muted);
@@ -239,14 +245,14 @@ header {
   font-size: 12px;
   transition: all 0.2s;
   text-decoration: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .icon-btn:hover { background:var(--surface3); color:var(--text); border-color:rgba(255,255,255,0.2); }
 .icon-btn.play-btn:hover { background:var(--accent); color:#000; border-color:var(--accent); }
 .icon-btn.play-btn.active { background:var(--accent); color:#000; border-color:var(--accent); }
 .icon-btn.delete-btn { display:none; }
 .admin-mode .icon-btn.delete-btn { display:flex; }
-.icon-btn.edit-btn { display:none; }
-.admin-mode .icon-btn.edit-btn { display:flex; }
 .icon-btn.delete-btn:hover { background:rgba(255,45,120,0.15); border-color:rgba(255,45,120,0.4); color:var(--accent3); }
 
 .source-badge {
@@ -300,11 +306,15 @@ header {
   background: rgba(5,5,7,0.97);
   border-top: 1px solid var(--border2);
   padding: 12px 28px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  padding-left: max(28px, env(safe-area-inset-left));
+  padding-right: max(28px, env(safe-area-inset-right));
   display: flex;
   align-items: center;
   gap: 18px;
   z-index: 100;
   backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   transform: translateY(100%);
   transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
 }
@@ -433,6 +443,7 @@ header {
   cursor: pointer;
   border-radius: 2px;
   transition: opacity 0.3s;
+  touch-action: none;
 }
 #waveform-canvas.paused { opacity: 0.5; }
 
@@ -498,6 +509,7 @@ header {
   position: relative;
   max-height: 90vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .modal-close { position:absolute; top:16px; right:16px; background:transparent; border:none; color:var(--muted); font-size:20px; cursor:pointer; line-height:1; padding:4px; }
 .modal-close:hover { color:var(--text); }
@@ -683,24 +695,19 @@ header {
 
 /* VINYL ART CARD — click disc to reveal */
 .vinyl-art-card {
-  position: fixed;
-  bottom: 90px;
+  position: absolute;
+  bottom: 80px;
   left: 20px;
-  width: 220px;
+  width: 200px;
   background: var(--surface2);
   border: 1px solid var(--border2);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.8);
-  z-index: 300;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+  z-index: 150;
   display: none;
   flex-direction: column;
   overflow: hidden;
   cursor: pointer;
-  border-radius: 4px;
-  animation: cardPop 0.18s cubic-bezier(0.16,1,0.3,1);
-}
-@keyframes cardPop {
-  from { opacity:0; transform: translateY(10px) scale(0.96); }
-  to   { opacity:1; transform: translateY(0)    scale(1); }
+  border-radius: 2px;
 }
 .vinyl-art-card.open { display: flex; }
 .vinyl-art-card img {
@@ -880,117 +887,6 @@ header {
   background: rgba(200,255,0,0.06);
 }
 
-
-/* ================================================
-   LYRICS OVERLAY
-   ================================================ */
-#lyrics-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 55;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 40px 160px;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-}
-#lyrics-overlay.visible {
-  opacity: 1;
-  pointer-events: all;
-}
-#lyrics-scroll {
-  max-width: 640px;
-  width: 100%;
-  max-height: 60vh;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  text-align: center;
-  mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
-}
-#lyrics-scroll::-webkit-scrollbar { display: none; }
-#lyrics-content {
-  font-family: var(--font-body);
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.9;
-  color: rgba(255,255,255,0.92);
-  text-shadow: 0 2px 20px rgba(0,0,0,0.9), 0 0 60px rgba(0,0,0,0.7);
-  white-space: pre-wrap;
-  letter-spacing: 0.2px;
-}
-#lyrics-content .lyric-line {
-  display: block;
-  transition: color 0.3s, text-shadow 0.3s;
-  cursor: default;
-}
-#lyrics-content .lyric-line.section-header {
-  font-size: 11px;
-  letter-spacing: 3px;
-  font-family: var(--font-mono);
-  color: rgba(255,255,255,0.35);
-  margin: 18px 0 6px;
-  text-transform: uppercase;
-  font-weight: 400;
-}
-#lyrics-status {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: rgba(255,255,255,0.35);
-  text-align: center;
-  margin-top: 24px;
-  text-transform: uppercase;
-}
-.lyrics-toggle-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 1px;
-  padding: 5px 10px;
-  cursor: pointer;
-  text-transform: uppercase;
-  flex-shrink: 0;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-.lyrics-toggle-btn:hover { color: var(--text); border-color: var(--border2); }
-.lyrics-toggle-btn.active {
-  color: var(--current-color, var(--accent));
-  border-color: var(--current-color, var(--accent));
-  background: rgba(200,255,0,0.06);
-}
-@media(max-width:700px) {
-  #lyrics-overlay { padding: 60px 20px 200px; }
-  #lyrics-content { font-size: 17px; line-height: 1.8; }
-  .lyrics-toggle-btn { display: none; }
-}
-
-/* ================================================
-   EDIT TRACK MODAL
-   ================================================ */
-#edit-modal .modal { max-width: 540px; }
-.edit-cover-row {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  margin-bottom: 16px;
-}
-.edit-cover-thumb {
-  width: 64px; height: 64px;
-  object-fit: cover;
-  border: 1px solid var(--border2);
-  border-radius: 2px;
-  flex-shrink: 0;
-  background: var(--surface3);
-}
-.edit-cover-thumb.hidden { display: none; }
-
 /* RESPONSIVE */
 /* ================================================
    MOBILE — full layout overhaul
@@ -998,7 +894,7 @@ header {
 @media(max-width:700px) {
 
   /* APP SHELL */
-  .app { padding: 0 16px 180px; }
+  .app { padding: 0 16px 180px; padding-bottom: max(180px, calc(160px + env(safe-area-inset-bottom))); }
 
   /* HEADER — stack logo + buttons */
   header {
@@ -1045,7 +941,8 @@ header {
   /* ── PLAYER BAR ── */
   #player-bar {
     flex-direction: column;
-    padding: 12px 16px 16px;
+    padding: 12px 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
     gap: 10px;
     align-items: stretch;
   }
@@ -1150,6 +1047,22 @@ header {
   /* Vinyl art card repositioned */
   .vinyl-art-card { left: 12px; bottom: 175px; width: 160px; }
 
+  /* Canvas label above player on mobile */
+  #canvas-label { bottom: auto; top: 12px; right: 12px; font-size: 7px; }
+
+  /* Canvas toggle hidden on mobile to save space */
+  .canvas-toggle-btn { display: none; }
+
+  /* Filter buttons scroll horizontally on mobile */
+  .filter-btns { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .filter-btns::-webkit-scrollbar { display: none; }
+
+  /* Inputs use 16px font to prevent iOS zoom on focus */
+  .search-wrap input,
+  .form-group input,
+  .form-group select,
+  .form-group textarea { font-size: 16px; }
+
 }
 
 /* Extra small phones */
@@ -1241,7 +1154,6 @@ header {
     </div>
     <button class="dl-btn" id="download-link" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓ DL</button>
     <button class="canvas-toggle-btn" id="canvas-toggle-btn" title="Toggle Canvas">◈ Canvas</button>
-    <button class="lyrics-toggle-btn" id="lyrics-toggle-btn" title="Toggle Lyrics">♩ Lyrics</button>
   </div>
 
   <!-- Center: waveform + controls (desktop flex column, mobile two rows) -->
@@ -1293,67 +1205,6 @@ header {
       <!-- Glow bloom behind the whole driver -->
       <circle id="sub-glow" cx="32" cy="32" r="22" fill="transparent"/>
     </svg>
-  </div>
-</div>
-
-
-<!-- LYRICS OVERLAY -->
-<div id="lyrics-overlay">
-  <div id="lyrics-scroll">
-    <div id="lyrics-content"></div>
-    <div id="lyrics-status"></div>
-  </div>
-</div>
-
-<!-- EDIT TRACK MODAL -->
-<div class="modal-overlay" id="edit-modal">
-  <div class="modal">
-    <button class="modal-close" id="edit-modal-close">×</button>
-    <h2>EDIT TRACK</h2>
-    <div class="edit-cover-row">
-      <img id="edit-cover-thumb" class="edit-cover-thumb hidden" src="" alt="">
-      <div style="flex:1">
-        <div style="font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--muted2);margin-bottom:4px;text-transform:uppercase">Currently editing</div>
-        <div id="edit-track-label" style="font-size:15px;font-weight:700;color:var(--text)">—</div>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Artist Name</label>
-      <input type="text" id="edit-artist" placeholder="Artist">
-    </div>
-    <div class="form-group">
-      <label>Track Title</label>
-      <input type="text" id="edit-title" placeholder="Title">
-    </div>
-    <div class="form-group">
-      <label>Audio URL</label>
-      <input type="url" id="edit-url" placeholder="https://...">
-    </div>
-    <div class="form-group">
-      <label>Tags (comma separated)</label>
-      <input type="text" id="edit-tags" placeholder="unreleased, leak, snippet">
-    </div>
-    <div class="form-group">
-      <label>Cover Art URL</label>
-      <div class="cover-search-row">
-        <input type="url" id="edit-cover" placeholder="Paste image URL, or search →">
-        <button class="cover-art-btn" id="edit-find-cover-btn">🔍 Find Art</button>
-      </div>
-      <div class="cover-results" id="edit-cover-results"></div>
-      <div class="cover-selected-preview" id="edit-cover-preview">
-        <img id="edit-cover-preview-img" src="" alt="">
-        <span>Cover art selected</span>
-        <button class="cover-clear-btn" id="edit-cover-clear-btn" title="Remove">✕</button>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Canvas Background (MP4 / GIF URL)</label>
-      <input type="url" id="edit-canvas" placeholder="https://res.cloudinary.com/…/.mp4 or .gif">
-    </div>
-    <div class="modal-actions">
-      <button class="btn primary" id="edit-save-btn">SAVE CHANGES</button>
-      <button class="btn" id="edit-cancel-btn">CANCEL</button>
-    </div>
   </div>
 </div>
 
@@ -1655,27 +1506,6 @@ const ARTIST_COLORS = {
   'osamaon': '#c8ff3c',
 };
 
-// ===== IMAGE PROXY =====
-// Genius URLs are structured as t2.genius.com/unsafe/SIZExSIZE/<encoded-inner-url>
-// We extract the real images.genius.com URL and proxy it through weserv.nl
-function proxyImg(url) {
-  if (!url) return '';
-  // Extract inner URL from Genius proxy format
-  // e.g. https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fabc.jpg
-  const geniusMatch = url.match(/t2\.genius\.com\/unsafe\/[^/]+\/(.+)/);
-  if (geniusMatch) {
-    try {
-      const innerUrl = decodeURIComponent(geniusMatch[1]);
-      return 'https://images.weserv.nl/?url=' + encodeURIComponent(innerUrl) + '&w=400&output=jpg&q=90';
-    } catch(e) {}
-  }
-  // Fallback: proxy any genius.com image directly
-  if (url.includes('genius.com')) {
-    return 'https://images.weserv.nl/?url=' + encodeURIComponent(url) + '&w=400&output=jpg&q=90';
-  }
-  return url;
-}
-
 function getArtistColor(artist) {
   const key = (artist || '').toLowerCase();
   for (const [k, v] of Object.entries(ARTIST_COLORS)) {
@@ -1690,7 +1520,7 @@ function getArtistColor(artist) {
 let ghFileSha = null; // tracks the SHA of tracks.json for updates
 
 async function loadTracks() {
-  // Admin path — use authenticated GitHub API
+  // Always try GitHub first if configured
   if (ghConfigured()) {
     try {
       const c = getGHConfig();
@@ -1705,93 +1535,26 @@ async function loadTracks() {
         localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
         return decoded;
       }
-      if (res.status === 404) { ghFileSha = null; }
-    } catch(e) { console.warn('GitHub API load failed', e); }
+      if (res.status === 404) { ghFileSha = null; return getLocalTracks(); }
+    } catch(e) { console.warn('GitHub load failed, using localStorage', e); }
+  } else {
+    // Guest with no token — try public raw GitHub URL
+    const pub = getPublicRepo();
+    if (pub) {
+      try {
+        const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
+        if (res.ok) {
+          const decoded = await res.json();
+          localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
+          return decoded;
+        }
+      } catch(e) { console.warn('Raw GitHub load failed', e); }
+    }
   }
-
-  // Guest path (and admin fallback) — always try public raw URL
-  const pub = getPublicRepo();
-  if (pub) {
-    try {
-      const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
-      if (res.ok) {
-        const decoded = await res.json();
-        localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
-        return decoded;
-      }
-    } catch(e) { console.warn('Raw GitHub load failed', e); }
-  }
-
   return getLocalTracks();
 }
 
 const DEFAULT_TRACKS = [
-  {
-    "id": 1775076734250,
-    "added": "2026-04-01",
-    "artist": "Lil Uzi Vert",
-    "title": "Could've Died",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775076626/Could_ve_Died_a94c6g.m4a",
-    "tags": ["leak"],
-    "type": "cloudinary",
-    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F879ad4ceab3005b6b4ee05016eb9e599.750x750x1.jpg",
-    "canvas": "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3NjdqejEwYjU4ZzQxaXF0cHlyOGlrMXl1dW5xY2t5dzRiaHlvcG83MCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/XA5RzQBQrOyvhjc4c5/giphy.gif"
-  },
-  {
-    "id": 1775076388042,
-    "added": "2026-04-01",
-    "artist": "Ken Carson",
-    "title": "Peppermint",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775076230/ken_carson_-_peppermint_v1.0_mtrhlg.mp3",
-    "tags": ["leak"],
-    "type": "cloudinary",
-    "coverArt": "https://images.genius.com/75d88762f0f1310559fd62e835361502.1000x1000x1.jpg",
-    "canvas": "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3Mmc1b250cTZnY3UxY2Z6NGt4Z3gxbGx4Y2F6dmo3djZwcW9yMmdvNSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/wzuPeX8dnhvvp7KKxM/giphy.gif"
-  },
-  {
-    "id": 1775076082107,
-    "added": "2026-04-01",
-    "artist": "Destroy Lonely",
-    "title": "Over Dimes",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775075771/OVER_DIMES_rpz4nd.m4a",
-    "tags": ["leak"],
-    "type": "cloudinary",
-    "coverArt": "https://images.genius.com/b80f34d87cfcac2313bf4e0dc6aadc0b.1000x1000x1.jpg",
-    "canvas": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOGo2aWJ4ZnIzbXdwcjg2NGR6MHBueXduZTJtdHEzZHB0dmt3ZWQwdiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/H4fV6T0bQJVnT8C5xW/giphy.gif"
-  },
-  {
-    "id": 1775075915243,
-    "added": "2026-04-01",
-    "artist": "OsamaSon",
-    "title": "Smash",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775075771/smash_sclz57.m4a",
-    "tags": ["leak"],
-    "type": "cloudinary",
-    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F94cf1b51ee3d32f120e5faaabca79228.960x960x1.jpg",
-    "canvas": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZzNmZzkxYmx3djZ2YjdmNjd4ZjBkeWZieHBzdXNkdnQ0eWpjc25kbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Xm5pOQucNsDncerjUc/giphy.gif"
-  },
-  {
-    "id": 1775074985455,
-    "added": "2026-04-01",
-    "artist": "1oneam",
-    "title": "Twin Flame",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775073823/1oneam_-_Twin_Flame_prod._tdf_wkdhro.mp3",
-    "tags": ["leak"],
-    "type": "cloudinary",
-    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F4cebd096ef9527a7dc79498de485df92.500x500x1.jpg",
-    "canvas": "https://media1.tenor.com/m/Qy9vAdfd7FwAAAAd/1oneam.gif"
-  },
-  {
-    "id": 1775074343162,
-    "added": "2026-04-01",
-    "artist": "Playboi Carti",
-    "title": "I Promise You",
-    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775073821/13._i_promise_you_enxouv.mp3",
-    "tags": ["leak"],
-    "type": "cloudinary",
-    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fd7631f044b81be6b0884cec8e0a3e53b.500x500x1.jpg",
-    "canvas": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExanllOGN3bnBlcm8zb3MzaTQxM2k2NHJlcWx5c3VqNXlyMzUyeTh1eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/iKWCtb7guLOX4srjFC/giphy.gif"
-  },
   {
     "id": 1775065451871,
     "added": "2026-04-01",
@@ -1800,7 +1563,7 @@ const DEFAULT_TRACKS = [
     "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775065294/White_Folk_b390op.mp3",
     "tags": ["unreleased"],
     "type": "cloudinary",
-    "coverArt": "https://images.genius.com/4896064b9d3b479cae8a43306918c880.1000x1000x1.png"
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F4896064b9d3b479cae8a43306918c880.1000x1000x1.png"
   },
   {
     "id": 1775054388929,
@@ -1810,7 +1573,17 @@ const DEFAULT_TRACKS = [
     "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775050943/Friday_benjicold_patrick_bella.mp3_ms96b4.mp3",
     "tags": ["unreleased"],
     "type": "cloudinary",
-    "coverArt": "https://images.genius.com/516736724907f222aa0ec369d76e0410.1000x1000x1.jpg"
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F516736724907f222aa0ec369d76e0410.1000x1000x1.jpg"
+  },
+  {
+    "id": 1775002516005,
+    "added": "2026-04-01",
+    "artist": "Nine Vicious",
+    "title": "April 3rd",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/fl_attachment/v1774978652/April_3rd_patrick_ahmad.mp3_mitn4b.mp3",
+    "tags": ["unreleased"],
+    "type": "url",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F472d659dc27c58164b7a9de3a3ffabf1.1000x1000x1.jpg"
   },
   {
     "id": 1774999043975,
@@ -1821,6 +1594,16 @@ const DEFAULT_TRACKS = [
     "tags": ["leak"],
     "type": "cloudinary",
     "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fc1fdcb43f47e4fd6a3fae201d03701fa.999x1000x1.png"
+  },
+  {
+    "id": 1774996681539,
+    "added": "2026-03-31",
+    "artist": "Nine Vicious",
+    "title": "Gimmie A Month",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1774978662/Gimmie_A_Month.mp3_azunww.mp3",
+    "tags": ["unreleased"],
+    "type": "url",
+    "coverArt": "https://t2.genius.com/unsafe/555x0/https%3A%2F%2Fimages.genius.com%2Fdd68e4eac689e5dadead00d032a36b19.499x499x1.jpg"
   }
 ];
 
@@ -1996,8 +1779,7 @@ function renderTracks() {
     const pIdx = playlist.findIndex(x=>x.id===t.id);
     const isCurrentlyPlaying = currentTrackIdx === pIdx && isPlaying;
     const sourceBadge = t.type === 'cloudinary' ? `<span class="source-badge cloudinary">☁ CDN</span>` : t.type === 'file' ? `<span class="source-badge file">📁 LOCAL</span>` : '';
-    const rawCover = t.coverArt || '';
-    const coverSrc = rawCover ? proxyImg(rawCover) : '';
+    const coverSrc = t.coverArt || '';
     return `
       <div class="track-card${isCurrentlyPlaying?' playing':''}" style="--artist-color:${color}" data-id="${t.id}">
         <div class="track-card-top">
@@ -2013,7 +1795,6 @@ function renderTracks() {
             ${hasAudio ? `<button class="icon-btn play-btn${isCurrentlyPlaying?' active':''}" onclick="handlePlay(${t.id})" title="${isCurrentlyPlaying?'Pause':'Play'}">${isCurrentlyPlaying?'⏸':'▶'}</button>` : ''}
             ${t.url && t.type!=='file' ? `<button class="icon-btn" title="Download" style="color:var(--muted)" onclick="downloadTrack(${t.id})">↓</button>` : ''}
             <button class="icon-btn" onclick="copyLink(${t.id})" title="Copy">⟁</button>
-            <button class="icon-btn edit-btn" onclick="openEditModal(${t.id})" title="Edit">✎</button>
             <button class="icon-btn delete-btn" onclick="deleteTrack(${t.id})" title="Delete">✕</button>
           </div>
         </div>
@@ -2126,34 +1907,22 @@ function playAtIndex(idx) {
   playerBar.classList.add('visible');
   setArtistBG(t.artist);
   showCanvas(t); // ◈ Vault Canvas
-  maybeRefreshLyrics(t); // ♩ Lyrics
 
   // Load cover art into vinyl
   const vinylImg = document.getElementById('player-cover-img');
   vinylImg.classList.remove('loaded');
-
-  function setVinylCover(url) {
-    // Use raw URL directly — proxyImg (weserv.nl) breaks vinyl image loading
-    vinylImg.src = url;
-    vinylImg.onload = () => vinylImg.classList.add('loaded');
-    vinylImg.onerror = () => {
-      // If direct URL fails, try weserv.nl as fallback
-      if (!url.includes('weserv.nl')) {
-        vinylImg.src = 'https://images.weserv.nl/?url=' + encodeURIComponent(url) + '&w=400&output=jpg&q=90';
-        vinylImg.onload = () => vinylImg.classList.add('loaded');
-      }
-    };
-    updateVinylCard(t, url);
-  }
-
   if (t.coverArt) {
-    setVinylCover(t.coverArt);
+    vinylImg.src = t.coverArt;
+    vinylImg.onload = () => vinylImg.classList.add('loaded');
+    updateVinylCard(t, t.coverArt);
   } else {
     updateVinylCard(t, null);
     fetchCoverArt(t.artist, t.title).then(url => {
       if (url) {
         t.coverArt = url;
-        setVinylCover(url);
+        vinylImg.src = url;
+        vinylImg.onload = () => vinylImg.classList.add('loaded');
+        updateVinylCard(t, url);
       }
     });
   }
@@ -3245,9 +3014,8 @@ function updateVinylCard(track, coverUrl) {
   const img = document.getElementById('vac-img');
   const noArt = document.getElementById('vac-no-art');
   if (coverUrl) {
-    img.src = coverUrl; // already proxied by caller
+    img.src = coverUrl;
     img.style.display = 'block';
-    img.onerror = () => { img.style.display = 'none'; noArt.style.display = 'flex'; };
     noArt.style.display = 'none';
   } else {
     img.style.display = 'none';
@@ -3351,222 +3119,6 @@ function setupCoverPicker({ btnId, artistId, titleId, coverInputId, resultsId, p
 //   Upload as image (GIF stays animated) or video (.mp4/.webm)
 //   Use the delivery URL: https://res.cloudinary.com/<cloud>/image/upload/<id>.gif
 // ─────────────────────────────────────────────────────────────────
-
-// ===== LYRICS =====
-let lyricsVisible = false;
-let lyricsCache = {};
-let lyricsCurrentId = null;
-
-const lyricsToggleBtn = document.getElementById('lyrics-toggle-btn');
-const lyricsOverlay   = document.getElementById('lyrics-overlay');
-const lyricsContent   = document.getElementById('lyrics-content');
-const lyricsStatus    = document.getElementById('lyrics-status');
-
-lyricsToggleBtn.addEventListener('click', () => {
-  lyricsVisible = !lyricsVisible;
-  lyricsToggleBtn.classList.toggle('active', lyricsVisible);
-  lyricsOverlay.classList.toggle('visible', lyricsVisible);
-  if (lyricsVisible) {
-    const playlist = getPlaylist();
-    const t = playlist[currentTrackIdx];
-    if (t) loadLyrics(t);
-  }
-  showToast(lyricsVisible ? '♩ LYRICS ON' : '♩ LYRICS OFF', '');
-});
-
-function normStr(s) {
-  return (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-}
-function scoreMatch(result, artist, title) {
-  const rTitle  = normStr(result.title);
-  const rArtist = normStr(result.primary_artist && result.primary_artist.name);
-  const nTitle  = normStr(title);
-  const nArtist = normStr(artist);
-  let score = 0;
-  if (rTitle === nTitle)              score += 4;
-  else if (rTitle.includes(nTitle))   score += 2;
-  else if (nTitle.includes(rTitle))   score += 1;
-  if (rArtist === nArtist)            score += 3;
-  else if (rArtist.includes(nArtist)) score += 2;
-  else if (nArtist.includes(rArtist)) score += 1;
-  return score;
-}
-
-async function loadLyrics(track) {
-  const key = normStr(track.artist) + '||' + normStr(track.title);
-  lyricsStatus.textContent = '';
-  if (lyricsCache[key]) { renderLyrics(lyricsCache[key]); return; }
-  lyricsContent.innerHTML = '';
-  lyricsStatus.textContent = 'SEARCHING…';
-
-  // Stage 1: Genius official API via corsproxy.io
-  try {
-    const query = encodeURIComponent(track.artist + ' ' + track.title);
-    const GTOKEN = 'SiSBNQfBDiPAGbEPFnTCDgGfMoFyAVBJfiBnZJfKxpXCEfEFSmrwkrMVqvVJFnTq';
-    const apiUrl = 'https://corsproxy.io/?url=' + encodeURIComponent('https://api.genius.com/search?q=' + query);
-    const res = await fetch(apiUrl, { headers: { 'Authorization': 'Bearer ' + GTOKEN } });
-    if (res.ok) {
-      const data = await res.json();
-      const hits = (data.response && data.response.hits) || [];
-      let best = null, bestScore = 0;
-      hits.forEach(function(h) {
-        const s = scoreMatch(h.result, track.artist, track.title);
-        if (s > bestScore) { bestScore = s; best = h.result; }
-      });
-      if (best && bestScore >= 2) {
-        const pageUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://genius.com' + best.path);
-        const pRes = await fetch(pageUrl);
-        if (pRes.ok) {
-          const pData = await pRes.json();
-          const lyrics = extractGeniusLyrics(pData.contents || '');
-          if (lyrics) { lyricsCache[key] = lyrics; renderLyrics(lyrics); return; }
-        }
-      }
-    }
-  } catch(e) { console.warn('Genius stage failed', e); }
-
-  // Stage 3: lyrics.ovh
-  try {
-    const r = await fetch('https://api.lyrics.ovh/v1/' + encodeURIComponent(track.artist) + '/' + encodeURIComponent(track.title));
-    if (r.ok) {
-      const d = await r.json();
-      if (d.lyrics && d.lyrics.trim()) { lyricsCache[key] = d.lyrics; renderLyrics(d.lyrics); return; }
-    }
-  } catch(e) {}
-
-  // Stage 4: clean title
-  const cleanTitle = track.title.replace(/\(.*?\)/g,'').replace(/feat\.?.*/i,'').trim();
-  if (cleanTitle !== track.title) {
-    try {
-      const r = await fetch('https://api.lyrics.ovh/v1/' + encodeURIComponent(track.artist) + '/' + encodeURIComponent(cleanTitle));
-      if (r.ok) {
-        const d = await r.json();
-        if (d.lyrics && d.lyrics.trim()) { lyricsCache[key] = d.lyrics; renderLyrics(d.lyrics); return; }
-      }
-    } catch(e) {}
-  }
-
-  lyricsStatus.textContent = 'LYRICS NOT FOUND';
-  lyricsContent.innerHTML = '';
-}
-
-function extractGeniusLyrics(html) {
-  try {
-    const m = html.match(/"lyrics":{"body":{"html":"(.*?)"}}/s);
-    if (m) {
-      return m[1].replace(/\\n/g,'\n').replace(/\\"/g,'"')
-        .replace(/<br\/?>/gi,'\n').replace(/<[^>]+>/g,'').trim();
-    }
-  } catch(e) {}
-  try {
-    const matches = [...html.matchAll(/data-lyrics-container[^>]*>([\s\S]*?)<\/div>/g)];
-    if (matches.length) {
-      const raw = matches.map(function(m){ return m[1]; }).join('\n')
-        .replace(/<br\/?>/gi,'\n').replace(/<[^>]+>/g,'')
-        .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
-      if (raw.trim().length > 50) return raw.trim();
-    }
-  } catch(e) {}
-  return null;
-}
-
-// ===== EDIT TRACK MODAL =====
-let editingTrackId = null;
-
-function openEditModal(id) {
-  if (!isAdmin) return;
-  const t = tracks.find(x => x.id === id);
-  if (!t) return;
-  editingTrackId = id;
-
-  // Populate fields
-  document.getElementById('edit-track-label').textContent = `${t.artist} — ${t.title}`;
-  document.getElementById('edit-artist').value = t.artist || '';
-  document.getElementById('edit-title').value  = t.title  || '';
-  document.getElementById('edit-url').value    = t.url    || '';
-  document.getElementById('edit-tags').value   = (t.tags || []).join(', ');
-  document.getElementById('edit-cover').value  = t.coverArt || '';
-  document.getElementById('edit-canvas').value = t.canvas   || '';
-
-  // Thumb preview
-  const thumb = document.getElementById('edit-cover-thumb');
-  if (t.coverArt) {
-    thumb.src = t.coverArt;
-    thumb.classList.remove('hidden');
-  } else {
-    thumb.classList.add('hidden');
-  }
-
-  // Reset cover picker state
-  document.getElementById('edit-cover-results').classList.remove('visible');
-  document.getElementById('edit-cover-preview').classList.remove('visible');
-
-  openModal('edit-modal');
-}
-
-document.getElementById('edit-modal-close').addEventListener('click', () => closeModal('edit-modal'));
-document.getElementById('edit-cancel-btn').addEventListener('click',  () => closeModal('edit-modal'));
-
-document.getElementById('edit-save-btn').addEventListener('click', async () => {
-  if (!isAdmin || !editingTrackId) return;
-  const idx = tracks.findIndex(x => x.id === editingTrackId);
-  if (idx === -1) return;
-
-  const artist   = document.getElementById('edit-artist').value.trim();
-  const title    = document.getElementById('edit-title').value.trim();
-  const url      = document.getElementById('edit-url').value.trim();
-  const tags     = document.getElementById('edit-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
-  const coverArt = document.getElementById('edit-cover').value.trim() || undefined;
-  const canvas   = document.getElementById('edit-canvas').value.trim() || undefined;
-
-  if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
-
-  // Merge — preserve fields we're not editing (type, added, id, etc.)
-  tracks[idx] = { ...tracks[idx], artist, title, url, tags, coverArt, canvas };
-
-  await saveTracks(tracks);
-  renderFilters();
-  renderTracks();
-  closeModal('edit-modal');
-  showToast('TRACK UPDATED ✓', 'success');
-
-  // If this is the currently playing track, refresh player info
-  const playlist = getPlaylist();
-  const pIdx = playlist.findIndex(x => x.id === editingTrackId);
-  if (pIdx === currentTrackIdx) {
-    document.getElementById('player-title').textContent = title;
-    document.getElementById('player-artist').textContent = artist.toUpperCase();
-    if (coverArt) {
-      const vinylImg = document.getElementById('player-cover-img');
-      vinylImg.src = coverArt;
-      vinylImg.onload = () => vinylImg.classList.add('loaded');
-    }
-  }
-
-  editingTrackId = null;
-});
-
-// Cover art picker for edit modal
-const getEditCover = setupCoverPicker({
-  btnId: 'edit-find-cover-btn',
-  artistId: 'edit-artist',
-  titleId: 'edit-title',
-  coverInputId: 'edit-cover',
-  resultsId: 'edit-cover-results',
-  previewId: 'edit-cover-preview',
-  previewImgId: 'edit-cover-preview-img',
-  clearId: 'edit-cover-clear-btn'
-});
-
-// Update cover thumb live when URL changes
-document.getElementById('edit-cover').addEventListener('input', (e) => {
-  const thumb = document.getElementById('edit-cover-thumb');
-  const val = e.target.value.trim();
-  if (val) { thumb.src = val; thumb.classList.remove('hidden'); }
-  else { thumb.classList.add('hidden'); }
-});
-
-
 const ARTIST_CANVAS = {
   'nine vicious':  '',   // paste GIF/MP4 URL here e.g. 'https://media.giphy.com/media/xyz/giphy.gif'
   'prettifun':     '',
@@ -3723,8 +3275,8 @@ canvasToggleBtn.classList.add('active');
 
 // Hook canvas into play/pause events
 // (playAtIndex calls showCanvas; pause hides it; resume resumes it)
-audio.addEventListener('pause', () => { if (!audio.ended) { hideCanvas(); lyricsOverlay.classList.remove('visible'); } });
-audio.addEventListener('play',  () => { resumeCanvas(); if (lyricsVisible) lyricsOverlay.classList.add('visible'); });
+audio.addEventListener('pause', () => { if (!audio.ended) hideCanvas(); });
+audio.addEventListener('play',  () => { resumeCanvas(); });
 
 // =====================================================================
 
@@ -3738,16 +3290,18 @@ resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 setDefaultBG();
 
-// Always show DEFAULT_TRACKS immediately — never blank on load
-tracks = DEFAULT_TRACKS;
+// Seed default tracks immediately so the page never shows empty
+tracks = getLocalTracks();
 renderFilters();
 renderTracks();
 
-// Then load from GitHub — always overwrite with live data
+// Then async-load from GitHub (may update the list with newer tracks)
 loadTracks().then(loaded => {
-  tracks = (loaded && loaded.length > 0) ? loaded : DEFAULT_TRACKS;
-  renderFilters();
-  renderTracks();
+  if (loaded && loaded.length > 0) {
+    tracks = loaded;
+    renderFilters();
+    renderTracks();
+  }
   if (isAdmin && !ghConfigured()) {
     showToast('GITHUB NOT SET UP — CLICK ⚙ TO CONFIGURE', 'error');
   }
