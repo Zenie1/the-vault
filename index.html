@@ -1655,6 +1655,27 @@ const ARTIST_COLORS = {
   'osamaon': '#c8ff3c',
 };
 
+// ===== IMAGE PROXY =====
+// Genius URLs are structured as t2.genius.com/unsafe/SIZExSIZE/<encoded-inner-url>
+// We extract the real images.genius.com URL and proxy it through weserv.nl
+function proxyImg(url) {
+  if (!url) return '';
+  // Extract inner URL from Genius proxy format
+  // e.g. https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fabc.jpg
+  const geniusMatch = url.match(/t2\.genius\.com\/unsafe\/[^/]+\/(.+)/);
+  if (geniusMatch) {
+    try {
+      const innerUrl = decodeURIComponent(geniusMatch[1]);
+      return 'https://images.weserv.nl/?url=' + encodeURIComponent(innerUrl) + '&w=400&output=jpg&q=90';
+    } catch(e) {}
+  }
+  // Fallback: proxy any genius.com image directly
+  if (url.includes('genius.com')) {
+    return 'https://images.weserv.nl/?url=' + encodeURIComponent(url) + '&w=400&output=jpg&q=90';
+  }
+  return url;
+}
+
 function getArtistColor(artist) {
   const key = (artist || '').toLowerCase();
   for (const [k, v] of Object.entries(ARTIST_COLORS)) {
@@ -1929,9 +1950,7 @@ function renderTracks() {
     const isCurrentlyPlaying = currentTrackIdx === pIdx && isPlaying;
     const sourceBadge = t.type === 'cloudinary' ? `<span class="source-badge cloudinary">☁ CDN</span>` : t.type === 'file' ? `<span class="source-badge file">📁 LOCAL</span>` : '';
     const rawCover = t.coverArt || '';
-    const coverSrc = rawCover && (rawCover.includes('genius.com') || rawCover.includes('t2.genius'))
-      ? 'https://images.weserv.nl/?url=' + encodeURIComponent(rawCover) + '&w=300&output=jpg'
-      : rawCover;
+    const coverSrc = rawCover ? proxyImg(rawCover) : '';
     return `
       <div class="track-card${isCurrentlyPlaying?' playing':''}" style="--artist-color:${color}" data-id="${t.id}">
         <div class="track-card-top">
@@ -2065,15 +2084,6 @@ function playAtIndex(idx) {
   // Load cover art into vinyl
   const vinylImg = document.getElementById('player-cover-img');
   vinylImg.classList.remove('loaded');
-
-  function proxyImg(url) {
-    if (!url) return '';
-    // Proxy genius/external images through weserv to avoid hotlink blocks
-    if (url.includes('genius.com') || url.includes('t2.genius')) {
-      return 'https://images.weserv.nl/?url=' + encodeURIComponent(url) + '&w=300&output=jpg';
-    }
-    return url;
-  }
 
   function setVinylCover(url) {
     const src = proxyImg(url);
