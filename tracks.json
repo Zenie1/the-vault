@@ -37,7 +37,8 @@
     ],
     "type": "cloudinary",
     "coverArt": "https://images.genius.com/75d88762f0f1310559fd62e835361502.1000x1000x1.jpg",
-    "canvas": "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3Mmc1b250cTZnY3UxY2Z6NGt4Z3gxbGx4Y2F6dmo3djZwcW9yMmdvNSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/wzuPeX8dnhvvp7KKxM/giphy.gif"
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3Mmc1b250cTZnY3UxY2Z6NGt4Z3gxbGx4Y2F6dmo3djZwcW9yMmdvNSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/wzuPeX8dnhvvp7KKxM/giphy.gif",
+    "lyricsUrl": "https://genius.com/Ken-carson-peppermint-lyrics"
   },
   {
     "id": 1775076082107,
@@ -50,7 +51,8 @@
     ],
     "type": "cloudinary",
     "coverArt": "https://images.genius.com/b80f34d87cfcac2313bf4e0dc6aadc0b.1000x1000x1.jpg",
-    "canvas": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOGo2aWJ4ZnIzbXdwcjg2NGR6MHBueXduZTJtdHEzZHB0dmt3ZWQwdiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/H4fV6T0bQJVnT8C5xW/giphy.gif"
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOGo2aWJ4ZnIzbXdwcjg2NGR6MHBueXduZTJtdHEzZHB0dmt3ZWQwdiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/H4fV6T0bQJVnT8C5xW/giphy.gif",
+    "lyricsUrl": "https://genius.com/Destroy-lonely-over-dimes-lyrics"
   },
   {
     "id": 1775075915243,
@@ -63,7 +65,8 @@
     ],
     "type": "cloudinary",
     "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F94cf1b51ee3d32f120e5faaabca79228.960x960x1.jpg",
-    "canvas": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZzNmZzkxYmx3djZ2YjdmNjd4ZjBkeWZieHBzdXNkdnQ0eWpjc25kbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Xm5pOQucNsDncerjUc/giphy.gif"
+    "canvas": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExZzNmZzkxYmx3djZ2YjdmNjd4ZjBkeWZieHBzdXNkdnQ0eWpjc25kbSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Xm5pOQucNsDncerjUc/giphy.gif",
+    "lyricsUrl": "https://genius.com/Osamason-smash-lyrics"
   },
   {
     "id": 1775074985455,
@@ -89,7 +92,8 @@
     ],
     "type": "cloudinary",
     "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fd7631f044b81be6b0884cec8e0a3e53b.500x500x1.jpg",
-    "canvas": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExanllOGN3bnBlcm8zb3MzaTQxM2k2NHJlcWx5c3VqNXlyMzUyeTh1eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/iKWCtb7guLOX4srjFC/giphy.gif"
+    "canvas": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExanllOGN3bnBlcm8zb3MzaTQxM2k2NHJlcWx5c3VqNXlyMzUyeTh1eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/iKWCtb7guLOX4srjFC/giphy.gif",
+    "lyricsUrl": "https://genius.com/Playboi-carti-i-promise-u-lyrics"
   },
   {
     "id": 1775065451871,
@@ -102,7 +106,8 @@
     ],
     "type": "cloudinary",
     "coverArt": "https://images.genius.com/4896064b9d3b479cae8a43306918c880.1000x1000x1.png",
-    "canvas": "https://media1.tenor.com/m/YriWNnhwbJQAAAAC/che-sayso-says.gif"
+    "canvas": "https://media1.tenor.com/m/YriWNnhwbJQAAAAC/che-sayso-says.gif",
+    "lyricsUrl": "https://genius.com/Che-white-folk-lyrics"
   },
   {
     "id": 1775054388929,
@@ -115,7 +120,8 @@
     ],
     "type": "cloudinary",
     "coverArt": "https://images.genius.com/516736724907f222aa0ec369d76e0410.1000x1000x1.jpg",
-    "canvas": "https://media1.tenor.com/m/pg72pNFkKDMAAAAd/nine-vicious-for-nothing.gif"
+    "canvas": "https://media1.tenor.com/m/pg72pNFkKDMAAAAd/nine-vicious-for-nothing.gif",
+    "lyricsUrl": "https://genius.com/Nine-vicious-friday-lyrics"
   },
   {
     "id": 1774999043975,
@@ -128,6 +134,7 @@
     ],
     "type": "cloudinary",
     "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fc1fdcb43f47e4fd6a3fae201d03701fa.999x1000x1.png",
-    "canvas": "https://media1.tenor.com/m/33g97YilvJ8AAAAC/light-pretti.gif"
+    "canvas": "https://media1.tenor.com/m/33g97YilvJ8AAAAC/light-pretti.gif",
+    "lyricsUrl": "https://genius.com/Prettifun-dead-lyrics"
   }
 ]
