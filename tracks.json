@@ -1,5 +1,19 @@
 [
   {
+    "id": 1775327064245,
+    "added": "2026-04-04",
+    "artist": "Playboi Carti",
+    "title": "Play This",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775326969/PLAY_THIS_320kbps_pfnngm.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F241ae11fcc71426b35e56e4549760b5a.1000x1000x1.png",
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzhic2d1d3VpajY5YTJqemM1dHh0cXNiZGM3cm14MG1vaGcxMDlybCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/V8buMNgsqv3ursI13A/giphy.gif",
+    "lyricsUrl": "https://genius.com/Playboi-carti-play-this-lyrics"
+  },
+  {
     "id": 1775311663526,
     "added": "2026-04-04",
     "artist": "Nine Vicious",
