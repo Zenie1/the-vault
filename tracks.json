@@ -1,5 +1,19 @@
 [
   {
+    "id": 1775311663526,
+    "added": "2026-04-04",
+    "artist": "Nine Vicious",
+    "title": "Pain",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775309003/pain_ahmad.mp3_znzoub.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F507fced80745a2b25cd3eb1ab188ffad.499x499x1.jpg",
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExeHNmOTcyM2t4YmR2bXJqZTl5aDJ1enNiZmYwYzZ6cnFoN2VsbXgxaSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/v3WsqZ3xEX4pKtFqpG/giphy.gif",
+    "lyricsUrl": "https://genius.com/Nine-vicious-pain-lyrics"
+  },
+  {
     "id": 1775309430053,
     "added": "2026-04-04",
     "artist": "Nine Vicious",
