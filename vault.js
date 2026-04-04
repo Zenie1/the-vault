@@ -487,6 +487,8 @@ const waveCtx = waveCanvas.getContext('2d');
 let analyser, sourceNode, audioCtx, freqData, waveAnimFrame;
 let smoothedBars = [];
 
+let waveformMuteGain = null; // controls speaker output independently of analyser
+
 function setupAudioContext() {
   if (audioCtx && sourceNode) return; // already wired up — do nothing
   try {
@@ -497,14 +499,21 @@ function setupAudioContext() {
     analyser.fftSize = 512;
     analyser.smoothingTimeConstant = 0.7;
     freqData = new Uint8Array(analyser.frequencyBinCount);
-    // Only create the source node once — recreating it after audio plays taints the element
+
+    // MuteGain sits between analyser and speakers
+    // Analyser always sees full signal → waveform always works
+    // muteGain.gain = 0 silences speakers when stems are active
+    waveformMuteGain = audioCtx.createGain();
+    waveformMuteGain.gain.value = 1;
+
     if (!sourceNode) {
       sourceNode = audioCtx.createMediaElementSource(audio);
     }
+    // sourceNode → analyser → muteGain → destination
     sourceNode.connect(analyser);
-    analyser.connect(audioCtx.destination);
+    analyser.connect(waveformMuteGain);
+    waveformMuteGain.connect(audioCtx.destination);
   } catch(e) {
-    // If Web Audio setup fails entirely, waveform won't animate but audio still plays
     console.warn('Web Audio setup failed:', e);
     audioCtx = null; sourceNode = null; analyser = null;
   }
@@ -908,15 +917,22 @@ audio.addEventListener('timeupdate', () => {
 
 document.getElementById('volume-slider').addEventListener('input', (e) => {
   const val = parseFloat(e.target.value);
-  // When stems are open, control stemMaster instead of audio element
   if (stemOpen && stemMaster && stemAudioCtx) {
+    // Control stem master volume
     const now = stemAudioCtx.currentTime;
     stemMaster.gain.cancelScheduledValues(now);
     stemMaster.gain.setValueAtTime(stemMaster.gain.value, now);
     stemMaster.gain.linearRampToValueAtTime(val, now + 0.03);
-    audio.volume = 0; // keep original silent
+    audio.volume = 1; // keep PCM flowing for waveform
   } else {
     audio.volume = val;
+    // Also control waveform muteGain for normal playback
+    if (waveformMuteGain && audioCtx) {
+      const now = audioCtx.currentTime;
+      waveformMuteGain.gain.cancelScheduledValues(now);
+      waveformMuteGain.gain.setValueAtTime(waveformMuteGain.gain.value, now);
+      waveformMuteGain.gain.linearRampToValueAtTime(val, now + 0.03);
+    }
   }
   const icon = document.getElementById('vol-icon');
   icon.textContent = val === 0 ? '🔇' : val < 0.5 ? '🔉' : '🔊';
@@ -924,27 +940,38 @@ document.getElementById('volume-slider').addEventListener('input', (e) => {
 
 document.getElementById('vol-icon').addEventListener('click', () => {
   const slider = document.getElementById('volume-slider');
+  const restore = 0.8;
   const isMuted = stemOpen
-    ? (stemMaster && stemMaster.gain.value === 0)
-    : (audio.volume === 0);
+    ? (stemMaster ? stemMaster.gain.value === 0 : false)
+    : (waveformMuteGain ? waveformMuteGain.gain.value === 0 : audio.volume === 0);
   if (!isMuted) {
-    // Mute
+    // Mute everything
     if (stemOpen && stemMaster && stemAudioCtx) {
       stemMaster.gain.cancelScheduledValues(stemAudioCtx.currentTime);
       stemMaster.gain.setValueAtTime(0, stemAudioCtx.currentTime);
     }
-    audio.volume = 0; slider.value = 0;
+    if (waveformMuteGain && audioCtx) {
+      waveformMuteGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      waveformMuteGain.gain.setValueAtTime(0, audioCtx.currentTime);
+    }
+    audio.volume = stemOpen ? 1 : 0;
+    slider.value = 0;
     document.getElementById('vol-icon').textContent = '🔇';
   } else {
     // Unmute
-    const restore = 0.8;
     if (stemOpen && stemMaster && stemAudioCtx) {
       const now = stemAudioCtx.currentTime;
       stemMaster.gain.cancelScheduledValues(now);
       stemMaster.gain.setValueAtTime(0, now);
       stemMaster.gain.linearRampToValueAtTime(restore, now + 0.04);
-      audio.volume = 0;
+      audio.volume = 1;
     } else {
+      if (waveformMuteGain && audioCtx) {
+        const now = audioCtx.currentTime;
+        waveformMuteGain.gain.cancelScheduledValues(now);
+        waveformMuteGain.gain.setValueAtTime(0, now);
+        waveformMuteGain.gain.linearRampToValueAtTime(restore, now + 0.04);
+      }
       audio.volume = restore;
     }
     slider.value = restore;
@@ -2322,8 +2349,12 @@ function openStemPanel() {
   document.getElementById('lyrics-panel').classList.add('stem-open');
   document.querySelector('.app').style.paddingBottom =
     lyricsOpen ? 'calc(120px + 52vh + 200px)' : 'calc(120px + 200px)';
-  // Silence the original full-mix — stems ARE the song now
-  audio.volume = 0;
+  // Silence speakers via muteGain — analyser still gets full PCM for waveform
+  if (waveformMuteGain && audioCtx) {
+    waveformMuteGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    waveformMuteGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  }
+  audio.volume = 1; // keep PCM flowing to Web Audio graph
   const playlist = getPlaylist();
   const t = playlist[currentTrackIdx];
   if (t) maybeLoadStems(t);
@@ -2338,9 +2369,15 @@ function closeStemPanel() {
   document.querySelector('.app').style.paddingBottom =
     lyricsOpen ? 'calc(120px + 52vh)' : '';
   stopStemVU();
-  // Restore original audio volume from the slider position
-  const slider = document.getElementById('volume-slider');
-  audio.volume = parseFloat(slider.value);
+  // Restore speaker output via muteGain
+  const sliderVal = parseFloat(document.getElementById('volume-slider').value);
+  if (waveformMuteGain && audioCtx) {
+    const now = audioCtx.currentTime;
+    waveformMuteGain.gain.cancelScheduledValues(now);
+    waveformMuteGain.gain.setValueAtTime(0, now);
+    waveformMuteGain.gain.linearRampToValueAtTime(sliderVal, now + 0.05);
+  }
+  audio.volume = sliderVal;
 }
 
 stemToggleBtn.addEventListener('click', () => {
@@ -2369,13 +2406,14 @@ function maybeLoadStems(track) {
 
   stemChannelsEl.style.display = 'flex';
   stemUnavailEl.style.display  = 'none';
-  // Keep original audio silent while stems are active
-  audio.volume = 0;
-  // Sync stemMaster volume to current slider position
-  const sliderVal = parseFloat(document.getElementById('volume-slider').value);
-  if (stemMaster && stemAudioCtx) {
-    stemMaster.gain.setValueAtTime(sliderVal, stemAudioCtx.currentTime);
+  // Silence speakers, keep PCM flowing for waveform
+  if (waveformMuteGain && audioCtx) {
+    waveformMuteGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    waveformMuteGain.gain.setValueAtTime(0, audioCtx.currentTime);
   }
+  audio.volume = 1;
+  const sliderVal = parseFloat(document.getElementById('volume-slider').value);
+  if (stemMaster && stemAudioCtx) stemMaster.gain.setValueAtTime(sliderVal, stemAudioCtx.currentTime);
 
   if (!stemAudioCtx || stemAudioCtx.state === 'closed') {
     stemAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2548,9 +2586,9 @@ function teardownStems() {
   stopStemVU();
   STEM_KEYS.forEach(k => {
     const ch = stemChannels[k];
-    if (ch.source)   { try { ch.source.stop(); } catch(e) {} try { ch.source.disconnect(); } catch(e) {} ch.source   = null; }
-    if (ch.gain)     { try { ch.gain.disconnect(); } catch(e) {}     ch.gain     = null; }
-    if (ch.analyser) { try { ch.analyser.disconnect(); } catch(e) {} ch.analyser = null; }
+    if (ch.source)   { try { ch.source.stop(); } catch(e) {} ch.source.disconnect();   ch.source   = null; }
+    if (ch.gain)     { ch.gain.disconnect();     ch.gain     = null; }
+    if (ch.analyser) { ch.analyser.disconnect(); ch.analyser = null; }
     ch.buf = null; ch.muted = false; ch.faderVal = 1;
     const fader = document.getElementById(`stem-fader-${k}`);
     const mute  = document.getElementById(`stem-mute-${k}`);
@@ -2558,9 +2596,13 @@ function teardownStems() {
     if (mute)  { mute.classList.remove('muted'); mute.textContent = 'MUTE'; mute.disabled = false; mute.style.opacity = ''; }
   });
   if (stemMaster) { try { stemMaster.disconnect(); } catch(e) {} stemMaster = null; }
-  // Restore original audio volume when stems are torn down
-  if (stemOpen) {
+  // Restore speaker output when stems tear down mid-session
+  if (stemOpen && waveformMuteGain && audioCtx) {
     const sliderVal = parseFloat(document.getElementById('volume-slider').value);
+    const now = audioCtx.currentTime;
+    waveformMuteGain.gain.cancelScheduledValues(now);
+    waveformMuteGain.gain.setValueAtTime(0, now);
+    waveformMuteGain.gain.linearRampToValueAtTime(sliderVal, now + 0.05);
     audio.volume = sliderVal;
   }
 }
