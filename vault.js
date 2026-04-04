@@ -907,15 +907,49 @@ audio.addEventListener('timeupdate', () => {
 });
 
 document.getElementById('volume-slider').addEventListener('input', (e) => {
-  audio.volume = parseFloat(e.target.value);
+  const val = parseFloat(e.target.value);
+  // When stems are open, control stemMaster instead of audio element
+  if (stemOpen && stemMaster && stemAudioCtx) {
+    const now = stemAudioCtx.currentTime;
+    stemMaster.gain.cancelScheduledValues(now);
+    stemMaster.gain.setValueAtTime(stemMaster.gain.value, now);
+    stemMaster.gain.linearRampToValueAtTime(val, now + 0.03);
+    audio.volume = 0; // keep original silent
+  } else {
+    audio.volume = val;
+  }
   const icon = document.getElementById('vol-icon');
-  icon.textContent = e.target.value == 0 ? '🔇' : e.target.value < 0.5 ? '🔉' : '🔊';
+  icon.textContent = val === 0 ? '🔇' : val < 0.5 ? '🔉' : '🔊';
 });
 
 document.getElementById('vol-icon').addEventListener('click', () => {
   const slider = document.getElementById('volume-slider');
-  if (audio.volume > 0) { audio.volume = 0; slider.value = 0; document.getElementById('vol-icon').textContent = '🔇'; }
-  else { audio.volume = 0.8; slider.value = 0.8; document.getElementById('vol-icon').textContent = '🔊'; }
+  const isMuted = stemOpen
+    ? (stemMaster && stemMaster.gain.value === 0)
+    : (audio.volume === 0);
+  if (!isMuted) {
+    // Mute
+    if (stemOpen && stemMaster && stemAudioCtx) {
+      stemMaster.gain.cancelScheduledValues(stemAudioCtx.currentTime);
+      stemMaster.gain.setValueAtTime(0, stemAudioCtx.currentTime);
+    }
+    audio.volume = 0; slider.value = 0;
+    document.getElementById('vol-icon').textContent = '🔇';
+  } else {
+    // Unmute
+    const restore = 0.8;
+    if (stemOpen && stemMaster && stemAudioCtx) {
+      const now = stemAudioCtx.currentTime;
+      stemMaster.gain.cancelScheduledValues(now);
+      stemMaster.gain.setValueAtTime(0, now);
+      stemMaster.gain.linearRampToValueAtTime(restore, now + 0.04);
+      audio.volume = 0;
+    } else {
+      audio.volume = restore;
+    }
+    slider.value = restore;
+    document.getElementById('vol-icon').textContent = '🔊';
+  }
 });
 
 function fmt(s) {
@@ -2288,6 +2322,8 @@ function openStemPanel() {
   document.getElementById('lyrics-panel').classList.add('stem-open');
   document.querySelector('.app').style.paddingBottom =
     lyricsOpen ? 'calc(120px + 52vh + 200px)' : 'calc(120px + 200px)';
+  // Silence the original full-mix — stems ARE the song now
+  audio.volume = 0;
   const playlist = getPlaylist();
   const t = playlist[currentTrackIdx];
   if (t) maybeLoadStems(t);
@@ -2302,6 +2338,9 @@ function closeStemPanel() {
   document.querySelector('.app').style.paddingBottom =
     lyricsOpen ? 'calc(120px + 52vh)' : '';
   stopStemVU();
+  // Restore original audio volume from the slider position
+  const slider = document.getElementById('volume-slider');
+  audio.volume = parseFloat(slider.value);
 }
 
 stemToggleBtn.addEventListener('click', () => {
@@ -2330,6 +2369,13 @@ function maybeLoadStems(track) {
 
   stemChannelsEl.style.display = 'flex';
   stemUnavailEl.style.display  = 'none';
+  // Keep original audio silent while stems are active
+  audio.volume = 0;
+  // Sync stemMaster volume to current slider position
+  const sliderVal = parseFloat(document.getElementById('volume-slider').value);
+  if (stemMaster && stemAudioCtx) {
+    stemMaster.gain.setValueAtTime(sliderVal, stemAudioCtx.currentTime);
+  }
 
   if (!stemAudioCtx || stemAudioCtx.state === 'closed') {
     stemAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2375,38 +2421,29 @@ function startStemSource(key, offset = 0) {
   const ch = stemChannels[key];
   if (!ch.buf || !stemAudioCtx) return;
 
-  // Stop and fully disconnect old source first — prevents any overlap
   if (ch.source) {
-    try { ch.source.stop(0); } catch(e) {}
-    try { ch.source.disconnect(); } catch(e) {}
-    ch.source = null;
+    try { ch.source.stop(); } catch(e) {}
+    ch.source.disconnect();
   }
 
-  // Build gain node once per track load
   if (!ch.gain) {
     ch.gain = stemAudioCtx.createGain();
-    // Set exact value — no ramp on creation to avoid bleed
     ch.gain.gain.value = ch.muted ? 0 : ch.faderVal;
     ch.gain.connect(stemMaster);
   }
 
-  // Analyser taps off gain output (for VU only — not in signal chain to output)
   if (!ch.analyser) {
     ch.analyser = stemAudioCtx.createAnalyser();
     ch.analyser.fftSize = 256;
     ch.analyser.smoothingTimeConstant = 0.75;
-    // Tap — connects to analyser but analyser does NOT connect to destination
     ch.gain.connect(ch.analyser);
   }
-
-  // Clamp offset to valid range
-  const safeOffset = Math.max(0, Math.min(offset, ch.buf.duration - 0.01));
 
   ch.source = stemAudioCtx.createBufferSource();
   ch.source.buffer = ch.buf;
   ch.source.loop = audio.loop;
   ch.source.connect(ch.gain);
-  ch.source.start(0, safeOffset);
+  ch.source.start(0, offset % ch.buf.duration);
 }
 
 // ── Sync stems to main audio events ──────────────────────────────
@@ -2425,24 +2462,11 @@ audio.addEventListener('pause', () => {
 });
 
 let lastStemSyncTime = 0;
-let stemSyncPending = false;
 audio.addEventListener('timeupdate', () => {
   if (!stemOpen || !isPlaying) return;
   const now = audio.currentTime;
-  // Only resync on a genuine seek (jump > 2s) — not normal playback drift
-  // Use a debounce flag to prevent rapid restarts causing overlap
-  const delta = now - lastStemSyncTime;
-  if (delta < 0 || delta > 2.0) {
-    if (!stemSyncPending) {
-      stemSyncPending = true;
-      setTimeout(() => {
-        stemSyncPending = false;
-        if (isPlaying && stemOpen) {
-          const seekTo = audio.currentTime;
-          STEM_KEYS.forEach(k => { if (stemChannels[k].buf) startStemSource(k, seekTo); });
-        }
-      }, 80); // short debounce to let audio.currentTime settle after seek
-    }
+  if (Math.abs(now - lastStemSyncTime) > 1.2) {
+    STEM_KEYS.forEach(k => { if (stemChannels[k].buf) startStemSource(k, now); });
   }
   lastStemSyncTime = now;
 });
@@ -2456,10 +2480,7 @@ STEM_KEYS.forEach(k => {
     stemChannels[k].faderVal = val;
     const ch = stemChannels[k];
     if (ch.gain && !ch.muted && stemAudioCtx) {
-      const now = stemAudioCtx.currentTime;
-      ch.gain.gain.cancelScheduledValues(now);
-      ch.gain.gain.setValueAtTime(ch.gain.gain.value, now);
-      ch.gain.gain.linearRampToValueAtTime(val, now + 0.03);
+      ch.gain.gain.setTargetAtTime(val, stemAudioCtx.currentTime, 0.02);
     }
   });
 });
@@ -2474,16 +2495,10 @@ STEM_KEYS.forEach(k => {
     btn.classList.toggle('muted', ch.muted);
     btn.textContent = ch.muted ? 'MUTED' : 'MUTE';
     if (ch.gain && stemAudioCtx) {
-      const now = stemAudioCtx.currentTime;
-      ch.gain.gain.cancelScheduledValues(now);
-      if (ch.muted) {
-        // Instant silence — no ramp tail
-        ch.gain.gain.setValueAtTime(0, now);
-      } else {
-        // Restore to fader position instantly then smooth up slightly
-        ch.gain.gain.setValueAtTime(0, now);
-        ch.gain.gain.linearRampToValueAtTime(ch.faderVal, now + 0.04);
-      }
+      ch.gain.gain.setTargetAtTime(
+        ch.muted ? 0 : ch.faderVal,
+        stemAudioCtx.currentTime, 0.02
+      );
     }
   });
 });
@@ -2533,16 +2548,21 @@ function teardownStems() {
   stopStemVU();
   STEM_KEYS.forEach(k => {
     const ch = stemChannels[k];
-    if (ch.source)   { try { ch.source.stop(); } catch(e) {} ch.source.disconnect();   ch.source   = null; }
-    if (ch.gain)     { ch.gain.disconnect();     ch.gain     = null; }
-    if (ch.analyser) { ch.analyser.disconnect(); ch.analyser = null; }
+    if (ch.source)   { try { ch.source.stop(); } catch(e) {} try { ch.source.disconnect(); } catch(e) {} ch.source   = null; }
+    if (ch.gain)     { try { ch.gain.disconnect(); } catch(e) {}     ch.gain     = null; }
+    if (ch.analyser) { try { ch.analyser.disconnect(); } catch(e) {} ch.analyser = null; }
     ch.buf = null; ch.muted = false; ch.faderVal = 1;
     const fader = document.getElementById(`stem-fader-${k}`);
     const mute  = document.getElementById(`stem-mute-${k}`);
     if (fader) { fader.value = 1; fader.disabled = false; fader.style.opacity = ''; }
     if (mute)  { mute.classList.remove('muted'); mute.textContent = 'MUTE'; mute.disabled = false; mute.style.opacity = ''; }
   });
-  if (stemMaster) { stemMaster.disconnect(); stemMaster = null; }
+  if (stemMaster) { try { stemMaster.disconnect(); } catch(e) {} stemMaster = null; }
+  // Restore original audio volume when stems are torn down
+  if (stemOpen) {
+    const sliderVal = parseFloat(document.getElementById('volume-slider').value);
+    audio.volume = sliderVal;
+  }
 }
 
 // =====================================================================
