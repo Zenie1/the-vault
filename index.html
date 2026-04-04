@@ -1062,6 +1062,296 @@ header {
   background: rgba(200,255,0,0.06);
 }
 
+/* ================================================
+   STEM PLAYER PANEL
+   ================================================ */
+#stem-panel {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 200px;
+  background: rgba(5,5,7,0.98);
+  border-top: 1px solid var(--border2);
+  z-index: 98;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.38s cubic-bezier(0.16,1,0.3,1);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+}
+#stem-panel.open {
+  transform: translateY(0);
+}
+/* Push player bar up when stem panel open */
+#player-bar.stem-open {
+  bottom: 200px;
+  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), bottom 0.38s cubic-bezier(0.16,1,0.3,1);
+}
+/* If both lyrics AND stem are open, lyrics stacks above stem */
+#lyrics-panel.stem-open {
+  bottom: 200px;
+  transition: transform 0.38s cubic-bezier(0.16,1,0.3,1), bottom 0.38s cubic-bezier(0.16,1,0.3,1);
+}
+
+.stem-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px 6px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.stem-title-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.stem-track-name {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--current-color, var(--accent));
+  margin-left: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+.stem-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: color 0.2s;
+  line-height: 1;
+}
+.stem-close-btn:hover { color: var(--text); }
+
+/* Stem channels row */
+.stem-channels {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  padding: 0 8px;
+  gap: 0;
+  min-height: 0;
+}
+
+.stem-channel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  padding: 10px 6px 8px;
+  border-right: 1px solid var(--border);
+  gap: 6px;
+  min-width: 0;
+  position: relative;
+}
+.stem-channel:last-child { border-right: none; }
+
+/* Icon + label at top */
+.stem-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.stem-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--muted2);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* Vertical fader track */
+.stem-fader-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  position: relative;
+  min-height: 0;
+}
+
+.stem-fader {
+  -webkit-appearance: none;
+  appearance: none;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+/* Fader track */
+.stem-fader::-webkit-slider-runnable-track {
+  width: 3px;
+  background: var(--surface3);
+  border-radius: 2px;
+}
+.stem-fader::-moz-range-track {
+  width: 3px;
+  background: var(--surface3);
+  border-radius: 2px;
+}
+/* Fader thumb */
+.stem-fader::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 10px;
+  background: var(--stem-color, var(--accent));
+  border-radius: 2px;
+  cursor: grab;
+  box-shadow: 0 0 8px -2px var(--stem-color, var(--accent));
+  margin-left: -12px;
+  transition: box-shadow 0.15s;
+}
+.stem-fader::-webkit-slider-thumb:active { cursor: grabbing; box-shadow: 0 0 16px -2px var(--stem-color, var(--accent)); }
+.stem-fader::-moz-range-thumb {
+  width: 28px;
+  height: 10px;
+  background: var(--stem-color, var(--accent));
+  border-radius: 2px;
+  cursor: grab;
+  border: none;
+  box-shadow: 0 0 8px -2px var(--stem-color, var(--accent));
+}
+
+/* Mute button below fader */
+.stem-mute-btn {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.15s;
+  border-radius: 2px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.stem-mute-btn:hover { color: var(--text); border-color: var(--border2); }
+.stem-mute-btn.muted {
+  background: var(--stem-color, var(--accent));
+  color: #000;
+  border-color: var(--stem-color, var(--accent));
+  opacity: 0.7;
+}
+
+/* Level meter bar behind fader (decorative VU) */
+.stem-vu {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 0%;
+  background: var(--stem-color, var(--accent));
+  opacity: 0.18;
+  border-radius: 2px 2px 0 0;
+  transition: height 0.08s;
+  pointer-events: none;
+}
+
+/* No-stems state */
+.stem-unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 10px;
+  padding: 16px;
+}
+.stem-unavailable-msg {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.8;
+}
+.stem-unavailable-msg a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.stem-unavailable-msg a:hover { text-decoration: underline; }
+
+/* Stem button in player */
+.stem-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 5px 9px;
+  cursor: pointer;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.stem-btn:hover { color: var(--text); border-color: var(--border2); }
+.stem-btn.active {
+  color: var(--current-color, var(--accent));
+  border-color: var(--current-color, var(--accent));
+  background: rgba(200,255,0,0.06);
+}
+
+/* Stem fields in edit/add modals */
+.stem-fields-group {
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+  margin-top: 4px;
+  background: rgba(255,255,255,0.02);
+}
+.stem-fields-group .stem-fields-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: block;
+}
+.stem-fields-group .form-group {
+  margin-bottom: 8px;
+}
+.stem-fields-group .form-group:last-child {
+  margin-bottom: 0;
+}
+.stem-fields-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Mobile responsive */
+@media(max-width:700px) {
+  #stem-panel { height: 180px; }
+  #player-bar.stem-open { bottom: 180px; }
+  #lyrics-panel.stem-open { bottom: 180px; }
+  .stem-channel { padding: 8px 4px 6px; gap: 4px; }
+  .stem-icon { font-size: 13px; }
+  .stem-label { font-size: 7px; letter-spacing: 1px; }
+  .stem-mute-btn { font-size: 7px; padding: 2px 5px; }
+  .stem-fader::-webkit-slider-thumb { width: 22px; height: 8px; }
+}
+
 /* RESPONSIVE */
 /* ================================================
    MOBILE — full layout overhaul
@@ -1359,6 +1649,7 @@ header {
     <button class="dl-btn" id="download-link" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓ DL</button>
     <button class="canvas-toggle-btn" id="canvas-toggle-btn" title="Toggle Canvas">◈ Canvas</button>
     <button class="lyrics-btn" id="lyrics-toggle-btn" title="Show Lyrics (K)">♩ Lyrics</button>
+    <button class="stem-btn" id="stem-toggle-btn" title="Stem Player (P)">⊕ Stems</button>
     <!-- SUBWOOFER VISUALIZER -->
     <div id="subwoofer-wrap">
       <svg id="sub-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
@@ -1430,6 +1721,28 @@ header {
       <input type="text" id="edit-lrc" placeholder="e.g. nine-vicious-friday.lrc">
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Filename only. Drop the .lrc file into a <code style="color:var(--accent4)">/lrc/</code> folder in your GitHub repo. Overrides Genius.</div>
     </div>
+    <div class="form-group">
+      <label>Stem Player URLs (optional)</label>
+      <div class="stem-fields-group">
+        <span class="stem-fields-label">⊕ Paste a direct Cloudinary URL for each stem — upload vocals, drums, bass, and other as separate audio files.</span>
+        <div class="form-group">
+          <label>🎤 Vocals URL</label>
+          <input type="url" id="edit-stem-vocals" placeholder="https://res.cloudinary.com/…/vocals.mp3">
+        </div>
+        <div class="form-group">
+          <label>🥁 Drums URL</label>
+          <input type="url" id="edit-stem-drums" placeholder="https://res.cloudinary.com/…/drums.mp3">
+        </div>
+        <div class="form-group">
+          <label>🎸 Bass URL</label>
+          <input type="url" id="edit-stem-bass" placeholder="https://res.cloudinary.com/…/bass.mp3">
+        </div>
+        <div class="form-group">
+          <label>🎹 Other / Instrumental URL</label>
+          <input type="url" id="edit-stem-other" placeholder="https://res.cloudinary.com/…/other.mp3">
+        </div>
+      </div>
+    </div>
 
     <div class="modal-actions">
       <button class="btn primary" id="edit-save-btn">SAVE CHANGES</button>
@@ -1495,6 +1808,16 @@ header {
         <input type="text" id="inp-lrc" placeholder="e.g. artist-title.lrc">
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Filename only. Place in <code style="color:var(--accent4)">/lrc/</code> folder in your GitHub repo.</div>
       </div>
+      <div class="form-group">
+        <label>Stem Player URLs (optional)</label>
+        <div class="stem-fields-group">
+          <span class="stem-fields-label">⊕ Upload stems to Cloudinary and paste URLs here.</span>
+          <div class="form-group"><label>🎤 Vocals</label><input type="url" id="inp-stem-vocals" placeholder="https://res.cloudinary.com/…/vocals.mp3"></div>
+          <div class="form-group"><label>🥁 Drums</label><input type="url" id="inp-stem-drums" placeholder="https://res.cloudinary.com/…/drums.mp3"></div>
+          <div class="form-group"><label>🎸 Bass</label><input type="url" id="inp-stem-bass" placeholder="https://res.cloudinary.com/…/bass.mp3"></div>
+          <div class="form-group"><label>🎹 Other</label><input type="url" id="inp-stem-other" placeholder="https://res.cloudinary.com/…/other.mp3"></div>
+        </div>
+      </div>
     </div>
     <div id="tab-cloudinary" style="display:none">
       <div class="cloudinary-info">
@@ -1549,6 +1872,16 @@ header {
         <input type="text" id="inp-lrc-c" placeholder="e.g. artist-title.lrc">
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Filename only. Place in <code style="color:var(--accent4)">/lrc/</code> folder in your GitHub repo.</div>
       </div>
+      <div class="form-group">
+        <label>Stem Player URLs (optional)</label>
+        <div class="stem-fields-group">
+          <span class="stem-fields-label">⊕ Upload stems to Cloudinary and paste URLs here.</span>
+          <div class="form-group"><label>🎤 Vocals</label><input type="url" id="inp-stem-vocals-c" placeholder="https://res.cloudinary.com/…/vocals.mp3"></div>
+          <div class="form-group"><label>🥁 Drums</label><input type="url" id="inp-stem-drums-c" placeholder="https://res.cloudinary.com/…/drums.mp3"></div>
+          <div class="form-group"><label>🎸 Bass</label><input type="url" id="inp-stem-bass-c" placeholder="https://res.cloudinary.com/…/bass.mp3"></div>
+          <div class="form-group"><label>🎹 Other</label><input type="url" id="inp-stem-other-c" placeholder="https://res.cloudinary.com/…/other.mp3"></div>
+        </div>
+      </div>
     </div>
     <div id="tab-file" style="display:none">
       <div class="drop-zone" id="drop-zone">
@@ -1601,6 +1934,16 @@ header {
           <label>LRC File (optional) — perfect time-synced lyrics</label>
           <input type="text" id="inp-lrc-f" placeholder="e.g. artist-title.lrc">
           <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:0.5px">Filename only. Place in <code style="color:var(--accent4)">/lrc/</code> folder in your GitHub repo.</div>
+        </div>
+        <div class="form-group">
+          <label>Stem Player URLs (optional)</label>
+          <div class="stem-fields-group">
+            <span class="stem-fields-label">⊕ Upload stems to Cloudinary and paste URLs here.</span>
+            <div class="form-group"><label>🎤 Vocals</label><input type="url" id="inp-stem-vocals-f" placeholder="https://res.cloudinary.com/…/vocals.mp3"></div>
+            <div class="form-group"><label>🥁 Drums</label><input type="url" id="inp-stem-drums-f" placeholder="https://res.cloudinary.com/…/drums.mp3"></div>
+            <div class="form-group"><label>🎸 Bass</label><input type="url" id="inp-stem-bass-f" placeholder="https://res.cloudinary.com/…/bass.mp3"></div>
+            <div class="form-group"><label>🎹 Other</label><input type="url" id="inp-stem-other-f" placeholder="https://res.cloudinary.com/…/other.mp3"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1713,6 +2056,80 @@ header {
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- STEM PLAYER PANEL -->
+<div id="stem-panel">
+  <div class="stem-header">
+    <div style="display:flex;align-items:center;min-width:0;flex:1;gap:0">
+      <span class="stem-title-label">⊕ STEM PLAYER</span>
+      <span class="stem-track-name" id="stem-track-name"></span>
+    </div>
+    <button class="stem-close-btn" id="stem-close-btn" title="Close stem player">✕</button>
+  </div>
+
+  <!-- Channels shown when stems are available -->
+  <div class="stem-channels" id="stem-channels" style="display:none">
+    <!-- Vocals -->
+    <div class="stem-channel">
+      <span class="stem-icon">🎤</span>
+      <span class="stem-label">Vocals</span>
+      <div class="stem-fader-wrap">
+        <div class="stem-vu" id="stem-vu-vocals"></div>
+        <input type="range" class="stem-fader" id="stem-fader-vocals"
+          min="0" max="1" step="0.01" value="1"
+          style="--stem-color:#c8ff00">
+      </div>
+      <button class="stem-mute-btn" id="stem-mute-vocals" data-stem="vocals">MUTE</button>
+    </div>
+    <!-- Drums -->
+    <div class="stem-channel">
+      <span class="stem-icon">🥁</span>
+      <span class="stem-label">Drums</span>
+      <div class="stem-fader-wrap">
+        <div class="stem-vu" id="stem-vu-drums"></div>
+        <input type="range" class="stem-fader" id="stem-fader-drums"
+          min="0" max="1" step="0.01" value="1"
+          style="--stem-color:#ff2d78">
+      </div>
+      <button class="stem-mute-btn" id="stem-mute-drums" data-stem="drums">MUTE</button>
+    </div>
+    <!-- Bass -->
+    <div class="stem-channel">
+      <span class="stem-icon">🎸</span>
+      <span class="stem-label">Bass</span>
+      <div class="stem-fader-wrap">
+        <div class="stem-vu" id="stem-vu-bass"></div>
+        <input type="range" class="stem-fader" id="stem-fader-bass"
+          min="0" max="1" step="0.01" value="1"
+          style="--stem-color:#00e5ff">
+      </div>
+      <button class="stem-mute-btn" id="stem-mute-bass" data-stem="bass">MUTE</button>
+    </div>
+    <!-- Other / Instrumentals -->
+    <div class="stem-channel">
+      <span class="stem-icon">🎹</span>
+      <span class="stem-label">Other</span>
+      <div class="stem-fader-wrap">
+        <div class="stem-vu" id="stem-vu-other"></div>
+        <input type="range" class="stem-fader" id="stem-fader-other"
+          min="0" max="1" step="0.01" value="1"
+          style="--stem-color:#7c3aff">
+      </div>
+      <button class="stem-mute-btn" id="stem-mute-other" data-stem="other">MUTE</button>
+    </div>
+  </div>
+
+  <!-- Shown when no stems are set for the track -->
+  <div class="stem-unavailable" id="stem-unavailable">
+    <div class="stem-unavailable-msg">
+      NO STEMS AVAILABLE FOR THIS TRACK<br>
+      <span style="color:var(--muted);font-size:9px">
+        In admin mode, click ✎ Edit on the track card<br>
+        and paste Cloudinary URLs for each stem.
+      </span>
+    </div>
+  </div>
+</div>
 
 <!-- LYRICS PANEL -->
 <div id="lyrics-panel">

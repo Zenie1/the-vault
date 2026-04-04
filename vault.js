@@ -410,8 +410,9 @@ function playAtIndex(idx) {
   document.getElementById('player-vinyl').classList.add('spinning');
   playerBar.classList.add('visible');
   setArtistBG(t.artist);
-  showCanvas(t); // ◈ Vault Canvas
+  showCanvas(t);       // ◈ Vault Canvas
   maybeFetchLyrics(t); // ♩ Lyrics
+  maybeLoadStems(t);   // ⊕ Stems
 
   // Load cover art into vinyl
   const vinylImg = document.getElementById('player-cover-img');
@@ -1004,6 +1005,10 @@ function openEditModal(id) {
   document.getElementById('edit-canvas').value  = t.canvas  || '';
   document.getElementById('edit-lyrics').value  = t.lyricsUrl || '';
   document.getElementById('edit-lrc').value     = t.lrcFile  || '';
+  document.getElementById('edit-stem-vocals').value = (t.stems && t.stems.vocals) || '';
+  document.getElementById('edit-stem-drums').value  = (t.stems && t.stems.drums)  || '';
+  document.getElementById('edit-stem-bass').value   = (t.stems && t.stems.bass)   || '';
+  document.getElementById('edit-stem-other').value  = (t.stems && t.stems.other)  || '';
 
   // Show cover preview if URL exists
   const preview = document.getElementById('edit-cover-preview');
@@ -1035,6 +1040,13 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
   const canvas  = document.getElementById('edit-canvas').value.trim();
   const lyricsUrl = document.getElementById('edit-lyrics').value.trim();
   const lrcFile   = document.getElementById('edit-lrc').value.trim();
+  const stems = {
+    vocals: document.getElementById('edit-stem-vocals').value.trim(),
+    drums:  document.getElementById('edit-stem-drums').value.trim(),
+    bass:   document.getElementById('edit-stem-bass').value.trim(),
+    other:  document.getElementById('edit-stem-other').value.trim(),
+  };
+  const hasStems = Object.values(stems).some(v => v);
 
   if (!artist || !title) { showToast('ARTIST AND TITLE REQUIRED', 'error'); return; }
 
@@ -1048,13 +1060,13 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
     canvas:   canvas || undefined,
     lyricsUrl: lyricsUrl || undefined,
     lrcFile:   lrcFile   || undefined,
-    // re-detect type if URL changed
+    stems:     hasStems ? stems : undefined,
     type: url.includes('cloudinary.com') ? 'cloudinary' : (url.startsWith('data:') ? 'file' : 'url'),
   };
-  // Clean up undefined keys
   if (!canvas)     delete tracks[idx].canvas;
   if (!lyricsUrl)  delete tracks[idx].lyricsUrl;
   if (!lrcFile)    delete tracks[idx].lrcFile;
+  if (!hasStems)   delete tracks[idx].stems;
 
   await saveTracks(tracks);
   // Bust the lyrics cache for this track so new lrcFile/lyricsUrl takes effect
@@ -1226,12 +1238,18 @@ function saveFromCloudinary() {
   const canvas = document.getElementById('inp-canvas-c').value.trim() || undefined;
   const lyricsUrl = document.getElementById('inp-lyrics-c').value.trim() || undefined;
   const lrcFile   = document.getElementById('inp-lrc-c').value.trim()   || undefined;
+  const stemVocals = document.getElementById('inp-stem-vocals-c').value.trim();
+  const stemDrums  = document.getElementById('inp-stem-drums-c').value.trim();
+  const stemBass   = document.getElementById('inp-stem-bass-c').value.trim();
+  const stemOther  = document.getElementById('inp-stem-other-c').value.trim();
+  const stems = (stemVocals||stemDrums||stemBass||stemOther)
+    ? { vocals:stemVocals, drums:stemDrums, bass:stemBass, other:stemOther }
+    : undefined;
   if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
   if (!url) { showToast('CLOUDINARY URL REQUIRED', 'error'); return; }
   if (!/cloudinary\.com/i.test(url) && !confirm('URL doesn\'t look like a Cloudinary link — add anyway?')) return;
-  addTrack({ artist, title, url, tags, type:'cloudinary', coverArt: coverArt || undefined, canvas, lyricsUrl, lrcFile });
-  // Clear cloudinary fields
-  ['inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c','inp-canvas-c','inp-lyrics-c','inp-lrc-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  addTrack({ artist, title, url, tags, type:'cloudinary', coverArt: coverArt || undefined, canvas, lyricsUrl, lrcFile, stems });
+  ['inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c','inp-canvas-c','inp-lyrics-c','inp-lrc-c','inp-stem-vocals-c','inp-stem-drums-c','inp-stem-bass-c','inp-stem-other-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('cover-preview-c').classList.remove('visible');
   document.getElementById('cover-results-c').classList.remove('visible');
 }
@@ -1245,8 +1263,15 @@ function saveFromLink() {
   const canvas = document.getElementById('inp-canvas').value.trim() || undefined;
   const lyricsUrl = document.getElementById('inp-lyrics').value.trim() || undefined;
   const lrcFile   = document.getElementById('inp-lrc').value.trim()   || undefined;
+  const stemVocals = document.getElementById('inp-stem-vocals').value.trim();
+  const stemDrums  = document.getElementById('inp-stem-drums').value.trim();
+  const stemBass   = document.getElementById('inp-stem-bass').value.trim();
+  const stemOther  = document.getElementById('inp-stem-other').value.trim();
+  const stems = (stemVocals||stemDrums||stemBass||stemOther)
+    ? { vocals:stemVocals, drums:stemDrums, bass:stemBass, other:stemOther }
+    : undefined;
   if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
-  addTrack({ artist, title, url, tags, type:'url', coverArt: coverArt || undefined, canvas, lyricsUrl, lrcFile });
+  addTrack({ artist, title, url, tags, type:'url', coverArt: coverArt || undefined, canvas, lyricsUrl, lrcFile, stems });
 }
 
 function saveFromFile() {
@@ -1257,9 +1282,16 @@ function saveFromFile() {
   const canvas = document.getElementById('inp-canvas-f').value.trim() || undefined;
   const lyricsUrl = document.getElementById('inp-lyrics-f').value.trim() || undefined;
   const lrcFile   = document.getElementById('inp-lrc-f').value.trim()   || undefined;
+  const stemVocals = document.getElementById('inp-stem-vocals-f').value.trim();
+  const stemDrums  = document.getElementById('inp-stem-drums-f').value.trim();
+  const stemBass   = document.getElementById('inp-stem-bass-f').value.trim();
+  const stemOther  = document.getElementById('inp-stem-other-f').value.trim();
+  const stems = (stemVocals||stemDrums||stemBass||stemOther)
+    ? { vocals:stemVocals, drums:stemDrums, bass:stemBass, other:stemOther }
+    : undefined;
   if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
   if (!uploadedDataUrl) { showToast('NO FILE SELECTED', 'error'); return; }
-  addTrack({ artist, title, url: uploadedDataUrl, tags, type:'file', coverArt: coverArt || undefined, canvas, lyricsUrl, lrcFile });
+  addTrack({ artist, title, url: uploadedDataUrl, tags, type:'file', coverArt: coverArt || undefined, canvas, lyricsUrl, lrcFile, stems });
 }
 
 function addTrack(data) {
@@ -1269,7 +1301,13 @@ function addTrack(data) {
   renderFilters();
   renderTracks();
   // Reset
-  ['inp-artist','inp-title','inp-url','inp-tags','inp-cover','inp-canvas','inp-lyrics','inp-lrc','inp-artist-f','inp-title-f','inp-tags-f','inp-cover-f','inp-canvas-f','inp-lyrics-f','inp-lrc-f','inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c','inp-canvas-c','inp-lyrics-c','inp-lrc-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['inp-artist','inp-title','inp-url','inp-tags','inp-cover','inp-canvas','inp-lyrics','inp-lrc',
+   'inp-stem-vocals','inp-stem-drums','inp-stem-bass','inp-stem-other',
+   'inp-artist-f','inp-title-f','inp-tags-f','inp-cover-f','inp-canvas-f','inp-lyrics-f','inp-lrc-f',
+   'inp-stem-vocals-f','inp-stem-drums-f','inp-stem-bass-f','inp-stem-other-f',
+   'inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c','inp-canvas-c','inp-lyrics-c','inp-lrc-c',
+   'inp-stem-vocals-c','inp-stem-drums-c','inp-stem-bass-c','inp-stem-other-c',
+  ].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   ['cover-preview','cover-preview-c','cover-preview-f','cover-results','cover-results-c','cover-results-f'].forEach(id => { const el=document.getElementById(id); if(el) el.classList.remove('visible'); });
   document.getElementById('upload-preview').classList.remove('visible');
   uploadedFile = null; uploadedDataUrl = null;
@@ -1675,6 +1713,10 @@ document.addEventListener('keydown', (e) => {
     case 'k':
     case 'K':
       { const lb = document.getElementById('lyrics-toggle-btn'); if (lb) lb.click(); }
+      break;
+    case 'p':
+    case 'P':
+      { const sb = document.getElementById('stem-toggle-btn'); if (sb) sb.click(); }
       break;
   }
 });
@@ -2205,6 +2247,267 @@ audio.addEventListener('timeupdate', () => {
     syncLyricsScroll();
   }, lyricsIsSynced ? 250 : 500);
 });
+
+// =====================================================================
+// STEM PLAYER — Web Audio API mixer
+// 4 channels: vocals / drums / bass / other
+// Each channel: AudioBufferSourceNode → GainNode → masterGain → destination
+// Faders control gain. Mute sets gain to 0, preserving fader position.
+// VU meters animate from the analyser on each channel.
+// =====================================================================
+
+const stemPanel       = document.getElementById('stem-panel');
+const stemChannelsEl  = document.getElementById('stem-channels');
+const stemUnavailEl   = document.getElementById('stem-unavailable');
+const stemTrackName   = document.getElementById('stem-track-name');
+const stemToggleBtn   = document.getElementById('stem-toggle-btn');
+const stemCloseBtn    = document.getElementById('stem-close-btn');
+
+let stemOpen       = false;
+let stemTrackId    = null;
+let stemAudioCtx   = null;
+let stemMaster     = null;
+
+const STEM_KEYS = ['vocals', 'drums', 'bass', 'other'];
+const stemChannels = {};
+STEM_KEYS.forEach(k => { stemChannels[k] = { source:null, gain:null, analyser:null, buf:null, muted:false, faderVal:1 }; });
+
+let stemVuFrame = null;
+
+// ── Panel open / close ────────────────────────────────────────────
+function openStemPanel() {
+  stemOpen = true;
+  stemPanel.classList.add('open');
+  stemToggleBtn.classList.add('active');
+  playerBar.classList.add('stem-open');
+  document.getElementById('lyrics-panel').classList.add('stem-open');
+  document.querySelector('.app').style.paddingBottom =
+    lyricsOpen ? 'calc(120px + 52vh + 200px)' : 'calc(120px + 200px)';
+  const playlist = getPlaylist();
+  const t = playlist[currentTrackIdx];
+  if (t) maybeLoadStems(t);
+}
+
+function closeStemPanel() {
+  stemOpen = false;
+  stemPanel.classList.remove('open');
+  stemToggleBtn.classList.remove('active');
+  playerBar.classList.remove('stem-open');
+  document.getElementById('lyrics-panel').classList.remove('stem-open');
+  document.querySelector('.app').style.paddingBottom =
+    lyricsOpen ? 'calc(120px + 52vh)' : '';
+  stopStemVU();
+}
+
+stemToggleBtn.addEventListener('click', () => {
+  if (stemOpen) closeStemPanel(); else openStemPanel();
+});
+stemCloseBtn.addEventListener('click', closeStemPanel);
+
+// ── Called from playAtIndex on every track change ─────────────────
+function maybeLoadStems(track) {
+  stemTrackName.textContent = `— ${track.artist} · ${track.title}`;
+  if (!stemOpen) return;
+  if (stemTrackId === track.id && stemChannels.vocals.source) return;
+
+  teardownStems();
+  stemTrackId = track.id;
+
+  const stems = track.stems;
+  const hasAnyUrl = stems && STEM_KEYS.some(k => stems[k]);
+
+  if (!hasAnyUrl) {
+    stemChannelsEl.style.display = 'none';
+    stemUnavailEl.style.display  = 'flex';
+    stopStemVU();
+    return;
+  }
+
+  stemChannelsEl.style.display = 'flex';
+  stemUnavailEl.style.display  = 'none';
+
+  if (!stemAudioCtx || stemAudioCtx.state === 'closed') {
+    stemAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (stemAudioCtx.state === 'suspended') stemAudioCtx.resume();
+
+  stemMaster = stemAudioCtx.createGain();
+  stemMaster.gain.value = 1;
+  stemMaster.connect(stemAudioCtx.destination);
+
+  STEM_KEYS.forEach(k => {
+    const url = stems && stems[k];
+    if (url) {
+      loadStemBuffer(k, url);
+    } else {
+      setStemChannelDisabled(k, true);
+    }
+  });
+
+  startStemVU();
+}
+
+// ── Fetch + decode a stem buffer ──────────────────────────────────
+async function loadStemBuffer(key, url) {
+  setStemChannelDisabled(key, false);
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const arrayBuf = await res.arrayBuffer();
+    const audioBuf = await stemAudioCtx.decodeAudioData(arrayBuf);
+    stemChannels[key].buf = audioBuf;
+    if (isPlaying && audio.currentTime > 0) {
+      startStemSource(key, audio.currentTime);
+    }
+  } catch(e) {
+    console.warn(`Stem load failed [${key}]:`, e.message);
+    setStemChannelDisabled(key, true);
+  }
+}
+
+// ── Create and start a source node at a given offset ─────────────
+function startStemSource(key, offset = 0) {
+  const ch = stemChannels[key];
+  if (!ch.buf || !stemAudioCtx) return;
+
+  if (ch.source) {
+    try { ch.source.stop(); } catch(e) {}
+    ch.source.disconnect();
+  }
+
+  if (!ch.gain) {
+    ch.gain = stemAudioCtx.createGain();
+    ch.gain.gain.value = ch.muted ? 0 : ch.faderVal;
+    ch.gain.connect(stemMaster);
+  }
+
+  if (!ch.analyser) {
+    ch.analyser = stemAudioCtx.createAnalyser();
+    ch.analyser.fftSize = 256;
+    ch.analyser.smoothingTimeConstant = 0.75;
+    ch.gain.connect(ch.analyser);
+  }
+
+  ch.source = stemAudioCtx.createBufferSource();
+  ch.source.buffer = ch.buf;
+  ch.source.loop = audio.loop;
+  ch.source.connect(ch.gain);
+  ch.source.start(0, offset % ch.buf.duration);
+}
+
+// ── Sync stems to main audio events ──────────────────────────────
+audio.addEventListener('play', () => {
+  if (!stemOpen || stemTrackId === null) return;
+  const offset = audio.currentTime;
+  STEM_KEYS.forEach(k => { if (stemChannels[k].buf) startStemSource(k, offset); });
+  if (stemAudioCtx && stemAudioCtx.state === 'suspended') stemAudioCtx.resume();
+});
+
+audio.addEventListener('pause', () => {
+  STEM_KEYS.forEach(k => {
+    const ch = stemChannels[k];
+    if (ch.source) { try { ch.source.stop(); } catch(e) {} ch.source = null; }
+  });
+});
+
+let lastStemSyncTime = 0;
+audio.addEventListener('timeupdate', () => {
+  if (!stemOpen || !isPlaying) return;
+  const now = audio.currentTime;
+  if (Math.abs(now - lastStemSyncTime) > 1.2) {
+    STEM_KEYS.forEach(k => { if (stemChannels[k].buf) startStemSource(k, now); });
+  }
+  lastStemSyncTime = now;
+});
+
+// ── Fader input handlers ──────────────────────────────────────────
+STEM_KEYS.forEach(k => {
+  const fader = document.getElementById(`stem-fader-${k}`);
+  if (!fader) return;
+  fader.addEventListener('input', () => {
+    const val = parseFloat(fader.value);
+    stemChannels[k].faderVal = val;
+    const ch = stemChannels[k];
+    if (ch.gain && !ch.muted && stemAudioCtx) {
+      ch.gain.gain.setTargetAtTime(val, stemAudioCtx.currentTime, 0.02);
+    }
+  });
+});
+
+// ── Mute button handlers ──────────────────────────────────────────
+STEM_KEYS.forEach(k => {
+  const btn = document.getElementById(`stem-mute-${k}`);
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const ch = stemChannels[k];
+    ch.muted = !ch.muted;
+    btn.classList.toggle('muted', ch.muted);
+    btn.textContent = ch.muted ? 'MUTED' : 'MUTE';
+    if (ch.gain && stemAudioCtx) {
+      ch.gain.gain.setTargetAtTime(
+        ch.muted ? 0 : ch.faderVal,
+        stemAudioCtx.currentTime, 0.02
+      );
+    }
+  });
+});
+
+// ── VU meter animation ────────────────────────────────────────────
+function animateStemVU() {
+  stemVuFrame = requestAnimationFrame(animateStemVU);
+  STEM_KEYS.forEach(k => {
+    const ch = stemChannels[k];
+    const vu = document.getElementById(`stem-vu-${k}`);
+    if (!vu) return;
+    if (!ch.analyser || ch.muted) { vu.style.height = '0%'; return; }
+    const data = new Uint8Array(ch.analyser.frequencyBinCount);
+    ch.analyser.getByteFrequencyData(data);
+    const avg = data.reduce((a, b) => a + b, 0) / data.length;
+    vu.style.height = Math.min(100, (avg / 255) * 250).toFixed(1) + '%';
+  });
+}
+
+function startStemVU() {
+  if (stemVuFrame) cancelAnimationFrame(stemVuFrame);
+  animateStemVU();
+}
+
+function stopStemVU() {
+  if (stemVuFrame) { cancelAnimationFrame(stemVuFrame); stemVuFrame = null; }
+  STEM_KEYS.forEach(k => {
+    const vu = document.getElementById(`stem-vu-${k}`);
+    if (vu) vu.style.height = '0%';
+  });
+}
+
+// ── Disable / enable a channel UI ────────────────────────────────
+function setStemChannelDisabled(key, disabled) {
+  const fader = document.getElementById(`stem-fader-${key}`);
+  const mute  = document.getElementById(`stem-mute-${key}`);
+  const channel = fader && fader.closest('.stem-channel');
+  const label = channel && channel.querySelector('.stem-label');
+  const opacity = disabled ? '0.25' : '';
+  if (fader) { fader.disabled = disabled; fader.style.opacity = opacity; }
+  if (mute)  { mute.disabled  = disabled; mute.style.opacity  = opacity; }
+  if (label) { label.style.opacity = disabled ? '0.35' : ''; }
+}
+
+// ── Tear down all stems and reset state ──────────────────────────
+function teardownStems() {
+  stopStemVU();
+  STEM_KEYS.forEach(k => {
+    const ch = stemChannels[k];
+    if (ch.source)   { try { ch.source.stop(); } catch(e) {} ch.source.disconnect();   ch.source   = null; }
+    if (ch.gain)     { ch.gain.disconnect();     ch.gain     = null; }
+    if (ch.analyser) { ch.analyser.disconnect(); ch.analyser = null; }
+    ch.buf = null; ch.muted = false; ch.faderVal = 1;
+    const fader = document.getElementById(`stem-fader-${k}`);
+    const mute  = document.getElementById(`stem-mute-${k}`);
+    if (fader) { fader.value = 1; fader.disabled = false; fader.style.opacity = ''; }
+    if (mute)  { mute.classList.remove('muted'); mute.textContent = 'MUTE'; mute.disabled = false; mute.style.opacity = ''; }
+  });
+  if (stemMaster) { stemMaster.disconnect(); stemMaster = null; }
+}
 
 // =====================================================================
 
