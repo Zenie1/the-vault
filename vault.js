@@ -2375,29 +2375,38 @@ function startStemSource(key, offset = 0) {
   const ch = stemChannels[key];
   if (!ch.buf || !stemAudioCtx) return;
 
+  // Stop and fully disconnect old source first — prevents any overlap
   if (ch.source) {
-    try { ch.source.stop(); } catch(e) {}
-    ch.source.disconnect();
+    try { ch.source.stop(0); } catch(e) {}
+    try { ch.source.disconnect(); } catch(e) {}
+    ch.source = null;
   }
 
+  // Build gain node once per track load
   if (!ch.gain) {
     ch.gain = stemAudioCtx.createGain();
+    // Set exact value — no ramp on creation to avoid bleed
     ch.gain.gain.value = ch.muted ? 0 : ch.faderVal;
     ch.gain.connect(stemMaster);
   }
 
+  // Analyser taps off gain output (for VU only — not in signal chain to output)
   if (!ch.analyser) {
     ch.analyser = stemAudioCtx.createAnalyser();
     ch.analyser.fftSize = 256;
     ch.analyser.smoothingTimeConstant = 0.75;
+    // Tap — connects to analyser but analyser does NOT connect to destination
     ch.gain.connect(ch.analyser);
   }
+
+  // Clamp offset to valid range
+  const safeOffset = Math.max(0, Math.min(offset, ch.buf.duration - 0.01));
 
   ch.source = stemAudioCtx.createBufferSource();
   ch.source.buffer = ch.buf;
   ch.source.loop = audio.loop;
   ch.source.connect(ch.gain);
-  ch.source.start(0, offset % ch.buf.duration);
+  ch.source.start(0, safeOffset);
 }
 
 // ── Sync stems to main audio events ──────────────────────────────
@@ -2416,11 +2425,24 @@ audio.addEventListener('pause', () => {
 });
 
 let lastStemSyncTime = 0;
+let stemSyncPending = false;
 audio.addEventListener('timeupdate', () => {
   if (!stemOpen || !isPlaying) return;
   const now = audio.currentTime;
-  if (Math.abs(now - lastStemSyncTime) > 1.2) {
-    STEM_KEYS.forEach(k => { if (stemChannels[k].buf) startStemSource(k, now); });
+  // Only resync on a genuine seek (jump > 2s) — not normal playback drift
+  // Use a debounce flag to prevent rapid restarts causing overlap
+  const delta = now - lastStemSyncTime;
+  if (delta < 0 || delta > 2.0) {
+    if (!stemSyncPending) {
+      stemSyncPending = true;
+      setTimeout(() => {
+        stemSyncPending = false;
+        if (isPlaying && stemOpen) {
+          const seekTo = audio.currentTime;
+          STEM_KEYS.forEach(k => { if (stemChannels[k].buf) startStemSource(k, seekTo); });
+        }
+      }, 80); // short debounce to let audio.currentTime settle after seek
+    }
   }
   lastStemSyncTime = now;
 });
@@ -2434,7 +2456,10 @@ STEM_KEYS.forEach(k => {
     stemChannels[k].faderVal = val;
     const ch = stemChannels[k];
     if (ch.gain && !ch.muted && stemAudioCtx) {
-      ch.gain.gain.setTargetAtTime(val, stemAudioCtx.currentTime, 0.02);
+      const now = stemAudioCtx.currentTime;
+      ch.gain.gain.cancelScheduledValues(now);
+      ch.gain.gain.setValueAtTime(ch.gain.gain.value, now);
+      ch.gain.gain.linearRampToValueAtTime(val, now + 0.03);
     }
   });
 });
@@ -2449,10 +2474,16 @@ STEM_KEYS.forEach(k => {
     btn.classList.toggle('muted', ch.muted);
     btn.textContent = ch.muted ? 'MUTED' : 'MUTE';
     if (ch.gain && stemAudioCtx) {
-      ch.gain.gain.setTargetAtTime(
-        ch.muted ? 0 : ch.faderVal,
-        stemAudioCtx.currentTime, 0.02
-      );
+      const now = stemAudioCtx.currentTime;
+      ch.gain.gain.cancelScheduledValues(now);
+      if (ch.muted) {
+        // Instant silence — no ramp tail
+        ch.gain.gain.setValueAtTime(0, now);
+      } else {
+        // Restore to fader position instantly then smooth up slightly
+        ch.gain.gain.setValueAtTime(0, now);
+        ch.gain.gain.linearRampToValueAtTime(ch.faderVal, now + 0.04);
+      }
     }
   });
 });
