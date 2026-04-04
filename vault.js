@@ -1009,6 +1009,7 @@ function openEditModal(id) {
   document.getElementById('edit-stem-drums').value  = (t.stems && t.stems.drums)  || '';
   document.getElementById('edit-stem-bass').value   = (t.stems && t.stems.bass)   || '';
   document.getElementById('edit-stem-other').value  = (t.stems && t.stems.other)  || '';
+  document.getElementById('edit-stem-keys').value   = (t.stems && t.stems.keys)   || '';
 
   // Show cover preview if URL exists
   const preview = document.getElementById('edit-cover-preview');
@@ -1045,6 +1046,7 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
     drums:  document.getElementById('edit-stem-drums').value.trim(),
     bass:   document.getElementById('edit-stem-bass').value.trim(),
     other:  document.getElementById('edit-stem-other').value.trim(),
+    keys:   document.getElementById('edit-stem-keys').value.trim(),
   };
   const hasStems = Object.values(stems).some(v => v);
 
@@ -1242,14 +1244,15 @@ function saveFromCloudinary() {
   const stemDrums  = document.getElementById('inp-stem-drums-c').value.trim();
   const stemBass   = document.getElementById('inp-stem-bass-c').value.trim();
   const stemOther  = document.getElementById('inp-stem-other-c').value.trim();
-  const stems = (stemVocals||stemDrums||stemBass||stemOther)
-    ? { vocals:stemVocals, drums:stemDrums, bass:stemBass, other:stemOther }
+  const stemKeys   = document.getElementById('inp-stem-keys-c').value.trim();
+  const stems = (stemVocals||stemDrums||stemBass||stemOther||stemKeys)
+    ? { vocals:stemVocals, drums:stemDrums, bass:stemBass, other:stemOther, keys:stemKeys }
     : undefined;
   if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
   if (!url) { showToast('CLOUDINARY URL REQUIRED', 'error'); return; }
   if (!/cloudinary\.com/i.test(url) && !confirm('URL doesn\'t look like a Cloudinary link — add anyway?')) return;
   addTrack({ artist, title, url, tags, type:'cloudinary', coverArt: coverArt || undefined, canvas, lyricsUrl, lrcFile, stems });
-  ['inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c','inp-canvas-c','inp-lyrics-c','inp-lrc-c','inp-stem-vocals-c','inp-stem-drums-c','inp-stem-bass-c','inp-stem-other-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c','inp-canvas-c','inp-lyrics-c','inp-lrc-c','inp-stem-vocals-c','inp-stem-drums-c','inp-stem-bass-c','inp-stem-other-c','inp-stem-keys-c'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('cover-preview-c').classList.remove('visible');
   document.getElementById('cover-results-c').classList.remove('visible');
 }
@@ -1267,8 +1270,9 @@ function saveFromLink() {
   const stemDrums  = document.getElementById('inp-stem-drums').value.trim();
   const stemBass   = document.getElementById('inp-stem-bass').value.trim();
   const stemOther  = document.getElementById('inp-stem-other').value.trim();
-  const stems = (stemVocals||stemDrums||stemBass||stemOther)
-    ? { vocals:stemVocals, drums:stemDrums, bass:stemBass, other:stemOther }
+  const stemKeys   = document.getElementById('inp-stem-keys').value.trim();
+  const stems = (stemVocals||stemDrums||stemBass||stemOther||stemKeys)
+    ? { vocals:stemVocals, drums:stemDrums, bass:stemBass, other:stemOther, keys:stemKeys }
     : undefined;
   if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
   addTrack({ artist, title, url, tags, type:'url', coverArt: coverArt || undefined, canvas, lyricsUrl, lrcFile, stems });
@@ -1286,8 +1290,9 @@ function saveFromFile() {
   const stemDrums  = document.getElementById('inp-stem-drums-f').value.trim();
   const stemBass   = document.getElementById('inp-stem-bass-f').value.trim();
   const stemOther  = document.getElementById('inp-stem-other-f').value.trim();
-  const stems = (stemVocals||stemDrums||stemBass||stemOther)
-    ? { vocals:stemVocals, drums:stemDrums, bass:stemBass, other:stemOther }
+  const stemKeys   = document.getElementById('inp-stem-keys-f').value.trim();
+  const stems = (stemVocals||stemDrums||stemBass||stemOther||stemKeys)
+    ? { vocals:stemVocals, drums:stemDrums, bass:stemBass, other:stemOther, keys:stemKeys }
     : undefined;
   if (!artist || !title) { showToast('ARTIST + TITLE REQUIRED', 'error'); return; }
   if (!uploadedDataUrl) { showToast('NO FILE SELECTED', 'error'); return; }
@@ -1302,11 +1307,11 @@ function addTrack(data) {
   renderTracks();
   // Reset
   ['inp-artist','inp-title','inp-url','inp-tags','inp-cover','inp-canvas','inp-lyrics','inp-lrc',
-   'inp-stem-vocals','inp-stem-drums','inp-stem-bass','inp-stem-other',
+   'inp-stem-vocals','inp-stem-drums','inp-stem-bass','inp-stem-other','inp-stem-keys',
    'inp-artist-f','inp-title-f','inp-tags-f','inp-cover-f','inp-canvas-f','inp-lyrics-f','inp-lrc-f',
-   'inp-stem-vocals-f','inp-stem-drums-f','inp-stem-bass-f','inp-stem-other-f',
+   'inp-stem-vocals-f','inp-stem-drums-f','inp-stem-bass-f','inp-stem-other-f','inp-stem-keys-f',
    'inp-artist-c','inp-title-c','inp-url-c','inp-tags-c','inp-cover-c','inp-canvas-c','inp-lyrics-c','inp-lrc-c',
-   'inp-stem-vocals-c','inp-stem-drums-c','inp-stem-bass-c','inp-stem-other-c',
+   'inp-stem-vocals-c','inp-stem-drums-c','inp-stem-bass-c','inp-stem-other-c','inp-stem-keys-c',
   ].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   ['cover-preview','cover-preview-c','cover-preview-f','cover-results','cover-results-c','cover-results-f'].forEach(id => { const el=document.getElementById(id); if(el) el.classList.remove('visible'); });
   document.getElementById('upload-preview').classList.remove('visible');
@@ -2268,7 +2273,7 @@ let stemTrackId    = null;
 let stemAudioCtx   = null;
 let stemMaster     = null;
 
-const STEM_KEYS = ['vocals', 'drums', 'bass', 'other'];
+const STEM_KEYS = ['vocals', 'drums', 'bass', 'other', 'keys'];
 const stemChannels = {};
 STEM_KEYS.forEach(k => { stemChannels[k] = { source:null, gain:null, analyser:null, buf:null, muted:false, faderVal:1 }; });
 

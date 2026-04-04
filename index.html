@@ -1741,6 +1741,10 @@ header {
           <label>🎹 Other / Instrumental URL</label>
           <input type="url" id="edit-stem-other" placeholder="https://res.cloudinary.com/…/other.mp3">
         </div>
+        <div class="form-group">
+          <label>🎼 Keys URL</label>
+          <input type="url" id="edit-stem-keys" placeholder="https://res.cloudinary.com/…/piano.mp3">
+        </div>
       </div>
     </div>
 
@@ -1816,6 +1820,7 @@ header {
           <div class="form-group"><label>🥁 Drums</label><input type="url" id="inp-stem-drums" placeholder="https://res.cloudinary.com/…/drums.mp3"></div>
           <div class="form-group"><label>🎸 Bass</label><input type="url" id="inp-stem-bass" placeholder="https://res.cloudinary.com/…/bass.mp3"></div>
           <div class="form-group"><label>🎹 Other</label><input type="url" id="inp-stem-other" placeholder="https://res.cloudinary.com/…/other.mp3"></div>
+          <div class="form-group"><label>🎼 Keys</label><input type="url" id="inp-stem-keys" placeholder="https://res.cloudinary.com/…/piano.mp3"></div>
         </div>
       </div>
     </div>
@@ -1880,6 +1885,7 @@ header {
           <div class="form-group"><label>🥁 Drums</label><input type="url" id="inp-stem-drums-c" placeholder="https://res.cloudinary.com/…/drums.mp3"></div>
           <div class="form-group"><label>🎸 Bass</label><input type="url" id="inp-stem-bass-c" placeholder="https://res.cloudinary.com/…/bass.mp3"></div>
           <div class="form-group"><label>🎹 Other</label><input type="url" id="inp-stem-other-c" placeholder="https://res.cloudinary.com/…/other.mp3"></div>
+          <div class="form-group"><label>🎼 Keys</label><input type="url" id="inp-stem-keys-c" placeholder="https://res.cloudinary.com/…/piano.mp3"></div>
         </div>
       </div>
     </div>
@@ -1943,6 +1949,7 @@ header {
             <div class="form-group"><label>🥁 Drums</label><input type="url" id="inp-stem-drums-f" placeholder="https://res.cloudinary.com/…/drums.mp3"></div>
             <div class="form-group"><label>🎸 Bass</label><input type="url" id="inp-stem-bass-f" placeholder="https://res.cloudinary.com/…/bass.mp3"></div>
             <div class="form-group"><label>🎹 Other</label><input type="url" id="inp-stem-other-f" placeholder="https://res.cloudinary.com/…/other.mp3"></div>
+            <div class="form-group"><label>🎼 Keys</label><input type="url" id="inp-stem-keys-f" placeholder="https://res.cloudinary.com/…/piano.mp3"></div>
           </div>
         </div>
       </div>
@@ -2116,6 +2123,18 @@ header {
           style="--stem-color:#7c3aff">
       </div>
       <button class="stem-mute-btn" id="stem-mute-other" data-stem="other">MUTE</button>
+    </div>
+    <!-- Keys -->
+    <div class="stem-channel">
+      <span class="stem-icon">🎼</span>
+      <span class="stem-label">Keys</span>
+      <div class="stem-fader-wrap">
+        <div class="stem-vu" id="stem-vu-keys"></div>
+        <input type="range" class="stem-fader" id="stem-fader-keys"
+          min="0" max="1" step="0.01" value="1"
+          style="--stem-color:#ff9f00">
+      </div>
+      <button class="stem-mute-btn" id="stem-mute-keys" data-stem="keys">MUTE</button>
     </div>
   </div>
 
