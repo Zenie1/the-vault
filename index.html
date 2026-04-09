@@ -1267,6 +1267,47 @@ header {
   pointer-events: none;
 }
 
+/* Stem separate button */
+.stem-separate-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 9px 20px;
+  border: 1px solid rgba(124,58,255,0.5);
+  background: rgba(124,58,255,0.12);
+  color: var(--accent2);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  margin-top: 8px;
+  white-space: nowrap;
+}
+.stem-separate-btn:hover {
+  background: rgba(124,58,255,0.25);
+  border-color: var(--accent2);
+}
+.stem-separate-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Stem progress row */
+.stem-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--accent2);
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+
+.stem-unavailable-sub {
+  margin-top: 8px;
+}
+
 /* No-stems state */
 .stem-unavailable {
   display: flex;
@@ -2142,11 +2183,21 @@ header {
 
   <!-- Shown when no stems are set for the track -->
   <div class="stem-unavailable" id="stem-unavailable">
-    <div class="stem-unavailable-msg">
-      NO STEMS AVAILABLE FOR THIS TRACK<br>
-      <span style="color:var(--muted);font-size:9px">
-        In admin mode, click ✎ Edit on the track card<br>
-        and paste Cloudinary URLs for each stem.
+    <div class="stem-unavailable-msg" id="stem-unavail-msg">
+      NO STEMS AVAILABLE FOR THIS TRACK
+    </div>
+    <!-- Auto-separate button (admin only) -->
+    <button class="btn stem-separate-btn" id="stem-separate-btn" style="display:none">
+      ⊕ AUTO-SEPARATE
+    </button>
+    <!-- Progress state while worker is running -->
+    <div class="stem-progress" id="stem-progress" style="display:none">
+      <div class="ring" style="width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--accent2);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0"></div>
+      <span class="stem-progress-msg" id="stem-progress-msg">SEPARATING STEMS…</span>
+    </div>
+    <div class="stem-unavailable-sub" id="stem-unavail-sub">
+      <span style="color:var(--muted);font-size:9px;font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase">
+        Or manually paste stem URLs via ✎ Edit
       </span>
     </div>
   </div>

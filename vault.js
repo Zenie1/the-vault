@@ -12,6 +12,11 @@ const ADMIN_PASSWORD = 'vault2024';
 const GUEST_REPO = 'Zenie1/the-vault';
 const GUEST_BRANCH = 'main';
 
+// Cloudinary config — used by the stem separation worker to upload results
+// CLOUDINARY_UPLOAD_PRESET must be an *unsigned* preset in your Cloudinary settings
+const CLOUDINARY_CLOUD         = 'dmpwlevyh';           // your cloud name
+const CLOUDINARY_UPLOAD_PRESET = 'vault_stems_unsigned'; // create this in Cloudinary dashboard
+
 function getGHConfig() {
   return {
     token: localStorage.getItem('vault-gh-token') || '',
@@ -213,6 +218,7 @@ function setAdmin(val) {
     document.body.classList.remove('admin-mode');
   }
   renderTracks();
+  updateStemSeparateBtn();
 }
 
 // ===== STATE =====
@@ -1918,13 +1924,14 @@ function setupCoverPicker({ btnId, artistId, titleId, coverInputId, resultsId, p
 // =====================================================================
 
 const WHISPER_WORKER_URL = 'https://vault-whisper.ngninji9.workers.dev';
+const STEM_WORKER_URL    = 'https://vault-stems.ngninji9.workers.dev'; // update URL after deploying
 const LYRICS_CACHE_KEY   = 'vault-lyrics-cache-v1'; // localStorage key
 
 const lyricsPanel       = document.getElementById('lyrics-panel');
 const lyricsScroll      = document.getElementById('lyrics-scroll');
 const lyricsBody        = document.getElementById('lyrics-body');
 const lyricsLoading     = document.getElementById('lyrics-loading');
-const STEM_WORKER_URL = 'https://stem-worker.ngninji9.workers.dev/';
+const lyricsError       = document.getElementById('lyrics-error');
 const lyricsTrackName   = document.getElementById('lyrics-track-name');
 const lyricsSourceBadge = document.getElementById('lyrics-source-badge');
 const lyricsToggleBtn   = document.getElementById('lyrics-toggle-btn');
@@ -2400,6 +2407,10 @@ function maybeLoadStems(track) {
   if (!hasAnyUrl) {
     stemChannelsEl.style.display = 'none';
     stemUnavailEl.style.display  = 'flex';
+    // Reset unavail message in case a previous separation failed
+    const unavailMsg = document.getElementById('stem-unavail-msg');
+    if (unavailMsg) unavailMsg.textContent = 'NO STEMS AVAILABLE FOR THIS TRACK';
+    updateStemSeparateBtn();
     stopStemVU();
     return;
   }
@@ -2604,6 +2615,123 @@ function teardownStems() {
     waveformMuteGain.gain.setValueAtTime(0, now);
     waveformMuteGain.gain.linearRampToValueAtTime(sliderVal, now + 0.05);
     audio.volume = sliderVal;
+  }
+}
+
+// =====================================================================
+// STEM AUTO-SEPARATION — Cloudflare Worker + Hugging Face Demucs
+// =====================================================================
+
+// Show/hide the Separate button based on admin status
+function updateStemSeparateBtn() {
+  const btn = document.getElementById('stem-separate-btn');
+  if (!btn) return;
+  btn.style.display = isAdmin ? 'inline-block' : 'none';
+}
+
+// Wire up the Separate button
+document.getElementById('stem-separate-btn').addEventListener('click', () => {
+  const playlist = getPlaylist();
+  const t = playlist[currentTrackIdx];
+  if (!t) { showToast('PLAY A TRACK FIRST', 'error'); return; }
+  separateStems(t);
+});
+
+// ── Main separation function ──────────────────────────────────────
+async function separateStems(track) {
+  if (!track.url) { showToast('NO AUDIO URL ON THIS TRACK', 'error'); return; }
+
+  const btn       = document.getElementById('stem-separate-btn');
+  const progress  = document.getElementById('stem-progress');
+  const progressMsg = document.getElementById('stem-progress-msg');
+  const unavailMsg  = document.getElementById('stem-unavail-msg');
+  const unavailSub  = document.getElementById('stem-unavail-sub');
+
+  // Switch to progress state
+  btn.style.display      = 'none';
+  unavailMsg.style.display = 'none';
+  unavailSub.style.display = 'none';
+  progress.style.display = 'flex';
+  progressMsg.textContent = 'SENDING TO DEMUCS…';
+
+  const maxRetries = 8;  // up to ~4 mins of polling
+  const retryDelay = 30; // seconds between retries when model is loading
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      progressMsg.textContent = attempt === 0
+        ? 'SEPARATING STEMS — THIS TAKES 2-5 MINS…'
+        : `MODEL LOADING — RETRY ${attempt}/${maxRetries}…`;
+
+      const res = await fetch(STEM_WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audioUrl: track.url,
+          cloudinaryCloud: CLOUDINARY_CLOUD,
+          cloudinaryUploadPreset: CLOUDINARY_UPLOAD_PRESET,
+        }),
+        signal: AbortSignal.timeout(360000), // 6 min timeout
+      });
+
+      const data = await res.json();
+
+      // Model still warming up — wait and retry
+      if (res.status === 503 && data.status === 'loading') {
+        const wait = (data.retry_after || retryDelay) * 1000;
+        progressMsg.textContent = `MODEL WARMING UP — RETRYING IN ${Math.ceil(wait/1000)}s…`;
+        await new Promise(r => setTimeout(r, wait));
+        continue;
+      }
+
+      if (!res.ok || data.error) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+
+      if (data.status === 'done' && data.stems) {
+        // Save stems to the track
+        progressMsg.textContent = 'SAVING STEMS…';
+
+        const idx = tracks.findIndex(x => x.id === track.id);
+        if (idx !== -1) {
+          tracks[idx].stems = data.stems;
+          await saveTracks(tracks);
+
+          // Reload the stem panel with the new stems
+          teardownStems();
+          stemTrackId = null;
+          maybeLoadStems(tracks[idx]);
+
+          showToast('STEMS READY ✓', 'success');
+        }
+
+        // Restore unavailable UI (in case track switches)
+        progress.style.display   = 'none';
+        unavailMsg.style.display = '';
+        unavailSub.style.display = '';
+        btn.style.display        = isAdmin ? 'inline-block' : 'none';
+        return;
+      }
+
+      throw new Error('Unexpected response from worker');
+
+    } catch (e) {
+      console.error('Stem separation error:', e);
+
+      // If we've exhausted retries, give up
+      if (attempt >= maxRetries) {
+        progress.style.display   = 'none';
+        unavailMsg.style.display = '';
+        unavailSub.style.display = '';
+        btn.style.display        = isAdmin ? 'inline-block' : 'none';
+        unavailMsg.textContent   = 'SEPARATION FAILED — TRY AGAIN';
+        showToast(`SEPARATION FAILED: ${e.message.slice(0, 40).toUpperCase()}`, 'error');
+        return;
+      }
+
+      // Retry after a delay for transient errors
+      await new Promise(r => setTimeout(r, retryDelay * 1000));
+    }
   }
 }
 
