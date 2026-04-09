@@ -1924,7 +1924,7 @@ function setupCoverPicker({ btnId, artistId, titleId, coverInputId, resultsId, p
 // =====================================================================
 
 const WHISPER_WORKER_URL = 'https://vault-whisper.ngninji9.workers.dev';
-const STEM_WORKER_URL    = 'https://vault-stems.ngninji9.workers.dev'; // update URL after deploying
+const STEM_WORKER_URL    = 'https://stem-worker.ngninji9.workers.dev'; // ← your Cloudflare Worker
 const LYRICS_CACHE_KEY   = 'vault-lyrics-cache-v1'; // localStorage key
 
 const lyricsPanel       = document.getElementById('lyrics-panel');
