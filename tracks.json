@@ -1,5 +1,19 @@
 [
   {
+    "id": 1775828644104,
+    "added": "2026-04-10",
+    "artist": "Che",
+    "title": "Kamikaze",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1775828468/KAMIKAZE_zh8bqp.m4a",
+    "tags": [
+      "leaked"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Ff28201731b877d94b3e0178c32b182e4.640x640x1.jpg",
+    "canvas": "https://media1.tenor.com/m/AJwSn1XzL4AAAAAd/che-cheromani.gif",
+    "lyricsUrl": "https://genius.com/Che-kamikaze-lyrics"
+  },
+  {
     "id": 1775760318248,
     "added": "2026-04-09",
     "artist": "Lil Yachty",
