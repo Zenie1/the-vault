@@ -19,26 +19,40 @@ Admins control what gets added. Everyone else just shows up and hits play.
 - ⬇️ Download any track with one tap
 - 🔍 Search by artist, title, or tag
 - 🎨 Artist-specific animated backgrounds (Vault Canvas)
-- 📱 Fully optimised for mobile (iOS + Android)
+- 📱 Fully optimised for mobile (iOS + Android) — all features accessible
 - ❤️ Like tracks during your session
 - ♩ Lyrics panel with real-time sync (LRCLIB → LRC file → Whisper → Genius)
+- ⊕ Stem Player — isolate or mute vocals, drums, bass, keys, and other
+- ⌨️ Full keyboard shortcut support
 
 ### For Admins
 - ➕ Add tracks via URL, Cloudinary CDN, or direct file upload
+- ✎ Edit any track — title, artist, URL, cover art, canvas, lyrics, stems
 - 🖼️ Cover art search powered by iTunes
 - 🎬 Per-track canvas backgrounds (MP4 / GIF via Cloudinary)
 - 🗑️ Delete tracks from the vault
 - ☁️ Auto-sync to GitHub — all changes push to `tracks.json` instantly
 - 📂 Import/export `tracks.json` manually
 - 🤖 AI-powered Google Drive import — paste filenames, Claude auto-sorts by artist, title, and tags
+- ⊕ Auto stem separation via Cloudflare Worker + Hugging Face Demucs
 
 ### Player
-- Live frequency-reactive waveform visualiser
-- Scrub to seek (mouse + touch)
+- Live frequency-reactive waveform visualiser (bar and line modes)
+- 808/bass-weighted frequency mapping — bass hits punch through visually
+- Scrub to seek (mouse drag + touch drag on mobile)
 - Shuffle, loop, skip
-- Volume control
-- Spinning vinyl disc with cover art popup
-- Bar and line waveform modes
+- Volume control + mute
+- Spinning vinyl disc with cover art popup card
+- Subwoofer bass visualiser (desktop)
+- Pause animation — bars fade flat, reanimate on play
+
+### Mobile
+All features are accessible on mobile:
+- **DL** — download current track
+- **◈ Canvas** — toggle the canvas background
+- **♩ Lyrics** — open/close the lyrics panel
+- **⊕ Stems** — open/close the stem player
+These appear as a tap bar below the transport controls when on a phone.
 
 ### Keyboard Shortcuts
 | Key | Action |
@@ -53,6 +67,7 @@ Admins control what gets added. Everyone else just shows up and hits play.
 | `S` | Shuffle toggle |
 | `L` | Loop toggle |
 | `K` | Lyrics panel toggle |
+| `P` | Stem player toggle |
 
 ---
 
@@ -63,10 +78,11 @@ Admins control what gets added. Everyone else just shows up and hits play.
 | Frontend | HTML, CSS, Vanilla JavaScript |
 | Audio | Web Audio API |
 | Storage | GitHub API (`tracks.json`) + localStorage fallback |
-| Media Hosting | Cloudinary (audio + canvas videos) |
+| Media Hosting | Cloudinary (audio + canvas videos + stem files) |
 | Cover Art | iTunes Search API |
 | AI Features | Anthropic Claude API |
 | Lyrics | LRCLIB · LRC files · Whisper (Cloudflare Worker) · Genius |
+| Stem Separation | Cloudflare Worker + Hugging Face Demucs |
 | Fonts | Archivo Black, Syne, DM Mono (Google Fonts) |
 
 ---
@@ -92,7 +108,7 @@ This is your standard workflow every time you update `index.html` or `vault.js`.
 
 ### First time only — link your local folder to GitHub
 
-Open **Git Bash** in your `Valut` folder (right-click the folder → Git Bash Here), then run:
+Open **Git Bash** in your `Vault` folder (right-click the folder → Git Bash Here), then run:
 
 ```bash
 git remote -v
@@ -110,7 +126,7 @@ Replace `YOUR-USERNAME` and `YOUR-REPO-NAME` with your actual GitHub username an
 
 ### Every update — the 4-command push
 
-Open Git Bash in your `Valut` folder and run these four commands:
+Open Git Bash in your `Vault` folder and run these four commands:
 
 ```bash
 git pull origin main
@@ -161,7 +177,7 @@ git status
 Shows you exactly which files are modified. Green = staged, red = not staged.
 
 ```bash
-git diff index.html
+git diff vault.js
 ```
 
 Shows line-by-line what changed in a file before committing.
@@ -231,12 +247,33 @@ If LRCLIB and LRC both fail, the system sends the audio to a Cloudflare Worker r
 Requires the Whisper Worker to be deployed — see `WHISPER_WORKER_URL` in `vault.js`.
 
 ### Tier 4 — Genius (last resort)
-If everything else fails and you've pasted a Genius URL into the track's **Genius Lyrics URL** field, it fetches the plain lyrics text via a CORS proxy. Scroll position is approximate (linear distribution across the track).
+If everything else fails and you've pasted a Genius URL into the track's **Genius Lyrics URL** field, it fetches the plain lyrics text via a CORS proxy chain (tries 4 proxies in sequence). Scroll position is approximate (linear distribution across the track).
 
 **To add a Genius URL:**
 1. Go to genius.com, find the song page
 2. Copy the full URL (e.g. `https://genius.com/Nine-vicious-friday-lyrics`)
 3. Edit the track in admin mode and paste it in the **Genius Lyrics URL** field
+
+---
+
+## Stem Player
+
+The stem player lets you isolate or mute individual parts of a track — vocals, drums, bass, keys, and other (melody/synths).
+
+### Using pre-separated stems
+If stems are already uploaded to Cloudinary (e.g. exported from Splitter.ai or Demucs):
+1. Edit the track in admin mode
+2. Paste each stem's Cloudinary URL into the corresponding field (Vocals, Drums, Bass, Other, Keys)
+3. Save — the Stems button will activate immediately
+
+### Auto-separation
+For tracks without stems, admins can click **⊕ Auto-Separate** inside the stem panel. This sends the track to a Cloudflare Worker running Hugging Face Demucs and uploads the results back to Cloudinary automatically. Takes 2–5 minutes.
+
+**Setup required:**
+1. Deploy the Cloudflare Worker (see `stem-worker.js`)
+2. Add `HF_TOKEN` as a secret in the Worker settings
+3. Create an unsigned upload preset called `vault_stems_unsigned` in Cloudinary
+4. Set `STEM_WORKER_URL` in `vault.js` to your worker's URL
 
 ---
 
@@ -265,10 +302,11 @@ const ARTIST_CANVAS = {
 ## Important Notes
 
 - **Never `git add tracks.json`** — let the admin panel manage it. Always `git pull` before pushing code.
-- Audio files on Cloudinary support CORS, which is required for the waveform visualiser.
+- Audio files on Cloudinary support CORS, which is required for the waveform visualiser and stem player.
 - Your GitHub token lives in `localStorage` only — never committed to the repo.
 - File uploads (local audio) are session-only and won't sync to GitHub. Use Cloudinary for permanent tracks.
 - Lyrics are cached in `localStorage` after first load — clearing browser storage will cause them to re-fetch.
+- Stem separation results are saved to `tracks.json` automatically — they persist across sessions for all users.
 
 ---
 
@@ -281,11 +319,11 @@ Current roster:
 - Che
 - Playboi Carti
 - Lil Yachty
-- Young Thug
-- Lucki
-- Slayr
-- Protect
+- Lil Uzi Vert
+- Ken Carson
+- Destroy Lonely
 - OsamaSon
+- 1oneam
 
 ---
 

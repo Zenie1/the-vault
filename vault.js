@@ -2919,6 +2919,46 @@ const getCoverLink       = setupCoverPicker({ btnId:'find-cover-btn',   artistId
 const getCoverCloudinary = setupCoverPicker({ btnId:'find-cover-btn-c', artistId:'inp-artist-c', titleId:'inp-title-c', coverInputId:'inp-cover-c', resultsId:'cover-results-c', previewId:'cover-preview-c', previewImgId:'cover-preview-img-c', clearId:'cover-clear-btn-c' });
 const getCoverFile       = setupCoverPicker({ btnId:'find-cover-btn-f', artistId:'inp-artist-f', titleId:'inp-title-f', coverInputId:'inp-cover-f', resultsId:'cover-results-f', previewId:'cover-preview-f', previewImgId:'cover-preview-img-f', clearId:'cover-clear-btn-f' });
 
+// ===== MOBILE ACTION ROW — mirror desktop buttons =====
+const mobileCanvasBtn = document.getElementById('mobile-canvas-btn');
+const mobileLyricsBtn = document.getElementById('mobile-lyrics-btn');
+const mobileStemsBtn  = document.getElementById('mobile-stems-btn');
+
+if (mobileCanvasBtn) {
+  mobileCanvasBtn.addEventListener('click', () => {
+    document.getElementById('canvas-toggle-btn').click();
+    mobileCanvasBtn.classList.toggle('active', canvasEnabled);
+  });
+  // Keep in sync with desktop toggle
+  const origCanvasToggle = canvasToggleBtn.addEventListener;
+  mobileCanvasBtn.classList.add('active'); // starts enabled
+}
+
+if (mobileLyricsBtn) {
+  mobileLyricsBtn.addEventListener('click', () => {
+    document.getElementById('lyrics-toggle-btn').click();
+  });
+}
+
+if (mobileStemsBtn) {
+  mobileStemsBtn.addEventListener('click', () => {
+    document.getElementById('stem-toggle-btn').click();
+  });
+}
+
+// Keep mobile button active states in sync with desktop buttons
+function syncMobileActionBtns() {
+  if (mobileCanvasBtn) mobileCanvasBtn.classList.toggle('active', canvasEnabled);
+  if (mobileLyricsBtn) mobileLyricsBtn.classList.toggle('active', lyricsOpen);
+  if (mobileStemsBtn)  mobileStemsBtn.classList.toggle('active', stemOpen);
+}
+
+// Patch the existing toggle functions to also sync mobile buttons
+const _origLyricsToggle = lyricsToggleBtn.onclick;
+lyricsToggleBtn.addEventListener('click', () => setTimeout(syncMobileActionBtns, 50));
+stemToggleBtn.addEventListener('click',   () => setTimeout(syncMobileActionBtns, 50));
+canvasToggleBtn.addEventListener('click', () => setTimeout(syncMobileActionBtns, 50));
+
 // ===== INIT =====
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);

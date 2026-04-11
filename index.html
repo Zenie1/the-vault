@@ -1563,8 +1563,41 @@ header {
   /* Canvas label above player on mobile */
   #canvas-label { bottom: auto; top: 12px; right: 12px; font-size: 7px; }
 
-  /* Canvas toggle hidden on mobile to save space */
+  /* Canvas toggle hidden on mobile — now in mobile action row */
   .canvas-toggle-btn { display: none; }
+
+  /* MOBILE ACTION ROW — show on mobile */
+  .mobile-action-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    width: 100%;
+    padding: 4px 0 0;
+    border-top: 1px solid var(--border);
+    margin-top: 2px;
+  }
+  .mobile-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    background: transparent;
+    border: none;
+    color: var(--muted2);
+    cursor: pointer;
+    padding: 6px 12px;
+    font-size: 16px;
+    transition: color 0.2s;
+    flex: 1;
+  }
+  .mobile-action-btn span {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .mobile-action-btn:hover,
+  .mobile-action-btn.active { color: var(--current-color, var(--accent)); }
 
   /* Filter buttons scroll horizontally on mobile */
   .filter-btns { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -1576,6 +1609,11 @@ header {
   .form-group select,
   .form-group textarea { font-size: 16px; }
 
+}
+
+/* MOBILE ACTION ROW — hidden on desktop */
+.mobile-action-row {
+  display: none;
 }
 
 /* Extra small phones */
@@ -1680,6 +1718,14 @@ header {
       <button class="play-pause" id="play-pause-btn" title="Play/Pause (Space)">▶</button>
       <button class="ctrl-btn" id="next-btn" title="Next (→)">⏭</button>
       <button class="ctrl-btn loop-btn" id="loop-btn" title="Loop (L)">↺</button>
+    </div>
+
+    <!-- MOBILE ACTION ROW — shown only on mobile, mirrors right-col buttons -->
+    <div class="mobile-action-row" id="mobile-action-row">
+      <button class="mobile-action-btn" id="mobile-dl-btn" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓<span>DL</span></button>
+      <button class="mobile-action-btn" id="mobile-canvas-btn">◈<span>Canvas</span></button>
+      <button class="mobile-action-btn" id="mobile-lyrics-btn">♩<span>Lyrics</span></button>
+      <button class="mobile-action-btn" id="mobile-stems-btn">⊕<span>Stems</span></button>
     </div>
   </div>
 
