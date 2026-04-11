@@ -1395,6 +1395,11 @@ header {
   .stem-fader::-webkit-slider-thumb { width: 22px; height: 8px; }
 }
 
+/* MOBILE ACTION ROW — hidden on desktop, shown inside mobile media query below */
+.mobile-action-row {
+  display: none;
+}
+
 /* RESPONSIVE */
 /* ================================================
    MOBILE — full layout overhaul
@@ -1611,11 +1616,6 @@ header {
 
 }
 
-/* MOBILE ACTION ROW — hidden on desktop */
-.mobile-action-row {
-  display: none;
-}
-
 /* Extra small phones */
 @media(max-width:380px) {
   .logo { font-size: 34px; }
@@ -1719,14 +1719,6 @@ header {
       <button class="ctrl-btn" id="next-btn" title="Next (→)">⏭</button>
       <button class="ctrl-btn loop-btn" id="loop-btn" title="Loop (L)">↺</button>
     </div>
-
-    <!-- MOBILE ACTION ROW — shown only on mobile, mirrors right-col buttons -->
-    <div class="mobile-action-row" id="mobile-action-row">
-      <button class="mobile-action-btn" id="mobile-dl-btn" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓<span>DL</span></button>
-      <button class="mobile-action-btn" id="mobile-canvas-btn">◈<span>Canvas</span></button>
-      <button class="mobile-action-btn" id="mobile-lyrics-btn">♩<span>Lyrics</span></button>
-      <button class="mobile-action-btn" id="mobile-stems-btn">⊕<span>Stems</span></button>
-    </div>
   </div>
 
   <!-- RIGHT: volume, actions, subwoofer -->
@@ -1758,6 +1750,14 @@ header {
         <circle id="sub-glow" cx="32" cy="32" r="22" fill="transparent"/>
       </svg>
     </div>
+  </div>
+
+  <!-- MOBILE ACTION ROW — shown only on mobile -->
+  <div class="mobile-action-row" id="mobile-action-row">
+    <button class="mobile-action-btn" id="mobile-dl-btn" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓<span>DL</span></button>
+    <button class="mobile-action-btn" id="mobile-canvas-btn">◈<span>Canvas</span></button>
+    <button class="mobile-action-btn" id="mobile-lyrics-btn">♩<span>Lyrics</span></button>
+    <button class="mobile-action-btn" id="mobile-stems-btn">⊕<span>Stems</span></button>
   </div>
 </div>
 
