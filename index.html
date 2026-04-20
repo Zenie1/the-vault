@@ -1400,6 +1400,341 @@ header {
   display: none;
 }
 
+/* ================================================
+   PLAY COUNT / TRENDING
+   ================================================ */
+.track-fire-badge {
+  font-size: 11px;
+  line-height: 1;
+  margin-left: 4px;
+  vertical-align: middle;
+  opacity: 0.85;
+}
+.track-play-count {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-top: 6px;
+}
+.track-play-count.hot { color: #ff9f00; }
+
+/* ================================================
+   SORT CONTROLS
+   ================================================ */
+.sort-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.sort-btn {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.sort-btn:hover { color: var(--text); border-color: var(--border2); }
+.sort-btn.active {
+  color: var(--accent);
+  border-color: rgba(200,255,0,0.35);
+  background: rgba(200,255,0,0.06);
+}
+
+/* ================================================
+   RECENTLY PLAYED STRIP
+   ================================================ */
+#recently-played-section {
+  margin-bottom: 28px;
+  display: none;
+}
+#recently-played-section.visible { display: block; }
+.recently-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.recently-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.recently-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.recently-strip::-webkit-scrollbar { display: none; }
+.recently-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px 7px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  flex-shrink: 0;
+  max-width: 180px;
+  transition: all 0.2s;
+}
+.recently-chip:hover { background: var(--surface2); border-color: var(--border2); }
+.recently-chip img {
+  width: 28px; height: 28px;
+  border-radius: 2px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.recently-chip-info { min-width: 0; }
+.recently-chip-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recently-chip-artist {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ================================================
+   QUEUE PANEL
+   ================================================ */
+#queue-panel {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 320px;
+  background: rgba(5,5,7,0.98);
+  border-left: 1px solid var(--border2);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+}
+#queue-panel.open { transform: translateX(0); }
+.queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.queue-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.queue-count {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--accent);
+  margin-left: 8px;
+}
+.queue-close-btn {
+  background: transparent; border: none;
+  color: var(--muted); font-size: 16px;
+  cursor: pointer; padding: 2px 4px;
+  transition: color 0.2s;
+}
+.queue-close-btn:hover { color: var(--text); }
+.queue-clear-btn {
+  font-family: var(--font-mono);
+  font-size: 8px; letter-spacing: 1px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  background: transparent; color: var(--muted);
+  cursor: pointer; text-transform: uppercase;
+  transition: all 0.2s;
+}
+.queue-clear-btn:hover { color: var(--accent3); border-color: rgba(255,45,120,0.4); }
+#queue-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+#queue-list::-webkit-scrollbar { width: 3px; }
+#queue-list::-webkit-scrollbar-track { background: transparent; }
+#queue-list::-webkit-scrollbar-thumb { background: var(--surface3); }
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.queue-item:hover { background: var(--surface2); }
+.queue-item.now-playing { background: var(--surface2); border-left: 2px solid var(--accent); }
+.queue-item img {
+  width: 36px; height: 36px;
+  border-radius: 2px; object-fit: cover;
+  flex-shrink: 0; background: var(--surface3);
+}
+.queue-item-info { flex: 1; min-width: 0; }
+.queue-item-title {
+  font-size: 12px; font-weight: 700;
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.queue-item-artist {
+  font-family: var(--font-mono);
+  font-size: 8px; color: var(--muted);
+  letter-spacing: 1.5px; text-transform: uppercase;
+  margin-top: 2px;
+}
+.queue-item-remove {
+  background: transparent; border: none;
+  color: var(--muted); font-size: 12px;
+  cursor: pointer; padding: 4px;
+  opacity: 0; transition: all 0.15s;
+  flex-shrink: 0;
+}
+.queue-item:hover .queue-item-remove { opacity: 1; }
+.queue-item-remove:hover { color: var(--accent3); }
+.queue-empty {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--muted); text-transform: uppercase;
+  text-align: center; padding: 40px 20px;
+  line-height: 2;
+}
+/* Add to Queue button on track card */
+.icon-btn.queue-btn { display: none; }
+.queue-open .icon-btn.queue-btn { display: flex; }
+/* Queue button in player */
+.queue-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 9px; letter-spacing: 1px;
+  padding: 5px 9px; cursor: pointer;
+  text-transform: uppercase; flex-shrink: 0;
+  transition: all 0.2s; white-space: nowrap;
+}
+.queue-toggle-btn:hover { color: var(--text); border-color: var(--border2); }
+.queue-toggle-btn.active {
+  color: var(--accent);
+  border-color: rgba(200,255,0,0.4);
+  background: rgba(200,255,0,0.06);
+}
+
+/* ================================================
+   SPEED CONTROL
+   ================================================ */
+.speed-btn {
+  font-family: var(--font-mono);
+  font-size: 9px; letter-spacing: 1px;
+  padding: 5px 9px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted);
+  cursor: pointer; text-transform: uppercase;
+  flex-shrink: 0; transition: all 0.2s;
+  white-space: nowrap; min-width: 42px;
+  text-align: center;
+}
+.speed-btn:hover { color: var(--text); border-color: var(--border2); }
+.speed-btn.active {
+  color: var(--accent4);
+  border-color: rgba(0,229,255,0.4);
+  background: rgba(0,229,255,0.06);
+}
+
+/* ================================================
+   SLEEP TIMER
+   ================================================ */
+.sleep-btn {
+  font-family: var(--font-mono);
+  font-size: 9px; letter-spacing: 1px;
+  padding: 5px 9px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted);
+  cursor: pointer; text-transform: uppercase;
+  flex-shrink: 0; transition: all 0.2s;
+  white-space: nowrap;
+}
+.sleep-btn:hover { color: var(--text); border-color: var(--border2); }
+.sleep-btn.active {
+  color: var(--accent2);
+  border-color: rgba(124,58,255,0.4);
+  background: rgba(124,58,255,0.06);
+}
+/* Sleep timer dropdown */
+.sleep-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  z-index: 300;
+  min-width: 130px;
+  display: none;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+.sleep-dropdown.open { display: flex; }
+.sleep-option {
+  font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 1.5px;
+  padding: 11px 16px; border: none;
+  background: transparent; color: var(--muted2);
+  cursor: pointer; text-transform: uppercase;
+  text-align: left; border-bottom: 1px solid var(--border);
+  transition: all 0.15s;
+}
+.sleep-option:last-child { border-bottom: none; }
+.sleep-option:hover { background: var(--surface3); color: var(--text); }
+.sleep-option.active { color: var(--accent2); }
+
+/* ================================================
+   TRACK NOTES (admin only)
+   ================================================ */
+.track-notes-btn {
+  display: none;
+}
+.admin-mode .track-notes-btn {
+  display: flex;
+}
+.track-notes-preview {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  margin-top: 6px;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: none;
+}
+.admin-mode .track-notes-preview { display: block; }
+
 /* RESPONSIVE */
 /* ================================================
    MOBILE — full layout overhaul
@@ -1651,9 +1986,20 @@ header {
       <span class="search-icon">⌕</span>
       <input type="text" id="search-input" placeholder="SEARCH TRACKS, ARTISTS, TAGS...">
     </div>
+    <div class="sort-wrap">
+      <button class="sort-btn active" data-sort="default" title="Default order">↕ Latest</button>
+      <button class="sort-btn" data-sort="trending" title="Most played">🔥 Trending</button>
+      <button class="sort-btn" data-sort="az" title="A–Z">A–Z</button>
+    </div>
     <div class="filter-btns" id="filter-btns">
       <button class="filter-btn active" data-filter="all">ALL</button>
     </div>
+  </div>
+
+  <!-- RECENTLY PLAYED -->
+  <div id="recently-played-section">
+    <div class="recently-label">◷ Recently Played</div>
+    <div class="recently-strip" id="recently-strip"></div>
   </div>
 
   <!-- ARTIST HEADER -->
@@ -1728,6 +2074,17 @@ header {
       <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
     </div>
     <button class="dl-btn" id="download-link" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓ DL</button>
+    <button class="speed-btn" id="speed-btn" title="Playback speed">1×</button>
+    <div style="position:relative;flex-shrink:0">
+      <button class="sleep-btn" id="sleep-btn" title="Sleep timer">☽ Sleep</button>
+      <div class="sleep-dropdown" id="sleep-dropdown">
+        <button class="sleep-option" data-mins="15">15 minutes</button>
+        <button class="sleep-option" data-mins="30">30 minutes</button>
+        <button class="sleep-option" data-mins="60">60 minutes</button>
+        <button class="sleep-option" data-mins="0">Cancel timer</button>
+      </div>
+    </div>
+    <button class="queue-toggle-btn" id="queue-toggle-btn" title="Up Next queue (Q)">≡ Queue</button>
     <button class="canvas-toggle-btn" id="canvas-toggle-btn" title="Toggle Canvas">◈ Canvas</button>
     <button class="lyrics-btn" id="lyrics-toggle-btn" title="Show Lyrics (K)">♩ Lyrics</button>
     <button class="stem-btn" id="stem-toggle-btn" title="Stem Player (P)">⊕ Stems</button>
@@ -1835,6 +2192,10 @@ header {
           <input type="url" id="edit-stem-keys" placeholder="https://res.cloudinary.com/…/piano.mp3">
         </div>
       </div>
+    </div>
+    <div class="form-group">
+      <label>Admin Notes (optional — only visible in admin mode)</label>
+      <textarea id="edit-notes" rows="2" placeholder="e.g. CDQ leak from Discord, v2 alternate mix, source: @user..." style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:10px 12px;outline:none;resize:vertical;letter-spacing:0.5px;line-height:1.6"></textarea>
     </div>
 
     <div class="modal-actions">
@@ -2152,6 +2513,23 @@ header {
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- QUEUE PANEL -->
+<div id="queue-panel">
+  <div class="queue-header">
+    <div>
+      <span class="queue-title">≡ Up Next</span>
+      <span class="queue-count" id="queue-count"></span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="queue-clear-btn" id="queue-clear-btn">Clear</button>
+      <button class="queue-close-btn" id="queue-close-btn">✕</button>
+    </div>
+  </div>
+  <div id="queue-list">
+    <div class="queue-empty" id="queue-empty">NO TRACKS IN QUEUE<br><span style="font-size:9px;color:var(--muted)">Add tracks using the + button on each card</span></div>
+  </div>
+</div>
 
 <!-- STEM PLAYER PANEL -->
 <div id="stem-panel">
