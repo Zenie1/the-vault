@@ -3,7 +3,17 @@
 // Loaded by index.html via <script src="vault.js" defer>
 // =============================================================
 // ===== CONFIG =====
-const ADMIN_PASSWORD = 'vault2024';
+// Admin password is stored as a SHA-256 hash — never the plaintext.
+// To change: run this in browser console, then paste the output below:
+//   crypto.subtle.digest('SHA-256', new TextEncoder().encode('yournewpassword'))
+//     .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+const ADMIN_PASSWORD_HASH = 'bd94dcda26fccb4e68d6a31f9b5aac0b571ae266d822620e901ef7ebe3a11d4f'; // vault2024
+
+async function checkPassword(pw) {
+  const buf  = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  const hash = [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2,'0')).join('');
+  return hash === ADMIN_PASSWORD_HASH;
+}
 
 // ===== GITHUB CONFIG =====
 // These are loaded from localStorage so you set them once in the GitHub Settings modal
@@ -84,7 +94,7 @@ async function loadTracks() {
         return decoded;
       }
       if (res.status === 404) { ghFileSha = null; return getLocalTracks(); }
-    } catch(e) { console.warn('GitHub load failed, using localStorage', e); }
+    } catch(e) { /* suppressed */ }
   } else {
     // Guest with no token — try public raw GitHub URL
     const pub = getPublicRepo();
@@ -96,7 +106,7 @@ async function loadTracks() {
           localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
           return decoded;
         }
-      } catch(e) { console.warn('Raw GitHub load failed', e); }
+      } catch(e) { /* suppressed */ }
     }
   }
   return getLocalTracks();
@@ -149,7 +159,7 @@ async function saveTracks(t) {
     const binStr = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
     content = btoa(binStr);
   } catch(e) {
-    console.error('Encoding error', e);
+    /* suppressed */
     showToast('ENCODING ERROR — SAVED LOCALLY ONLY', 'error');
     return;
   }
@@ -181,12 +191,12 @@ async function saveTracks(t) {
       showToast('SAVED TO GITHUB ✓', 'success');
     } else {
       const err = await res.json();
-      console.error('GitHub save error', err);
+      /* suppressed */
       const reason = err.message || 'unknown error';
       showToast(`GITHUB SAVE FAILED: ${reason.slice(0,40).toUpperCase()}`, 'error');
     }
   } catch(e) {
-    console.error(e);
+    /* suppressed */
     showToast('NETWORK ERROR — SAVED LOCALLY ONLY', 'error');
   }
 }
@@ -220,6 +230,34 @@ function setAdmin(val) {
   renderTracks();
   updateStemSeparateBtn();
 }
+
+// ── Admin inactivity auto-logout (30 min) ──────────────────────────
+let adminInactivityTimer = null;
+const ADMIN_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+function startAdminInactivityTimer() {
+  clearTimeout(adminInactivityTimer);
+  adminInactivityTimer = setTimeout(() => {
+    if (isAdmin) {
+      setAdmin(false);
+      showToast('SESSION EXPIRED — AUTO LOGGED OUT', 'error');
+    }
+  }, ADMIN_TIMEOUT_MS);
+}
+
+function resetAdminInactivityTimer() {
+  if (!isAdmin) return;
+  clearTimeout(adminInactivityTimer);
+  adminInactivityTimer = setTimeout(() => {
+    setAdmin(false);
+    showToast('SESSION EXPIRED — AUTO LOGGED OUT', 'error');
+  }, ADMIN_TIMEOUT_MS);
+}
+
+// Reset timer on any admin interaction
+['click', 'keydown', 'mousemove', 'touchstart'].forEach(evt => {
+  document.addEventListener(evt, resetAdminInactivityTimer, { passive: true });
+});
 
 // ===== STATE =====
 let tracks = [], activeFilter = 'all', searchQuery = '', sortMode = 'default';
@@ -1368,18 +1406,48 @@ document.getElementById('login-btn').addEventListener('click', () => {
 document.getElementById('login-submit-btn').addEventListener('click', doLogin);
 document.getElementById('admin-password').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
-function doLogin() {
-  const pw = document.getElementById('admin-password').value;
+async function doLogin() {
+  const pw  = document.getElementById('admin-password').value;
   const err = document.getElementById('login-error');
-  if (pw === ADMIN_PASSWORD) {
-    setAdmin(true);
-    closeModal('login-modal');
-    document.getElementById('admin-password').value = '';
-    err.style.display = 'none';
-    showToast('VAULT UNLOCKED — WELCOME BACK', 'success');
-  } else {
+
+  // Brute force protection
+  const BF_KEY   = 'vault-bf';
+  const MAX_ATT  = 5;
+  const LOCKOUT  = 15 * 60 * 1000; // 15 minutes
+  let bf = JSON.parse(sessionStorage.getItem(BF_KEY) || '{"attempts":0,"lockedUntil":0}');
+
+  if (Date.now() < bf.lockedUntil) {
+    const mins = Math.ceil((bf.lockedUntil - Date.now()) / 60000);
+    err.textContent = `TOO MANY ATTEMPTS — TRY AGAIN IN ${mins} MIN`;
     err.style.display = 'block';
     document.getElementById('admin-password').value = '';
+    return;
+  }
+
+  const ok = await checkPassword(pw);
+  document.getElementById('admin-password').value = '';
+
+  if (ok) {
+    bf = { attempts: 0, lockedUntil: 0 };
+    sessionStorage.setItem(BF_KEY, JSON.stringify(bf));
+    // Store a session token so isAdmin survives accidental page refresh
+    const sessionToken = crypto.randomUUID();
+    sessionStorage.setItem('vault-session', sessionToken);
+    setAdmin(true);
+    closeModal('login-modal');
+    err.style.display = 'none';
+    showToast('VAULT UNLOCKED — WELCOME BACK', 'success');
+    startAdminInactivityTimer();
+  } else {
+    bf.attempts += 1;
+    if (bf.attempts >= MAX_ATT) {
+      bf.lockedUntil = Date.now() + LOCKOUT;
+      err.textContent = 'VAULT LOCKED — TOO MANY ATTEMPTS (15 MIN)';
+    } else {
+      err.textContent = `ACCESS DENIED (${MAX_ATT - bf.attempts} ATTEMPT${MAX_ATT - bf.attempts !== 1 ? 'S' : ''} LEFT)`;
+    }
+    sessionStorage.setItem(BF_KEY, JSON.stringify(bf));
+    err.style.display = 'block';
     document.getElementById('admin-password').focus();
   }
 }
@@ -1593,7 +1661,7 @@ ${filenames}`
   } catch (err) {
     progress.classList.remove('visible');
     showToast('API ERROR — CHECK CONSOLE','error');
-    console.error(err);
+    /* suppressed */
   }
 });
 

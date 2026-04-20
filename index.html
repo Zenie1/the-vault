@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src * blob:; connect-src https://api.github.com https://raw.githubusercontent.com https://res.cloudinary.com https://api.anthropic.com https://corsproxy.io https://api.allorigins.win https://api.lyrics.ovh https://lrclib.net https://itunes.apple.com https://images.weserv.nl https://*.workers.dev https://fal.run https://queue.fal.run; frame-src 'none'; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 <meta name="theme-color" content="#050507">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2461,7 +2464,7 @@ header {
       <label>Password</label>
       <input type="password" id="admin-password" placeholder="Enter admin password" autocomplete="current-password">
     </div>
-    <div id="login-error" style="font-family:var(--font-mono);font-size:10px;color:var(--accent3);letter-spacing:1px;margin-top:-8px;margin-bottom:8px;display:none">INCORRECT PASSWORD</div>
+    <div id="login-error" style="font-family:var(--font-mono);font-size:10px;color:var(--accent3);letter-spacing:1px;margin-top:-8px;margin-bottom:8px;display:none">ACCESS DENIED</div>
     <div class="modal-actions">
       <button class="btn primary" id="login-submit-btn">UNLOCK VAULT</button>
       <button class="btn" id="login-cancel-btn">CANCEL</button>
