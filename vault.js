@@ -3,16 +3,11 @@
 // Loaded by index.html via <script src="vault.js" defer>
 // =============================================================
 // ===== CONFIG =====
-// Admin password is stored as a SHA-256 hash — never the plaintext.
-// To change: run this in browser console, then paste the output below:
-//   crypto.subtle.digest('SHA-256', new TextEncoder().encode('yournewpassword'))
-//     .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
-const ADMIN_PASSWORD_HASH = 'bd94dcda26fccb4e68d6a31f9b5aac0b571ae266d822620e901ef7ebe3a11d4f'; // vault2024
+// Admin password — change this to whatever you want
+const ADMIN_PASSWORD = 'vault2024';
 
 async function checkPassword(pw) {
-  const buf  = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
-  const hash = [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2,'0')).join('');
-  return hash === ADMIN_PASSWORD_HASH;
+  return pw === ADMIN_PASSWORD;
 }
 
 // ===== GITHUB CONFIG =====
