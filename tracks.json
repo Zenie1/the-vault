@@ -1,5 +1,19 @@
 [
   {
+    "id": 1776721403619,
+    "added": "2026-04-20",
+    "artist": "Lil Uzi Vert",
+    "title": "Vetements Jeans",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1776719034/Vetements_Jeans_feat._Playboi_Carti_mnvc9j.mp3",
+    "tags": [
+      "leak"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F879ad4ceab3005b6b4ee05016eb9e599.750x750x1.jpg",
+    "canvas": "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExY2psaTVxbTY2ZzUwOWR2YnNnMWdpZmdncHA0ZnRvNmg5MTNyM2htciZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ZurMyqIMgoOCMSNkxn/giphy.gif",
+    "lyricsUrl": "https://genius.com/Lil-uzi-vert-and-playboi-carti-vetements-jeans-original-lyrics"
+  },
+  {
     "id": 1775828644104,
     "added": "2026-04-10",
     "artist": "Che",
