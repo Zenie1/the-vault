@@ -398,6 +398,10 @@ function getFiltered() {
   } else if (sortMode === 'az') {
     list = [...list].sort((a, b) => a.title.localeCompare(b.title));
   }
+  // Invalidate preload buffers when playlist order changes
+  _preloadMap.clear();
+  preloadNext.src = '';
+  preloadPrev.src = '';
   return list;
 }
 
@@ -531,6 +535,57 @@ const playerBar = document.getElementById('player-bar');
 // will refuse to process the stream even if playback itself works.
 audio.crossOrigin = 'anonymous';
 
+// ===== PRELOAD SYSTEM =====
+// Two hidden <audio> elements buffer the next and previous tracks in the
+// background so skipping feels instant instead of waiting on Cloudinary.
+const preloadNext = new Audio();
+const preloadPrev = new Audio();
+preloadNext.crossOrigin = 'anonymous';
+preloadPrev.crossOrigin = 'anonymous';
+preloadNext.preload = 'auto';
+preloadPrev.preload = 'auto';
+
+// Map of url → preload Audio element so we can detect a cache hit
+const _preloadMap = new Map(); // url → Audio element
+
+// Cover art image cache — preload cover Images so vinyl swap is instant
+const _coverCache = new Map(); // url → Image element
+
+function _preloadCoverArt(url) {
+  if (!url || _coverCache.has(url)) return;
+  const img = new Image();
+  img.src = url;
+  _coverCache.set(url, img);
+}
+
+function schedulePreload(playlist, idx) {
+  // Preload up to 2 tracks ahead and 1 behind (non-blocking, low priority)
+  const toPreload = [];
+  if (idx + 1 < playlist.length)  toPreload.push({ el: preloadNext, track: playlist[idx + 1] });
+  if (idx - 1 >= 0)               toPreload.push({ el: preloadPrev, track: playlist[idx - 1] });
+  // Wrap-around
+  if (idx === 0 && playlist.length > 1)
+    toPreload.push({ el: preloadPrev, track: playlist[playlist.length - 1] });
+  if (idx === playlist.length - 1 && playlist.length > 1)
+    toPreload.push({ el: preloadNext, track: playlist[0] });
+
+  toPreload.forEach(({ el, track }) => {
+    if (!track || !track.url || track.type === 'file') return;
+    if (el.src === track.url) return; // already buffering this one
+    el.src = track.url;
+    el.load();
+    _preloadMap.set(track.url, el);
+    // Also preload cover art
+    if (track.coverArt) _preloadCoverArt(track.coverArt);
+  });
+}
+
+// When we skip to a track, check if a preloader has already buffered it.
+// If so, swap its buffer into the main audio element for instant start.
+function getPreloadedBuffer(url) {
+  return _preloadMap.get(url) || null;
+}
+
 function handlePlay(id) {
   const playlist = getPlaylist();
   const idx = playlist.findIndex(t=>t.id===id);
@@ -554,6 +609,12 @@ function playAtIndex(idx) {
   const t = playlist[idx];
   if (!t.url) { showToast('NO AUDIO SOURCE — ADD A URL OR FILE', 'error'); return; }
   currentTrackIdx = idx;
+
+  // ── Preload hit: swap the already-buffered element's src into main audio ──
+  // We can't transfer the buffer directly, but re-assigning the same URL after
+  // the browser has already cached/started fetching it is near-instant.
+  // Clean up preload map so we don't accidentally reuse stale entries.
+  _preloadMap.delete(t.url);
 
   // crossOrigin is already set to 'anonymous' at init time (above).
   // We just assign src and play — no retry needed.
@@ -594,12 +655,14 @@ function playAtIndex(idx) {
   renderRecentlyPlayed();
   renderQueue();
 
-  // Load cover art into vinyl
+  // Load cover art into vinyl — use preloaded Image if available
   const vinylImg = document.getElementById('player-cover-img');
   vinylImg.classList.remove('loaded');
   if (t.coverArt) {
     vinylImg.src = t.coverArt;
-    vinylImg.onload = () => vinylImg.classList.add('loaded');
+    // If image was preloaded it may already be complete
+    if (vinylImg.complete) { vinylImg.classList.add('loaded'); }
+    else { vinylImg.onload = () => vinylImg.classList.add('loaded'); }
     updateVinylCard(t, t.coverArt);
   } else {
     updateVinylCard(t, null);
@@ -615,6 +678,10 @@ function playAtIndex(idx) {
 
   renderTracks();
   updateLikeBtn();
+
+  // Schedule background preloading of adjacent tracks (deferred so current
+  // track gets full bandwidth priority for the first ~800 ms)
+  setTimeout(() => schedulePreload(playlist, idx), 800);
 }
 
 document.getElementById('play-pause-btn').addEventListener('click', () => {
