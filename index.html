@@ -433,7 +433,24 @@ header {
 
 .player-center { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; width:100%; min-width:0; overflow:hidden; }
 .player-controls { display:flex; align-items:center; justify-content:center; gap:14px; width:100%; }
-.player-right-col { display:flex; align-items:center; justify-content:flex-end; gap:10px; min-width:0; }
+.player-right-col { display:flex; align-items:center; justify-content:flex-end; gap:6px; min-width:0; }
+
+/* Player-right-col decongest: shrink secondary action buttons + add hairline separators between groups */
+.player-right-col .dl-btn,
+.player-right-col .speed-btn,
+.player-right-col .sleep-btn,
+.player-right-col .queue-toggle-btn,
+.player-right-col .canvas-toggle-btn,
+.player-right-col .lyrics-btn,
+.player-right-col .stem-btn {
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  padding: 5px 7px;
+}
+.player-right-col .dl-btn { padding: 5px 8px; gap: 3px; }
+.player-right-col .speed-btn { min-width: 36px; padding: 5px 6px; }
+/* Hairline separator after the volume group */
+.player-right-col .volume-wrap { margin-right: 4px; padding-right: 8px; border-right: 1px solid var(--border); }
 
 .play-pause {
   width:42px; height:42px;
