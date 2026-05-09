@@ -784,7 +784,7 @@ function drawWaveform() {
   waveCtx.clearRect(0, 0, W, H);
 
   const rawColor = getComputedStyle(document.getElementById('player-bar'))
-    .getPropertyValue('--current-color').trim() || '#c8ff00';
+    .getPropertyValue('--current-color').trim() || '#c41e3a';
   // Use scrub position while dragging, else actual playback position
   const progress = isScrubbing ? scrubProgress : (audio.duration ? audio.currentTime / audio.duration : 0);
 
@@ -1001,7 +1001,7 @@ function animateSub() {
   bassAnimFrame = requestAnimationFrame(animateSub);
 
   const color = getComputedStyle(document.getElementById('player-bar'))
-    .getPropertyValue('--current-color').trim() || '#c8ff00';
+    .getPropertyValue('--current-color').trim() || '#c41e3a';
 
   // get raw bass 0..1
   const raw = isPlaying ? getBassPower() : 0;
@@ -1858,8 +1858,8 @@ function setArtistBG(artist) {
 }
 function setDefaultBG() {
   if (animFrame) cancelAnimationFrame(animFrame);
-  initParticles('#c8ff00');
-  drawBG('#c8ff00');
+  initParticles('#c41e3a');
+  drawBG('#c41e3a');
 }
 
 // ===== GITHUB SETTINGS MODAL =====
