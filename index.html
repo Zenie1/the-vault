@@ -346,19 +346,14 @@ header {
   bottom: 0; left: 0; right: 0;
   background: rgba(10,4,8,0.97);
   border-top: 1px solid var(--border2);
-  padding: 12px 28px;
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
-  padding-left: max(28px, env(safe-area-inset-left));
-  padding-right: max(28px, env(safe-area-inset-right));
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2.5fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 16px;
+  padding: 0;
   z-index: 100;
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
   transform: translateY(100%);
   transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+  display: flex;
+  flex-direction: column;
 }
 #player-bar.visible { transform: translateY(0); }
 #player-bar::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--current-color,var(--accent)),transparent); }
@@ -433,25 +428,10 @@ header {
 
 .player-center { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; width:100%; min-width:0; overflow:hidden; }
 .player-controls { display:flex; align-items:center; justify-content:center; gap:14px; width:100%; }
-.player-right-col { display:flex; align-items:center; justify-content:flex-end; gap:6px; min-width:0; }
+.player-right-col { display:flex; align-items:center; justify-content:flex-end; gap:12px; min-width:0; }
 
-/* Player-right-col decongest: shrink secondary action buttons + add hairline separators between groups */
-.player-right-col .dl-btn,
-.player-right-col .speed-btn,
-.player-right-col .sleep-btn,
-.player-right-col .queue-toggle-btn,
-.player-right-col .canvas-toggle-btn,
-.player-right-col .lyrics-btn,
-.player-right-col .stem-btn,
-.player-right-col .fx-btn {
-  font-size: 8px;
-  letter-spacing: 0.5px;
-  padding: 5px 7px;
-}
-.player-right-col .dl-btn { padding: 5px 8px; gap: 3px; }
-.player-right-col .speed-btn { min-width: 36px; padding: 5px 6px; }
-/* Hairline separator after the volume group */
-.player-right-col .volume-wrap { margin-right: 4px; padding-right: 8px; border-right: 1px solid var(--border); }
+/* Volume wrap in right col */
+.player-right-col .volume-wrap { margin-right: 0; padding-right: 0; border-right: none; }
 
 .play-pause {
   width:42px; height:42px;
@@ -647,7 +627,7 @@ header {
 /* TOAST */
 .toast {
   position: fixed;
-  bottom: 90px;
+  bottom: 108px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
   background: var(--surface2);
@@ -2352,6 +2332,162 @@ header {
   .xfade-wrap, .pitch-wrap { display: none; }
   .eq-sliders { gap: 8px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PLAYER TOOLBAR — thin secondary-controls strip inside player-bar
+═══════════════════════════════════════════════════════════════════ */
+
+/* Inner main row: 3-col grid (replaces old player-bar grid) */
+.player-main-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2.5fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 10px max(28px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
+}
+
+/* Toolbar strip */
+#player-toolbar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0;
+  padding: 5px max(28px, env(safe-area-inset-right)) 5px max(28px, env(safe-area-inset-left));
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+#player-toolbar::-webkit-scrollbar { display: none; }
+
+/* Group container */
+.ptb-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 10px;
+  flex-shrink: 0;
+}
+.ptb-group:first-child { padding-left: 0; }
+.ptb-group:last-child  { padding-right: 0; }
+
+/* Separator */
+.ptb-sep {
+  width: 1px; height: 14px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* FADE mini-label inside toolbar */
+.ptb-mini-label {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Base style for ALL toolbar buttons — overrides existing class rules */
+#player-toolbar .ptb-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted2);
+  cursor: pointer;
+  font-size: 15px;
+  padding: 4px 6px;
+  line-height: 1;
+  border-radius: 2px;
+  transition: color 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
+  letter-spacing: normal;
+  text-transform: none;
+  font-family: inherit;
+  min-width: unset;
+}
+#player-toolbar .ptb-btn:hover { color: var(--text); }
+#player-toolbar .ptb-btn.active { color: var(--current-color, var(--accent)); }
+
+/* Speed: keep mono text since it shows "1×" / "1.5×" */
+#player-toolbar .speed-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  min-width: 26px;
+  text-align: center;
+}
+#player-toolbar .speed-btn.active { color: var(--accent4); }
+
+/* Sleep: keep mono text */
+#player-toolbar .sleep-btn {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+#player-toolbar .sleep-btn.active { color: var(--gold, #c9a45c); }
+
+/* FX button */
+#player-toolbar .fx-btn {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+#player-toolbar .fx-btn.active { color: var(--current-color, var(--accent)); }
+
+/* Pitch display inside toolbar */
+#player-toolbar .pitch-display {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  min-width: 26px;
+  text-align: center;
+  padding: 0 2px;
+}
+#player-toolbar .pitch-display.shifted { color: var(--current-color, var(--accent)); }
+
+/* Pitch adj +/− */
+#player-toolbar .pitch-adj-btn {
+  font-size: 13px;
+  padding: 4px 5px;
+}
+
+/* Pitch reset ⟳ */
+#player-toolbar .pitch-reset-btn {
+  font-size: 11px;
+  padding: 4px 4px;
+  opacity: 0.7;
+}
+#player-toolbar .pitch-reset-btn:hover { opacity: 1; color: var(--accent3); }
+
+/* Xfade slider inside toolbar */
+#player-toolbar .xfade-slider { width: 52px; }
+#player-toolbar #xfade-val {
+  font-size: 8px;
+  color: var(--muted);
+  min-width: 20px;
+  font-family: var(--font-mono);
+}
+
+/* Canvas toggle in toolbar: remove the display:none that would hide it on mobile */
+#player-toolbar .canvas-toggle-btn { display: flex !important; }
+
+/* Mobile: hide toolbar, keep mobile-action-row */
+@media (max-width: 700px) {
+  #player-toolbar { display: none; }
+  .player-main-row {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px 0;
+    gap: 10px;
+    align-items: stretch;
+    grid-template-columns: unset;
+  }
+  .player-right-col { display: none; }
+}
 </style>
 </head>
 <body>
@@ -2475,94 +2611,119 @@ header {
 </div>
 
 <div id="player-bar">
-  <!-- LEFT: art + track info + like -->
-  <div class="player-row1">
-    <div class="player-vinyl" id="player-vinyl" title="Click to view art" style="cursor:pointer"><div class="vinyl-dot"></div><img class="player-vinyl-img" id="player-cover-img" src="" alt=""></div>
-    <div class="player-info">
-      <div class="player-title" id="player-title">—</div>
-      <div class="player-artist" id="player-artist">—</div>
-      <button class="player-like-btn" id="player-like-btn" title="Like">♡</button>
-    </div>
-  </div>
 
-  <!-- CENTER: waveform + transport controls -->
-  <div class="player-center">
-    <div class="player-progress player-row2">
-      <span class="time-label" id="time-current">0:00</span>
-      <div id="scrub-tooltip">0:00</div>
-      <canvas id="waveform-canvas" height="36"></canvas>
-      <span class="time-label" id="time-total">0:00</span>
-      <div class="wave-toggle">
-        <button class="wave-style-btn active" id="wave-bars-btn" title="Bar waveform">▮▮</button>
-        <button class="wave-style-btn" id="wave-line-btn" title="Line waveform">〜</button>
-      </div>
-    </div>
-    <div class="player-controls player-row3">
-      <button class="ctrl-btn shuffle-btn" id="shuffle-btn" title="Shuffle (S)">⇄</button>
-      <button class="ctrl-btn" id="prev-btn" title="Previous (←)">⏮</button>
-      <button class="play-pause" id="play-pause-btn" title="Play/Pause (Space)">▶</button>
-      <button class="ctrl-btn" id="next-btn" title="Next (→)">⏭</button>
-      <button class="ctrl-btn loop-btn" id="loop-btn" title="Loop (L)">↺</button>
-    </div>
-  </div>
+  <!-- ══ TOOLBAR: all secondary controls in one thin strip ══ -->
+  <div id="player-toolbar">
 
-  <!-- RIGHT: volume, actions, subwoofer -->
-  <div class="player-right-col">
-    <div class="volume-wrap">
-      <span class="volume-icon" id="vol-icon">🔊</span>
-      <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
-    </div>
-    <button class="dl-btn" id="download-link" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓ DL</button>
-    <button class="speed-btn" id="speed-btn" title="Playback speed">1×</button>
-    <div style="position:relative;flex-shrink:0">
-      <button class="sleep-btn" id="sleep-btn" title="Sleep timer">☽ Sleep</button>
-      <div class="sleep-dropdown" id="sleep-dropdown">
-        <button class="sleep-option" data-mins="15">15 minutes</button>
-        <button class="sleep-option" data-mins="30">30 minutes</button>
-        <button class="sleep-option" data-mins="60">60 minutes</button>
-        <button class="sleep-option" data-mins="0">Cancel timer</button>
+    <!-- G1: PLAYBACK — sleep + crossfade -->
+    <div class="ptb-group">
+      <div style="position:relative;flex-shrink:0">
+        <button class="ptb-btn sleep-btn" id="sleep-btn" title="Sleep Timer">🌙</button>
+        <div class="sleep-dropdown" id="sleep-dropdown">
+          <button class="sleep-option" data-mins="15">15 minutes</button>
+          <button class="sleep-option" data-mins="30">30 minutes</button>
+          <button class="sleep-option" data-mins="60">60 minutes</button>
+          <button class="sleep-option" data-mins="0">Cancel timer</button>
+        </div>
       </div>
+      <span class="ptb-mini-label">FADE</span>
+      <input type="range" class="xfade-slider" id="xfade-slider" min="0" max="12" step="0.5" value="2" title="Crossfade duration">
+      <span class="ptb-mini-label" id="xfade-val">2s</span>
     </div>
-    <button class="queue-toggle-btn" id="queue-toggle-btn" title="Up Next queue (Q)">≡ Queue</button>
-    <button class="canvas-toggle-btn" id="canvas-toggle-btn" title="Toggle Canvas">◈ Canvas</button>
-    <button class="lyrics-btn" id="lyrics-toggle-btn" title="Show Lyrics (K)">♩ Lyrics</button>
-    <button class="stem-btn" id="stem-toggle-btn" title="Stem Player (P)">⊕ Stems</button>
-    <button class="viz-btn" id="viz-btn" title="Full-screen Visualizer (V)">⊞ Viz</button>
-    <button class="fx-btn" id="eq-btn" title="FX / EQ Panel (E)">⊜ FX</button>
-    <!-- CROSSFADE DURATION -->
-    <div class="xfade-wrap" title="Crossfade duration between tracks">
-      <span class="xfade-label">FADE</span>
-      <input type="range" class="xfade-slider" id="xfade-slider" min="0" max="12" step="0.5" value="2">
-      <span class="xfade-label" id="xfade-val">2s</span>
-    </div>
-    <!-- PITCH SHIFT -->
-    <div class="pitch-wrap" title="Pitch shift (semitones)">
-      <span class="xfade-label">♩</span>
-      <button class="pitch-adj-btn" id="pitch-down-btn" title="Pitch down 1 semitone">−</button>
+
+    <div class="ptb-sep"></div>
+
+    <!-- G2: AUDIO — FX panel + pitch shift -->
+    <div class="ptb-group">
+      <button class="ptb-btn fx-btn" id="eq-btn" title="FX / EQ Panel (E)">⊜</button>
+      <button class="ptb-btn pitch-adj-btn" id="pitch-down-btn" title="Pitch down 1 semitone">−</button>
       <span class="pitch-display" id="pitch-display">0st</span>
-      <button class="pitch-adj-btn" id="pitch-up-btn" title="Pitch up 1 semitone">+</button>
-      <button class="pitch-reset-btn" id="pitch-reset-btn" title="Reset pitch">⟳</button>
+      <button class="ptb-btn pitch-adj-btn" id="pitch-up-btn" title="Pitch up 1 semitone">+</button>
+      <button class="ptb-btn pitch-reset-btn" id="pitch-reset-btn" title="Reset pitch">⟳</button>
     </div>
-    <!-- SUBWOOFER VISUALIZER -->
-    <div id="subwoofer-wrap">
-      <svg id="sub-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-        <circle class="sub-basket" cx="32" cy="32" r="30"/>
-        <line class="sub-spider" x1="32" y1="2"  x2="32" y2="14"/>
-        <line class="sub-spider" x1="32" y1="50" x2="32" y2="62"/>
-        <line class="sub-spider" x1="2"  y1="32" x2="14" y2="32"/>
-        <line class="sub-spider" x1="50" y1="32" x2="62" y2="32"/>
-        <line class="sub-spider" x1="8"  y1="10" x2="17" y2="19"/>
-        <line class="sub-spider" x1="56" y1="10" x2="47" y2="19"/>
-        <line class="sub-spider" x1="8"  y1="54" x2="17" y2="45"/>
-        <line class="sub-spider" x1="56" y1="54" x2="47" y2="45"/>
-        <circle class="sub-magnet" cx="32" cy="32" r="10"/>
-        <circle id="sub-surround" cx="32" cy="32" r="22"/>
-        <circle id="sub-cone" cx="32" cy="32" r="16"/>
-        <circle id="sub-dustcap" cx="32" cy="32" r="8"/>
-        <circle id="sub-glow" cx="32" cy="32" r="22" fill="transparent"/>
-      </svg>
+
+    <div class="ptb-sep"></div>
+
+    <!-- G3: DISPLAY — canvas, viz, lyrics, stems, queue -->
+    <div class="ptb-group">
+      <button class="ptb-btn canvas-toggle-btn" id="canvas-toggle-btn" title="Canvas">◈</button>
+      <button class="ptb-btn viz-btn" id="viz-btn" title="Visualizer (V)">⊞</button>
+      <button class="ptb-btn lyrics-btn" id="lyrics-toggle-btn" title="Lyrics (K)">♩</button>
+      <button class="ptb-btn stem-btn" id="stem-toggle-btn" title="Stems (P)">⊕</button>
+      <button class="ptb-btn queue-toggle-btn" id="queue-toggle-btn" title="Queue (Q)">≡</button>
     </div>
-  </div>
+
+    <div class="ptb-sep"></div>
+
+    <!-- G4: TRACK — download + speed -->
+    <div class="ptb-group">
+      <button class="ptb-btn dl-btn" id="download-link" title="Download" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓</button>
+      <button class="ptb-btn speed-btn" id="speed-btn" title="Playback Speed">1×</button>
+    </div>
+
+  </div><!-- /#player-toolbar -->
+
+  <!-- ══ MAIN ROW: art + waveform + volume ══ -->
+  <div class="player-main-row">
+
+    <!-- LEFT: art + track info + like -->
+    <div class="player-row1">
+      <div class="player-vinyl" id="player-vinyl" title="Click to view art" style="cursor:pointer"><div class="vinyl-dot"></div><img class="player-vinyl-img" id="player-cover-img" src="" alt=""></div>
+      <div class="player-info">
+        <div class="player-title" id="player-title">—</div>
+        <div class="player-artist" id="player-artist">—</div>
+        <button class="player-like-btn" id="player-like-btn" title="Like">♡</button>
+      </div>
+    </div>
+
+    <!-- CENTER: waveform + transport controls -->
+    <div class="player-center">
+      <div class="player-progress player-row2">
+        <span class="time-label" id="time-current">0:00</span>
+        <div id="scrub-tooltip">0:00</div>
+        <canvas id="waveform-canvas" height="36"></canvas>
+        <span class="time-label" id="time-total">0:00</span>
+        <div class="wave-toggle">
+          <button class="wave-style-btn active" id="wave-bars-btn" title="Bar waveform">▮▮</button>
+          <button class="wave-style-btn" id="wave-line-btn" title="Line waveform">〜</button>
+        </div>
+      </div>
+      <div class="player-controls player-row3">
+        <button class="ctrl-btn shuffle-btn" id="shuffle-btn" title="Shuffle (S)">⇄</button>
+        <button class="ctrl-btn" id="prev-btn" title="Previous (←)">⏮</button>
+        <button class="play-pause" id="play-pause-btn" title="Play/Pause (Space)">▶</button>
+        <button class="ctrl-btn" id="next-btn" title="Next (→)">⏭</button>
+        <button class="ctrl-btn loop-btn" id="loop-btn" title="Loop (L)">↺</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: volume + subwoofer (always visible) -->
+    <div class="player-right-col">
+      <div class="volume-wrap">
+        <span class="volume-icon" id="vol-icon">🔊</span>
+        <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.01" value="0.8">
+      </div>
+      <div id="subwoofer-wrap">
+        <svg id="sub-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <circle class="sub-basket" cx="32" cy="32" r="30"/>
+          <line class="sub-spider" x1="32" y1="2"  x2="32" y2="14"/>
+          <line class="sub-spider" x1="32" y1="50" x2="32" y2="62"/>
+          <line class="sub-spider" x1="2"  y1="32" x2="14" y2="32"/>
+          <line class="sub-spider" x1="50" y1="32" x2="62" y2="32"/>
+          <line class="sub-spider" x1="8"  y1="10" x2="17" y2="19"/>
+          <line class="sub-spider" x1="56" y1="10" x2="47" y2="19"/>
+          <line class="sub-spider" x1="8"  y1="54" x2="17" y2="45"/>
+          <line class="sub-spider" x1="56" y1="54" x2="47" y2="45"/>
+          <circle class="sub-magnet" cx="32" cy="32" r="10"/>
+          <circle id="sub-surround" cx="32" cy="32" r="22"/>
+          <circle id="sub-cone" cx="32" cy="32" r="16"/>
+          <circle id="sub-dustcap" cx="32" cy="32" r="8"/>
+          <circle id="sub-glow" cx="32" cy="32" r="22" fill="transparent"/>
+        </svg>
+      </div>
+    </div>
+
+  </div><!-- /.player-main-row -->
 
   <!-- MOBILE ACTION ROW — shown only on mobile -->
   <div class="mobile-action-row" id="mobile-action-row">
@@ -2573,7 +2734,8 @@ header {
     <button class="mobile-action-btn" id="mobile-viz-btn">⊞<span>Viz</span></button>
     <button class="mobile-action-btn" id="mobile-eq-btn">⊜<span>FX</span></button>
   </div>
-</div>
+
+</div><!-- /#player-bar -->
 
 <!-- EDIT TRACK MODAL -->
 <div class="modal-overlay" id="edit-modal">
