@@ -442,7 +442,8 @@ header {
 .player-right-col .queue-toggle-btn,
 .player-right-col .canvas-toggle-btn,
 .player-right-col .lyrics-btn,
-.player-right-col .stem-btn {
+.player-right-col .stem-btn,
+.player-right-col .fx-btn {
   font-size: 8px;
   letter-spacing: 0.5px;
   padding: 5px 7px;
@@ -2178,6 +2179,179 @@ header {
   #viz-mode-dots { right: 14px; bottom: 108px; }
   .viz-btn { display: none; } /* accessible via mobile action row */
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   CROSSFADE SLIDER IN PLAYER BAR
+════════════════════════════════════════════════════════════════ */
+.xfade-wrap {
+  display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+  padding-left: 6px; border-left: 1px solid var(--border); margin-left: 2px;
+}
+.xfade-label {
+  font-family: var(--font-mono); font-size: 8px; color: var(--muted);
+  letter-spacing: 1px; white-space: nowrap;
+}
+.xfade-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 50px; height: 3px; background: var(--surface3);
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+.xfade-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 10px; height: 10px;
+  border-radius: 50%; background: var(--current-color, var(--accent)); cursor: pointer;
+}
+.xfade-slider::-moz-range-thumb {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--current-color, var(--accent)); cursor: pointer; border: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PITCH CONTROL IN PLAYER BAR
+════════════════════════════════════════════════════════════════ */
+.pitch-wrap {
+  display: flex; align-items: center; gap: 3px; flex-shrink: 0;
+  padding-left: 6px; border-left: 1px solid var(--border); margin-left: 2px;
+}
+.pitch-display {
+  font-family: var(--font-mono); font-size: 8px; color: var(--muted);
+  letter-spacing: 0.5px; white-space: nowrap; min-width: 26px; text-align: center;
+  transition: color 0.2s;
+}
+.pitch-display.shifted { color: var(--current-color, var(--accent)); }
+.pitch-adj-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  font-size: 10px; cursor: pointer; padding: 2px 5px; line-height: 1;
+  border-radius: 1px; transition: all 0.15s; flex-shrink: 0;
+}
+.pitch-adj-btn:hover { color: var(--text); border-color: var(--border2); }
+.pitch-reset-btn {
+  background: transparent; border: none; color: var(--muted);
+  font-size: 9px; cursor: pointer; padding: 2px 4px; line-height: 1;
+  transition: color 0.15s;
+}
+.pitch-reset-btn:hover { color: var(--accent3); }
+
+/* ═══════════════════════════════════════════════════════════════
+   FX / EQ BUTTON IN PLAYER BAR
+════════════════════════════════════════════════════════════════ */
+.player-right-col .fx-btn {
+  font-size: 8px; letter-spacing: 0.5px; padding: 5px 7px;
+}
+.player-right-col .fx-btn.active {
+  color: var(--current-color, var(--accent));
+  border-color: var(--current-color, var(--accent));
+  background: rgba(196,30,58,0.08);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EQ / FX PANEL  (sits just below player bar, slides up)
+════════════════════════════════════════════════════════════════ */
+#eq-panel {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 132px;
+  background: rgba(10,4,8,0.98);
+  border-top: 1px solid var(--border2);
+  z-index: 101;
+  display: flex; flex-direction: column; justify-content: center; gap: 8px;
+  padding: 10px 24px;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+  backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+}
+#eq-panel.open { transform: translateY(0); }
+
+/* Push player bar and other panels up when EQ panel is open */
+#player-bar.eq-open {
+  bottom: 132px;
+  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), bottom 0.35s cubic-bezier(0.16,1,0.3,1);
+}
+#stem-panel.eq-open  { bottom: 132px; }
+#lyrics-panel.eq-open {
+  bottom: 132px;
+  transition: transform 0.38s cubic-bezier(0.16,1,0.3,1), bottom 0.35s cubic-bezier(0.16,1,0.3,1);
+}
+
+/* EQ panel interior */
+.eq-row {
+  display: flex; align-items: center; gap: 12px;
+}
+.eq-presets { display: flex; gap: 5px; flex-shrink: 0; }
+.eq-preset-btn {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); font-family: var(--font-mono); font-size: 8px;
+  letter-spacing: 1px; padding: 4px 8px; cursor: pointer; border-radius: 1px;
+  transition: all 0.15s; text-transform: uppercase; white-space: nowrap;
+}
+.eq-preset-btn:hover { color: var(--text); border-color: var(--border2); }
+.eq-preset-btn.active {
+  color: var(--current-color, var(--accent));
+  border-color: var(--current-color, var(--accent));
+  background: rgba(196,30,58,0.08);
+}
+.eq-panel-close {
+  background: transparent; border: none; color: var(--muted);
+  font-size: 14px; cursor: pointer; padding: 2px 6px; margin-left: auto;
+  transition: color 0.15s; line-height: 1;
+}
+.eq-panel-close:hover { color: var(--text); }
+
+.eq-sliders { display: flex; align-items: center; gap: 14px; flex: 1; }
+.eq-slider-group {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  min-width: 52px; flex: 1;
+}
+.eq-slider-label {
+  font-family: var(--font-mono); font-size: 8px; color: var(--muted);
+  letter-spacing: 1px; text-transform: uppercase; white-space: nowrap;
+}
+.eq-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 3px; background: var(--surface3);
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+.eq-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--current-color, var(--accent)); cursor: pointer;
+}
+.eq-slider::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--current-color, var(--accent)); cursor: pointer; border: none;
+}
+.eq-val {
+  font-family: var(--font-mono); font-size: 8px; color: var(--muted);
+  white-space: nowrap;
+}
+
+.eq-toggle-group {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border: 1px solid var(--border); border-radius: 1px; flex-shrink: 0;
+}
+.eq-toggle-label {
+  font-family: var(--font-mono); font-size: 8px; color: var(--muted);
+  letter-spacing: 1px; text-transform: uppercase; user-select: none;
+}
+.eq-toggle {
+  width: 28px; height: 15px; border-radius: 8px;
+  background: var(--surface3); border: none; cursor: pointer;
+  position: relative; transition: background 0.2s; flex-shrink: 0;
+}
+.eq-toggle::after {
+  content: ''; position: absolute; width: 11px; height: 11px;
+  border-radius: 50%; background: var(--muted); top: 2px; left: 2px;
+  transition: all 0.2s;
+}
+.eq-toggle.on { background: var(--accent); }
+.eq-toggle.on::after { left: 15px; background: #fff; }
+.eq-toggle-group.on .eq-toggle-label { color: var(--text); }
+
+@media (max-width: 700px) {
+  #eq-panel { height: 155px; padding: 8px 14px; gap: 6px; }
+  #player-bar.eq-open { bottom: 155px; }
+  #stem-panel.eq-open { bottom: 155px; }
+  .xfade-wrap, .pitch-wrap { display: none; }
+  .eq-sliders { gap: 8px; }
+}
 </style>
 </head>
 <body>
@@ -2244,6 +2418,51 @@ header {
 </div>
 <div id="canvas-label">◈ CANVAS</div>
 
+<!-- FX / EQ PANEL — slides up from bottom, below player bar -->
+<div id="eq-panel">
+  <div class="eq-row">
+    <div class="eq-presets">
+      <button class="eq-preset-btn active" data-preset="clean">CLEAN</button>
+      <button class="eq-preset-btn" data-preset="bass">BASS BOOST</button>
+      <button class="eq-preset-btn" data-preset="lofi">LO-FI</button>
+      <button class="eq-preset-btn" data-preset="reverb">REVERB ROOM</button>
+    </div>
+    <button class="eq-panel-close" id="eq-panel-close" title="Close FX Panel">✕</button>
+  </div>
+  <div class="eq-row">
+    <div class="eq-sliders">
+      <div class="eq-slider-group">
+        <span class="eq-slider-label">BASS</span>
+        <input type="range" class="eq-slider" id="eq-bass-sl" min="-12" max="12" step="0.5" value="0">
+        <span class="eq-val" id="eq-bass-val">0 dB</span>
+      </div>
+      <div class="eq-slider-group">
+        <span class="eq-slider-label">MID</span>
+        <input type="range" class="eq-slider" id="eq-mid-sl" min="-12" max="12" step="0.5" value="0">
+        <span class="eq-val" id="eq-mid-val">0 dB</span>
+      </div>
+      <div class="eq-slider-group">
+        <span class="eq-slider-label">TREBLE</span>
+        <input type="range" class="eq-slider" id="eq-treble-sl" min="-12" max="12" step="0.5" value="0">
+        <span class="eq-val" id="eq-treble-val">0 dB</span>
+      </div>
+      <div class="eq-slider-group">
+        <span class="eq-slider-label">REVERB</span>
+        <input type="range" class="eq-slider" id="eq-reverb-sl" min="0" max="1" step="0.01" value="0">
+        <span class="eq-val" id="eq-reverb-val">0%</span>
+      </div>
+    </div>
+    <div class="eq-toggle-group" id="eq-lofi-group">
+      <span class="eq-toggle-label">LO-FI</span>
+      <button class="eq-toggle" id="eq-lofi-toggle" title="Lo-Fi effect on/off"></button>
+    </div>
+    <div class="eq-toggle-group" id="eq-gapless-group" style="margin-left:4px">
+      <span class="eq-toggle-label">GAPLESS</span>
+      <button class="eq-toggle on" id="eq-gapless-toggle" title="Gapless playback on/off"></button>
+    </div>
+  </div>
+</div>
+
 <!-- PLAYER BAR -->
 <!-- VINYL ART CARD POPUP -->
 <div class="vinyl-art-card" id="vinyl-art-card">
@@ -2309,6 +2528,21 @@ header {
     <button class="lyrics-btn" id="lyrics-toggle-btn" title="Show Lyrics (K)">♩ Lyrics</button>
     <button class="stem-btn" id="stem-toggle-btn" title="Stem Player (P)">⊕ Stems</button>
     <button class="viz-btn" id="viz-btn" title="Full-screen Visualizer (V)">⊞ Viz</button>
+    <button class="fx-btn" id="eq-btn" title="FX / EQ Panel (E)">⊜ FX</button>
+    <!-- CROSSFADE DURATION -->
+    <div class="xfade-wrap" title="Crossfade duration between tracks">
+      <span class="xfade-label">FADE</span>
+      <input type="range" class="xfade-slider" id="xfade-slider" min="0" max="12" step="0.5" value="2">
+      <span class="xfade-label" id="xfade-val">2s</span>
+    </div>
+    <!-- PITCH SHIFT -->
+    <div class="pitch-wrap" title="Pitch shift (semitones)">
+      <span class="xfade-label">♩</span>
+      <button class="pitch-adj-btn" id="pitch-down-btn" title="Pitch down 1 semitone">−</button>
+      <span class="pitch-display" id="pitch-display">0st</span>
+      <button class="pitch-adj-btn" id="pitch-up-btn" title="Pitch up 1 semitone">+</button>
+      <button class="pitch-reset-btn" id="pitch-reset-btn" title="Reset pitch">⟳</button>
+    </div>
     <!-- SUBWOOFER VISUALIZER -->
     <div id="subwoofer-wrap">
       <svg id="sub-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
@@ -2337,6 +2571,7 @@ header {
     <button class="mobile-action-btn" id="mobile-lyrics-btn">♩<span>Lyrics</span></button>
     <button class="mobile-action-btn" id="mobile-stems-btn">⊕<span>Stems</span></button>
     <button class="mobile-action-btn" id="mobile-viz-btn">⊞<span>Viz</span></button>
+    <button class="mobile-action-btn" id="mobile-eq-btn">⊜<span>FX</span></button>
   </div>
 </div>
 
@@ -2891,6 +3126,7 @@ header {
 </div>
 
 <audio id="audio-player" crossorigin="anonymous"></audio>
+<audio id="audio-xfade" crossorigin="anonymous"></audio>
 
 <script src="vault.js" defer></script>
 

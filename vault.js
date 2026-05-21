@@ -526,14 +526,13 @@ function formatDate(d) {
 }
 
 // ===== PLAYER =====
-const audio = document.getElementById('audio-player');
-const playerBar = document.getElementById('player-bar');
+const audio    = document.getElementById('audio-player');
+const audioXfade = document.getElementById('audio-xfade');
+const playerBar  = document.getElementById('player-bar');
 
 // CORS FIX: must be set ONCE before any src is ever assigned.
-// This makes the browser send CORS headers on every audio request,
-// which Cloudinary supports. Without this, the Web Audio API (AudioContext)
-// will refuse to process the stream even if playback itself works.
-audio.crossOrigin = 'anonymous';
+audio.crossOrigin    = 'anonymous';
+audioXfade.crossOrigin = 'anonymous';
 
 // ===== PRELOAD SYSTEM =====
 // Two hidden <audio> elements buffer the next and previous tracks in the
@@ -609,6 +608,23 @@ function playAtIndex(idx) {
   const t = playlist[idx];
   if (!t.url) { showToast('NO AUDIO SOURCE — ADD A URL OR FILE', 'error'); return; }
   currentTrackIdx = idx;
+
+  // ── Cancel any in-progress crossfade before hard-switching ──────────────
+  if (xfadeTimer) { clearTimeout(xfadeTimer); xfadeTimer = null; }
+  if (gainMain && audioCtx) {
+    const _now = audioCtx.currentTime;
+    gainMain.gain.cancelScheduledValues(_now);
+    gainMain.gain.setValueAtTime(1, _now);
+    gainXfade.gain.cancelScheduledValues(_now);
+    gainXfade.gain.setValueAtTime(0, _now);
+  }
+  if (audioXfade && audioXfade.src) {
+    audioXfade.pause();
+    audioXfade.src = '';
+    audioXfade.load();
+  }
+  isXfading = false;
+  gaplessTriggered = false;
 
   // ── Preload hit: swap the already-buffered element's src into main audio ──
   // We can't transfer the buffer directly, but re-assigning the same URL after
@@ -708,7 +724,7 @@ document.getElementById('prev-btn').addEventListener('click', () => {
   const newIdx = isShuffled
     ? Math.floor(Math.random() * playlist.length)
     : (currentTrackIdx <= 0 ? playlist.length - 1 : currentTrackIdx - 1);
-  playAtIndex(newIdx);
+  crossfadeTo(newIdx);
 });
 document.getElementById('next-btn').addEventListener('click', () => {
   const playlist = getPlaylist();
@@ -716,11 +732,15 @@ document.getElementById('next-btn').addEventListener('click', () => {
   const newIdx = isShuffled
     ? Math.floor(Math.random() * playlist.length)
     : (currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1);
-  playAtIndex(newIdx);
+  crossfadeTo(newIdx);
 });
 
 audio.addEventListener('ended', () => {
   if (isLooping) return; // audio.loop handles it
+  gaplessTriggered = false; // reset gapless flag for next track
+  isXfading = false;        // ensure clean state
+  // Reset gain to 1 in case a fade was in progress
+  if (gainMain && audioCtx) gainMain.gain.setValueAtTime(1, audioCtx.currentTime);
   // Queue takes priority over shuffle/normal
   if (queue.length) {
     playFromQueue(0);
@@ -730,6 +750,8 @@ audio.addEventListener('ended', () => {
   const newIdx = isShuffled
     ? Math.floor(Math.random() * playlist.length)
     : (currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1);
+  // Use direct play — gapless handles the smooth transition before this fires;
+  // when audio.ended fires unexpectedly (short track, buffering issue), just start next.
   playAtIndex(newIdx);
 });
 
@@ -741,30 +763,125 @@ let smoothedBars = [];
 
 let waveformMuteGain = null; // controls speaker output independently of analyser
 
+// ── Crossfade nodes ──────────────────────────────────────────────────────────
+let gainMain = null, gainXfade = null;
+let sourceNodeXfade = null;
+let xfadeDuration = 2;   // seconds (0 = instant)
+let xfadeTimer = null;
+let isXfading = false;
+
+// ── EQ / FX nodes ────────────────────────────────────────────────────────────
+let eqBass = null, eqMid = null, eqTreble = null;
+let reverbDryGain = null, reverbWetGain = null, convolver = null, reverbMerge = null;
+let lofiHighCut = null, lofiDistort = null;
+
+// ── Gapless playback ─────────────────────────────────────────────────────────
+let gaplessEnabled = true;
+let gaplessTriggered = false;  // prevents double-trigger per track
+
+// ── Pitch shift ──────────────────────────────────────────────────────────────
+let pitchNode = null;
+let pitchSemitones = 0;
+let pitchWorkletReady = false;
+
 function setupAudioContext() {
   if (audioCtx && sourceNode) return; // already wired up — do nothing
   try {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
+
+    // ── Crossfade gain nodes ─────────────────────────────────────────
+    gainMain  = audioCtx.createGain(); gainMain.gain.value  = 1;
+    gainXfade = audioCtx.createGain(); gainXfade.gain.value = 0;
+
+    // ── EQ filters ───────────────────────────────────────────────────
+    eqBass = audioCtx.createBiquadFilter();
+    eqBass.type = 'lowshelf'; eqBass.frequency.value = 80; eqBass.gain.value = 0;
+
+    eqMid = audioCtx.createBiquadFilter();
+    eqMid.type = 'peaking'; eqMid.frequency.value = 1000; eqMid.Q.value = 1.2; eqMid.gain.value = 0;
+
+    eqTreble = audioCtx.createBiquadFilter();
+    eqTreble.type = 'highshelf'; eqTreble.frequency.value = 8000; eqTreble.gain.value = 0;
+
+    // ── Reverb (dry / wet parallel paths) ────────────────────────────
+    reverbDryGain = audioCtx.createGain(); reverbDryGain.gain.value = 1;
+    reverbWetGain = audioCtx.createGain(); reverbWetGain.gain.value = 0;
+    convolver = audioCtx.createConvolver();
+    reverbMerge = audioCtx.createGain(); reverbMerge.gain.value = 1;
+    _buildIR(); // generate impulse response buffer
+
+    // ── Lo-fi chain ───────────────────────────────────────────────────
+    lofiHighCut = audioCtx.createBiquadFilter();
+    lofiHighCut.type = 'highshelf';
+    lofiHighCut.frequency.value = 3500;
+    lofiHighCut.gain.value = 0;  // 0 dB = bypass
+
+    lofiDistort = audioCtx.createWaveShaper();
+    lofiDistort.oversample = '2x';
+    // curve = null means identity / bypass
+
+    // ── Waveform analyser & output gain ─────────────────────────────
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 512;
     analyser.smoothingTimeConstant = 0.7;
     freqData = new Uint8Array(analyser.frequencyBinCount);
 
-    // MuteGain sits between analyser and speakers
-    // Analyser always sees full signal → waveform always works
-    // muteGain.gain = 0 silences speakers when stems are active
     waveformMuteGain = audioCtx.createGain();
     waveformMuteGain.gain.value = 1;
 
+    // ── Source nodes ─────────────────────────────────────────────────
     if (!sourceNode) {
       sourceNode = audioCtx.createMediaElementSource(audio);
     }
-    // sourceNode → analyser → muteGain → destination
-    sourceNode.connect(analyser);
+    if (!sourceNodeXfade) {
+      sourceNodeXfade = audioCtx.createMediaElementSource(audioXfade);
+    }
+
+    // ── Wire the full signal chain ───────────────────────────────────
+    // sourceNode    → gainMain  ─┐
+    //                             ├→ eqBass → eqMid → eqTreble
+    // sourceNodeXfade → gainXfade ┘            ↓
+    //                                  [reverb dry/wet split]
+    //                             reverbDryGain ──────────────────────┐
+    //                             convolver → reverbWetGain ──────────┤
+    //                                                           reverbMerge
+    //                                                                ↓
+    //                                               lofiHighCut → lofiDistort
+    //                                                                ↓
+    //                                                            analyser
+    //                                                                ↓
+    //                                                       waveformMuteGain
+    //                                                                ↓
+    //                                                           destination
+
+    sourceNode.connect(gainMain);
+    sourceNodeXfade.connect(gainXfade);
+
+    gainMain.connect(eqBass);
+    gainXfade.connect(eqBass);
+
+    eqBass.connect(eqMid);
+    eqMid.connect(eqTreble);
+
+    // Reverb split
+    eqTreble.connect(reverbDryGain);
+    eqTreble.connect(convolver);
+    reverbDryGain.connect(reverbMerge);
+    convolver.connect(reverbWetGain);
+    reverbWetGain.connect(reverbMerge);
+
+    // Lo-fi → analyser → output
+    reverbMerge.connect(lofiHighCut);
+    lofiHighCut.connect(lofiDistort);
+    lofiDistort.connect(analyser);
     analyser.connect(waveformMuteGain);
     waveformMuteGain.connect(audioCtx.destination);
+
+    // Viz analyser taps from eqBass (sees both gainMain + gainXfade mixed)
+    if (typeof setupVizAnalyser === 'function') setupVizAnalyser();
+
   } catch(e) {
     console.warn('Web Audio setup failed:', e);
     audioCtx = null; sourceNode = null; analyser = null;
@@ -1165,6 +1282,28 @@ audio.addEventListener('timeupdate', () => {
   if (!audio.duration) return;
   document.getElementById('time-current').textContent = fmt(audio.currentTime);
   document.getElementById('time-total').textContent = fmt(audio.duration);
+
+  // ── Gapless playback ─────────────────────────────────────────────
+  // When the track is within (xfadeDuration + 0.5s) of ending, start
+  // the crossfade automatically so the next track begins seamlessly.
+  if (gaplessEnabled && !isXfading && !gaplessTriggered && !isLooping) {
+    const remaining = audio.duration - audio.currentTime;
+    const triggerAt  = Math.max(0.5, xfadeDuration) + 0.25;
+    if (remaining > 0 && remaining <= triggerAt) {
+      gaplessTriggered = true;
+      if (queue.length) {
+        playFromQueue(0);
+      } else {
+        const playlist = getPlaylist();
+        if (playlist.length > 1) {
+          const nextIdx = isShuffled
+            ? Math.floor(Math.random() * playlist.length)
+            : (currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1);
+          crossfadeTo(nextIdx);
+        }
+      }
+    }
+  }
 });
 
 document.getElementById('volume-slider').addEventListener('input', (e) => {
@@ -3386,7 +3525,13 @@ function setupVizAnalyser() {
     vizAnalyser = audioCtx.createAnalyser();
     vizAnalyser.fftSize = 4096;
     vizAnalyser.smoothingTimeConstant = 0.72;
-    sourceNode.connect(vizAnalyser);
+    // Tap from eqBass so viz sees BOTH gainMain + gainXfade mixed together
+    // (sourceNode alone only sees the main element, not the crossfade element)
+    if (eqBass) {
+      eqBass.connect(vizAnalyser);
+    } else {
+      sourceNode.connect(vizAnalyser); // fallback for legacy path
+    }
     // Analysis only — NOT connected to destination (no extra audio output)
     vizTD = new Uint8Array(vizAnalyser.fftSize);
     vizFD = new Uint8Array(vizAnalyser.frequencyBinCount);
@@ -3833,4 +3978,450 @@ function _vizRadial(W, H, color) {
 
   vizCtx.globalAlpha = 1;
 }
+
+// =====================================================================
+// ██████  CROSSFADE ENGINE
+// =====================================================================
+
+/**
+ * crossfadeTo(idx)
+ * Smoothly transitions to the track at playlist index `idx`.
+ * - Loads the incoming track into the secondary <audio id="audio-xfade"> element
+ * - Ramps gainMain 1→0 and gainXfade 0→1 over xfadeDuration seconds
+ * - After the fade, swaps audio state back to the main element (so all
+ *   existing event handlers / timeupdate / ended continue to work)
+ * - Falls back to direct playAtIndex() when xfadeDuration=0 or no context
+ */
+function crossfadeTo(idx) {
+  const playlist = getPlaylist();
+  if (idx < 0 || idx >= playlist.length) return;
+  const t = playlist[idx];
+  if (!t || !t.url) { showToast('NO AUDIO SOURCE', 'error'); return; }
+
+  // Ensure audio context is running
+  if (!audioCtx || !gainMain) {
+    playAtIndex(idx);
+    return;
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  // Instant switch when duration=0 or not currently playing
+  if (xfadeDuration <= 0 || !isPlaying) {
+    playAtIndex(idx);
+    return;
+  }
+
+  // Cancel any in-progress crossfade cleanly
+  if (isXfading) {
+    clearTimeout(xfadeTimer);
+    const now0 = audioCtx.currentTime;
+    gainMain.gain.cancelScheduledValues(now0);
+    gainXfade.gain.cancelScheduledValues(now0);
+    gainMain.gain.setValueAtTime(1, now0);
+    gainXfade.gain.setValueAtTime(0, now0);
+    audioXfade.pause();
+    audioXfade.src = '';
+    audioXfade.load();
+    isXfading = false;
+  }
+
+  isXfading = true;
+
+  // Load + start the incoming track on the secondary element
+  audioXfade.src = t.url;
+  audioXfade.volume = 1;
+  audioXfade.currentTime = 0;
+  const xp = audioXfade.play();
+  if (xp) xp.catch(() => {});
+
+  // Ramp gains
+  const now = audioCtx.currentTime;
+  const end = now + xfadeDuration;
+
+  gainMain.gain.cancelScheduledValues(now);
+  gainMain.gain.setValueAtTime(gainMain.gain.value, now);
+  gainMain.gain.linearRampToValueAtTime(0, end);
+
+  gainXfade.gain.cancelScheduledValues(now);
+  gainXfade.gain.setValueAtTime(gainXfade.gain.value, now);
+  gainXfade.gain.linearRampToValueAtTime(1, end);
+
+  // Update UI immediately so the user sees the incoming track right away
+  currentTrackIdx = idx;
+  _updatePlayerUI(t, idx);
+
+  // ── Early-swap: start main audio ~300 ms before fade completes ──
+  // This gives the browser time to seek to the right position in the
+  // cached buffer before we switch gain control back to gainMain.
+  const EARLY_MS = Math.min(300, xfadeDuration * 500);
+  const swapDelay = Math.max(0, xfadeDuration * 1000 - EARLY_MS);
+
+  setTimeout(() => {
+    if (!isXfading) return; // cancelled in the meantime
+    // Pre-warm main audio element at xfade's current position
+    const saveTime = audioXfade.currentTime;
+    audio.src = t.url;
+    audio.currentTime = saveTime;
+    // Keep gainMain at 0 — xfade is still audible
+    const ap = audio.play();
+    if (ap) ap.catch(() => {});
+  }, swapDelay);
+
+  // ── Final swap: hand off audio at fade end ──────────────────────
+  xfadeTimer = setTimeout(() => {
+    isXfading = false;
+    const nc = audioCtx.currentTime;
+    // Switch gains atomically
+    gainXfade.gain.cancelScheduledValues(nc);
+    gainXfade.gain.setValueAtTime(0, nc);
+    gainMain.gain.cancelScheduledValues(nc);
+    gainMain.gain.setValueAtTime(1, nc);
+    // Silence and clean up xfade element
+    audioXfade.pause();
+    audioXfade.src = '';
+    audioXfade.load();
+    // Reset gapless trigger for the new track
+    gaplessTriggered = false;
+  }, xfadeDuration * 1000 + 60);
+}
+
+/**
+ * _updatePlayerUI(t, idx)
+ * Updates title, artist, cover art, viz overlay, etc. for track `t`.
+ * Extracted from playAtIndex so crossfadeTo can call it immediately.
+ */
+function _updatePlayerUI(t, idx) {
+  const color = getArtistColor(t.artist);
+  playerBar.style.setProperty('--current-color', color);
+  document.getElementById('player-title').textContent = t.title;
+  document.getElementById('player-artist').textContent = t.artist.toUpperCase();
+  const ppBtn = document.getElementById('play-pause-btn');
+  ppBtn.innerHTML = '⏸';
+  ppBtn.classList.add('is-playing');
+  ppBtn.style.background = color;
+  document.getElementById('player-vinyl').classList.add('spinning');
+  playerBar.classList.add('visible');
+  isPlaying = true;
+
+  setArtistBG(t.artist);
+  showCanvas(t);
+  maybeFetchLyrics(t);
+  maybeLoadStems(t);
+  incrementPlayCount(t.id);
+  addToRecentlyPlayed(t.id);
+  renderRecentlyPlayed();
+  renderQueue();
+
+  // Cover art
+  const vinylImg = document.getElementById('player-cover-img');
+  vinylImg.classList.remove('loaded');
+  if (t.coverArt) {
+    vinylImg.src = t.coverArt;
+    if (vinylImg.complete) vinylImg.classList.add('loaded');
+    else vinylImg.onload = () => vinylImg.classList.add('loaded');
+    updateVinylCard(t, t.coverArt);
+  } else {
+    updateVinylCard(t, null);
+    fetchCoverArt(t.artist, t.title).then(url => {
+      if (url) {
+        t.coverArt = url;
+        vinylImg.src = url;
+        vinylImg.onload = () => vinylImg.classList.add('loaded');
+        updateVinylCard(t, url);
+      }
+    });
+  }
+
+  // Viz HUD
+  const vt = document.getElementById('viz-track-title');
+  const va = document.getElementById('viz-track-artist');
+  if (vt) vt.textContent = t.title;
+  if (va) va.textContent = t.artist.toUpperCase();
+
+  renderTracks();
+  updateLikeBtn();
+  setTimeout(() => schedulePreload(getPlaylist(), idx), 800);
+}
+
+// Wire crossfade slider
+(function() {
+  const sl  = document.getElementById('xfade-slider');
+  const lbl = document.getElementById('xfade-val');
+  if (!sl) return;
+  sl.addEventListener('input', () => {
+    xfadeDuration = parseFloat(sl.value);
+    lbl.textContent = xfadeDuration === 0 ? 'OFF' : xfadeDuration + 's';
+  });
+})();
+
+// =====================================================================
+// ██████  EQ / FX ENGINE
+// =====================================================================
+
+/**
+ * _buildIR()
+ * Generates a simple exponentially-decaying noise impulse response for
+ * the reverb ConvolverNode. Called once during setupAudioContext().
+ */
+function _buildIR() {
+  if (!audioCtx || !convolver) return;
+  try {
+    const sr  = audioCtx.sampleRate;
+    const len = Math.round(sr * 2.8);   // 2.8-second tail
+    const buf = audioCtx.createBuffer(2, len, sr);
+    for (let c = 0; c < 2; c++) {
+      const ch = buf.getChannelData(c);
+      for (let i = 0; i < len; i++) {
+        // exponential decay with slight pre-delay
+        const env = i < sr * 0.01
+          ? 0
+          : Math.pow(1 - (i - sr * 0.01) / (len - sr * 0.01), 3.2);
+        ch[i] = (Math.random() * 2 - 1) * env;
+      }
+    }
+    convolver.buffer = buf;
+  } catch(e) {
+    console.warn('IR build failed:', e);
+  }
+}
+
+/**
+ * _makeDistCurve(amount)
+ * Creates a soft-clip WaveShaperNode curve for lo-fi warmth.
+ * amount 0 = clean, 100 = heavily crushed.
+ */
+function _makeDistCurve(amount) {
+  const n = 256;
+  const curve = new Float32Array(n);
+  const k = amount === 0 ? 0.001 : amount;
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    curve[i] = (Math.PI + k) * x / (Math.PI + k * Math.abs(x));
+  }
+  return curve;
+}
+
+// EQ preset definitions
+const EQ_PRESETS = {
+  clean:  { bass: 0,   mid: 0,   treble: 0,   reverb: 0,    lofi: false },
+  bass:   { bass: 8,   mid: -1,  treble: -2,  reverb: 0,    lofi: false },
+  lofi:   { bass: 3,   mid: -2,  treble: -6,  reverb: 0.12, lofi: true  },
+  reverb: { bass: 1,   mid: 0,   treble: 2,   reverb: 0.55, lofi: false },
+};
+
+function applyEQPreset(name) {
+  const p = EQ_PRESETS[name];
+  if (!p) return;
+  // Ensure audio context exists before touching nodes
+  if (!eqBass) return;
+
+  const bassEl   = document.getElementById('eq-bass-sl');
+  const midEl    = document.getElementById('eq-mid-sl');
+  const trebleEl = document.getElementById('eq-treble-sl');
+  const reverbEl = document.getElementById('eq-reverb-sl');
+
+  if (bassEl)   { bassEl.value   = p.bass;   _setEQSliderVal('bass',   p.bass);   }
+  if (midEl)    { midEl.value    = p.mid;    _setEQSliderVal('mid',    p.mid);    }
+  if (trebleEl) { trebleEl.value = p.treble; _setEQSliderVal('treble', p.treble); }
+  if (reverbEl) { reverbEl.value = p.reverb; _setEQSliderVal('reverb', p.reverb); }
+
+  _setLoFi(p.lofi);
+
+  // Highlight active preset button
+  document.querySelectorAll('.eq-preset-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.preset === name);
+  });
+}
+
+function _setEQSliderVal(band, val) {
+  if (!eqBass || !audioCtx) return; // audio not set up yet
+  if (band === 'bass') {
+    eqBass.gain.setTargetAtTime(val, audioCtx.currentTime, 0.05);
+    const el = document.getElementById('eq-bass-val');
+    if (el) el.textContent = (val >= 0 ? '+' : '') + val + ' dB';
+  } else if (band === 'mid') {
+    eqMid.gain.setTargetAtTime(val, audioCtx.currentTime, 0.05);
+    const el = document.getElementById('eq-mid-val');
+    if (el) el.textContent = (val >= 0 ? '+' : '') + val + ' dB';
+  } else if (band === 'treble') {
+    eqTreble.gain.setTargetAtTime(val, audioCtx.currentTime, 0.05);
+    const el = document.getElementById('eq-treble-val');
+    if (el) el.textContent = (val >= 0 ? '+' : '') + val + ' dB';
+  } else if (band === 'reverb') {
+    const pct = Math.round(val * 100);
+    reverbWetGain.gain.setTargetAtTime(val, audioCtx.currentTime, 0.05);
+    reverbDryGain.gain.setTargetAtTime(1 - val * 0.7, audioCtx.currentTime, 0.05);
+    const el = document.getElementById('eq-reverb-val');
+    if (el) el.textContent = pct + '%';
+  }
+}
+
+function _setLoFi(on) {
+  const btn  = document.getElementById('eq-lofi-toggle');
+  const grp  = document.getElementById('eq-lofi-group');
+  if (!btn) return;
+  btn.classList.toggle('on', on);
+  if (grp) grp.classList.toggle('on', on);
+  if (!lofiHighCut || !lofiDistort || !audioCtx) return;
+  if (on) {
+    lofiHighCut.gain.setTargetAtTime(-12, audioCtx.currentTime, 0.08);
+    lofiDistort.curve = _makeDistCurve(60);
+  } else {
+    lofiHighCut.gain.setTargetAtTime(0, audioCtx.currentTime, 0.08);
+    lofiDistort.curve = null;
+  }
+}
+
+// Wire EQ panel controls
+(function wireEQ() {
+  // EQ sliders
+  ['bass','mid','treble','reverb'].forEach(band => {
+    const sl = document.getElementById(`eq-${band}-sl`);
+    if (!sl) return;
+    sl.addEventListener('input', () => {
+      setupAudioContext(); // ensure nodes exist
+      _setEQSliderVal(band, parseFloat(sl.value));
+      // Deactivate preset buttons (manual tweak)
+      document.querySelectorAll('.eq-preset-btn').forEach(b => b.classList.remove('active'));
+    });
+  });
+
+  // Preset buttons
+  document.querySelectorAll('.eq-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setupAudioContext();
+      applyEQPreset(btn.dataset.preset);
+    });
+  });
+
+  // Lo-fi toggle
+  const lofiBtn = document.getElementById('eq-lofi-toggle');
+  if (lofiBtn) {
+    lofiBtn.addEventListener('click', () => {
+      setupAudioContext();
+      _setLoFi(!lofiBtn.classList.contains('on'));
+      document.querySelectorAll('.eq-preset-btn').forEach(b => b.classList.remove('active'));
+    });
+  }
+
+  // Gapless toggle
+  const gapBtn = document.getElementById('eq-gapless-toggle');
+  const gapGrp = document.getElementById('eq-gapless-group');
+  if (gapBtn) {
+    gapBtn.addEventListener('click', () => {
+      gaplessEnabled = !gaplessEnabled;
+      gapBtn.classList.toggle('on', gaplessEnabled);
+      if (gapGrp) gapGrp.classList.toggle('on', gaplessEnabled);
+    });
+  }
+
+  // FX panel open/close button
+  const eqOpenBtn  = document.getElementById('eq-btn');
+  const eqPanel    = document.getElementById('eq-panel');
+  const eqCloseBtn = document.getElementById('eq-panel-close');
+
+  function toggleEQPanel() {
+    const isOpen = eqPanel.classList.toggle('open');
+    playerBar.classList.toggle('eq-open', isOpen);
+    document.getElementById('stem-panel')?.classList.toggle('eq-open', isOpen);
+    document.getElementById('lyrics-panel')?.classList.toggle('eq-open', isOpen);
+    eqOpenBtn?.classList.toggle('active', isOpen);
+    if (isOpen) setupAudioContext(); // ensure audio nodes ready
+  }
+
+  if (eqOpenBtn)  eqOpenBtn.addEventListener('click', toggleEQPanel);
+  if (eqCloseBtn) eqCloseBtn.addEventListener('click', toggleEQPanel);
+  document.getElementById('mobile-eq-btn')?.addEventListener('click', toggleEQPanel);
+
+  // Keyboard shortcut: E
+  // (added to the existing keydown switch in vault.js main handler)
+})();
+
+// Add 'e'/'E' keyboard shortcut to the existing keydown handler
+(function() {
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'e' || e.key === 'E') {
+      document.getElementById('eq-btn')?.click();
+    }
+  });
+})();
+
+// =====================================================================
+// ██████  PITCH SHIFT ENGINE
+// =====================================================================
+
+/**
+ * Loads the AudioWorklet pitch-processor module and wires the PitchShifterNode
+ * into the signal chain between gainMain and eqBass.
+ * Falls back gracefully if AudioWorklet is not supported.
+ */
+async function _initPitchWorklet() {
+  if (pitchWorkletReady || pitchNode) return;
+  if (!audioCtx) return;
+  try {
+    await audioCtx.audioWorklet.addModule('pitch-processor.js');
+    pitchNode = new AudioWorkletNode(audioCtx, 'pitch-shifter', {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+    });
+    pitchNode.port.postMessage({ ratio: 1.0 });
+
+    // Re-wire: gainMain → pitchNode → eqBass
+    //          gainXfade → eqBass (no pitch for xfade element — acceptable)
+    gainMain.disconnect(eqBass);
+    gainMain.connect(pitchNode);
+    pitchNode.connect(eqBass);
+
+    pitchWorkletReady = true;
+    console.log('[Vault] Pitch worklet ready');
+  } catch(e) {
+    console.warn('[Vault] Pitch worklet not available — pitch shift disabled:', e);
+    pitchNode = null;
+    pitchWorkletReady = false;
+  }
+}
+
+/**
+ * setPitchSemitones(st)
+ * Adjusts pitch by `st` semitones without changing playback speed.
+ */
+async function setPitchSemitones(st) {
+  pitchSemitones = Math.max(-12, Math.min(12, Math.round(st)));
+  const display = document.getElementById('pitch-display');
+  if (display) {
+    display.textContent = pitchSemitones === 0 ? '0st' : (pitchSemitones > 0 ? '+' : '') + pitchSemitones + 'st';
+    display.classList.toggle('shifted', pitchSemitones !== 0);
+  }
+
+  if (pitchSemitones === 0 && !pitchWorkletReady) return; // no-op when flat + not loaded
+
+  // Lazy-init worklet on first use
+  if (!pitchWorkletReady) {
+    setupAudioContext();
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    await _initPitchWorklet();
+  }
+
+  if (pitchNode) {
+    const ratio = Math.pow(2, pitchSemitones / 12);
+    pitchNode.port.postMessage({ ratio });
+  }
+}
+
+// Wire pitch controls
+(function wirePitch() {
+  const upBtn    = document.getElementById('pitch-up-btn');
+  const downBtn  = document.getElementById('pitch-down-btn');
+  const resetBtn = document.getElementById('pitch-reset-btn');
+
+  if (upBtn)    upBtn.addEventListener('click',    () => setPitchSemitones(pitchSemitones + 1));
+  if (downBtn)  downBtn.addEventListener('click',  () => setPitchSemitones(pitchSemitones - 1));
+  if (resetBtn) resetBtn.addEventListener('click', () => setPitchSemitones(0));
+})();
+
+// =====================================================================
+// end of The Vault feature extensions
 // =====================================================================

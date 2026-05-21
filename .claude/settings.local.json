@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m 'feat: full-screen visualizer with 4 modes \\(808 bass line, oscilloscope, spectrum, radial\\) *)",
+      "Bash(git push *)",
+      "Bash(node --check \"c:\\\\Users\\\\localadmin\\\\Desktop\\\\Valut\\\\pitch-processor.js\")"
+    ]
+  }
+}
