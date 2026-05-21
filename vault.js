@@ -2074,6 +2074,10 @@ document.addEventListener('keydown', (e) => {
     case 'Q':
       { const qb = document.getElementById('queue-toggle-btn'); if (qb) qb.click(); }
       break;
+    case 'v':
+    case 'V':
+      toggleVisualizer();
+      break;
   }
 });
 
@@ -3343,3 +3347,490 @@ document.addEventListener('click', (e) => {
     sleepDrop.classList.remove('open');
   }
 });
+
+// =====================================================================
+// FULL-SCREEN VISUALIZER ENGINE
+// Modes:
+//   0 — 808 BASS LINE   (FL Studio-style decimated time-domain bass tracker)
+//   1 — OSCILLOSCOPE    (triggered, stabilised time-domain waveform)
+//   2 — SPECTRUM        (log-mapped frequency bars, mirrored + gradient)
+//   3 — RADIAL          (360° frequency burst, dual-ring)
+// =====================================================================
+
+let vizOpen       = false;
+let vizMode       = 0;
+let vizAnimFrame  = null;
+let vizAnalyser   = null;   // dedicated high-res analyser for the viz
+let vizTD         = null;   // Uint8Array — time-domain data (4096 samples)
+let vizFD         = null;   // Uint8Array — frequency data  (2048 bins)
+const VIZ_MODES   = ['808 BASS', 'OSCILLOSCOPE', 'SPECTRUM', 'RADIAL'];
+
+// Beat-flash & particle state
+let vizBeatFlash  = 0;
+let vizPrevBass   = 0;
+const vizPtcls    = [];   // [{x,y,vx,vy,life,decay,size}]
+
+// DOM refs
+const vizOverlay   = document.getElementById('viz-overlay');
+const vizCanvas    = document.getElementById('viz-canvas');
+const vizCtx       = vizCanvas.getContext('2d');
+const vizTitleEl   = document.getElementById('viz-track-title');
+const vizArtistEl  = document.getElementById('viz-track-artist');
+const vizModeLabel = document.getElementById('viz-mode-label');
+
+// ── Analyser setup ──────────────────────────────────────────────────
+function setupVizAnalyser() {
+  if (vizAnalyser) return true;
+  if (!audioCtx || !sourceNode) return false;
+  try {
+    vizAnalyser = audioCtx.createAnalyser();
+    vizAnalyser.fftSize = 4096;
+    vizAnalyser.smoothingTimeConstant = 0.72;
+    sourceNode.connect(vizAnalyser);
+    // Analysis only — NOT connected to destination (no extra audio output)
+    vizTD = new Uint8Array(vizAnalyser.fftSize);
+    vizFD = new Uint8Array(vizAnalyser.frequencyBinCount);
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+// ── Open / Close ────────────────────────────────────────────────────
+function openVisualizer() {
+  vizOpen = true;
+  vizOverlay.classList.add('active');
+  document.getElementById('viz-btn').classList.add('active');
+  resizeVizCanvas();
+  try { setupAudioContext(); } catch(e) {}
+  setupVizAnalyser();
+  _updateVizTrackInfo();
+  _startVizLoop();
+}
+
+function closeVisualizer() {
+  vizOpen = false;
+  vizOverlay.classList.remove('active');
+  document.getElementById('viz-btn').classList.remove('active');
+  _stopVizLoop();
+}
+
+function toggleVisualizer() {
+  if (vizOpen) closeVisualizer(); else openVisualizer();
+}
+
+// ── Wiring ──────────────────────────────────────────────────────────
+document.getElementById('viz-btn').addEventListener('click', toggleVisualizer);
+document.getElementById('viz-close-btn').addEventListener('click', closeVisualizer);
+document.getElementById('viz-mode-btn').addEventListener('click', () => {
+  _setVizMode((vizMode + 1) % VIZ_MODES.length);
+});
+document.querySelectorAll('.viz-dot').forEach(dot => {
+  dot.addEventListener('click', () => _setVizMode(parseInt(dot.dataset.mode)));
+});
+
+// Keep mobile button in sync
+const mobileVizBtn = document.getElementById('mobile-viz-btn');
+if (mobileVizBtn) {
+  mobileVizBtn.addEventListener('click', toggleVisualizer);
+  // Sync active state on canvas/viz toggle
+  const _syncMobileViz = () => setTimeout(() => {
+    mobileVizBtn.classList.toggle('active', vizOpen);
+    syncMobileActionBtns();
+  }, 50);
+  document.getElementById('viz-btn').addEventListener('click', _syncMobileViz);
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────
+function _setVizMode(m) {
+  vizMode = m;
+  vizModeLabel.textContent = VIZ_MODES[m];
+  document.querySelectorAll('.viz-dot').forEach(d =>
+    d.classList.toggle('active', parseInt(d.dataset.mode) === m)
+  );
+  // Clear canvas between modes
+  vizCtx.fillStyle = '#0a0408';
+  vizCtx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+  vizPtcls.length = 0;
+  vizBeatFlash = vizPrevBass = 0;
+}
+
+function resizeVizCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  vizCanvas.width  = window.innerWidth  * dpr;
+  vizCanvas.height = window.innerHeight * dpr;
+  vizCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', () => { if (vizOpen) resizeVizCanvas(); });
+
+function _updateVizTrackInfo() {
+  const pl = getPlaylist();
+  const t  = pl[currentTrackIdx];
+  if (!t) return;
+  if (vizTitleEl)  vizTitleEl.textContent  = t.title;
+  if (vizArtistEl) vizArtistEl.textContent = t.artist.toUpperCase();
+  vizOverlay.style.setProperty('--current-color', getArtistColor(t.artist));
+}
+// Update info whenever a track starts
+audio.addEventListener('play', () => { if (vizOpen) _updateVizTrackInfo(); });
+
+function _stopVizLoop() {
+  if (vizAnimFrame) { cancelAnimationFrame(vizAnimFrame); vizAnimFrame = null; }
+}
+
+function _startVizLoop() {
+  _stopVizLoop();
+  const loop = () => {
+    vizAnimFrame = requestAnimationFrame(loop);
+    // Wire analyser lazily (audio context may not exist until first play)
+    if (!vizAnalyser && audioCtx && sourceNode) setupVizAnalyser();
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const color = getComputedStyle(playerBar).getPropertyValue('--current-color').trim() || '#c41e3a';
+    switch (vizMode) {
+      case 0: _viz808(W, H, color);      break;
+      case 1: _vizScope(W, H, color);    break;
+      case 2: _vizSpectrum(W, H, color); break;
+      case 3: _vizRadial(W, H, color);   break;
+    }
+  };
+  loop();
+}
+
+// ── Shared utils ────────────────────────────────────────────────────
+function _hexRgb(hex) {
+  const h = hex.replace('#', '');
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+
+function _getBassEnergy() {
+  if (!vizFD) return 0;
+  const end = Math.max(1, Math.floor(vizFD.length * 0.025));
+  let sum = 0;
+  for (let i = 0; i < end; i++) sum += vizFD[i];
+  return sum / (end * 255);
+}
+
+function _spawnBurst(W, H, n, color) {
+  for (let i = 0; i < n; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd   = 5 + Math.random() * 12;
+    vizPtcls.push({
+      x:     W * (0.25 + Math.random() * 0.5),
+      y:     H * (0.25 + Math.random() * 0.5),
+      vx:    Math.cos(angle) * spd,
+      vy:    Math.sin(angle) * spd,
+      life:  1,
+      decay: 0.025 + Math.random() * 0.04,
+      size:  2 + Math.random() * 5,
+      color,
+    });
+  }
+}
+
+function _drawParticles() {
+  for (let i = vizPtcls.length - 1; i >= 0; i--) {
+    const p = vizPtcls[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vy += 0.18; p.vx *= 0.97; p.vy *= 0.96;
+    p.life -= p.decay;
+    if (p.life <= 0) { vizPtcls.splice(i, 1); continue; }
+    const a = Math.floor(p.life * 185).toString(16).padStart(2, '0');
+    vizCtx.beginPath();
+    vizCtx.arc(p.x, p.y, Math.max(0.5, p.size * p.life), 0, Math.PI * 2);
+    vizCtx.fillStyle = p.color + a;
+    vizCtx.fill();
+  }
+}
+
+// ── MODE 0 — 808 BASS LINE ──────────────────────────────────────────
+// Decimated time-domain data isolates bass frequencies (sub + 808 range).
+// 4096 samples ÷ 32 = 128 points → covers ~0–689 Hz.
+// When an 808 plays, the line oscillates at the pitch of the 808.
+// When the 808 slides, the oscillation frequency visibly shifts.
+// Phosphor trail (partial clear) creates a cinematic glow persistence.
+function _viz808(W, H, color) {
+  if (vizAnalyser) {
+    vizAnalyser.getByteTimeDomainData(vizTD);
+    vizAnalyser.getByteFrequencyData(vizFD);
+  }
+
+  // Phosphor trail — partial clear
+  vizCtx.fillStyle = 'rgba(10,4,8,0.10)';
+  vizCtx.fillRect(0, 0, W, H);
+
+  const bassE = _getBassEnergy();
+
+  // ── Beat detection ──
+  const inc = bassE - vizPrevBass;
+  if (inc > 0.10 && bassE > 0.20) {
+    vizBeatFlash = Math.min(1, vizBeatFlash + 0.55);
+    _spawnBurst(W, H, 12, color);
+  }
+  vizBeatFlash = Math.max(0, vizBeatFlash - 0.032);
+  vizPrevBass  = vizPrevBass * 0.88 + bassE * 0.12;
+
+  // Beat flash tint
+  if (vizBeatFlash > 0.01) {
+    const [r,g,b] = _hexRgb(color);
+    vizCtx.fillStyle = `rgba(${r},${g},${b},${(vizBeatFlash * 0.07).toFixed(3)})`;
+    vizCtx.fillRect(0, 0, W, H);
+  }
+
+  _drawParticles();
+
+  if (!vizTD) return;
+
+  const mid = H * 0.5;
+
+  // ── Ghost full-range oscilloscope (very faint background layer) ──
+  vizCtx.beginPath();
+  vizCtx.strokeStyle = color + '0d';
+  vizCtx.lineWidth = 1;
+  for (let i = 0; i < vizTD.length; i++) {
+    const x = (i / (vizTD.length - 1)) * W;
+    const y = mid + ((vizTD[i] / 128) - 1) * H * 0.44;
+    i === 0 ? vizCtx.moveTo(x, y) : vizCtx.lineTo(x, y);
+  }
+  vizCtx.stroke();
+
+  // ── 808 BASS LINE — the main feature ──
+  const DECIMATE = 32;
+  const bassLine = [];
+  for (let i = 0; i < vizTD.length; i += DECIMATE) bassLine.push(vizTD[i]);
+
+  // Amplitude scales with bass energy — more energy = bigger, wilder swings
+  const ampScale = 0.20 + bassE * 4.2;
+
+  // Multi-pass glow: draw outer soft glow layers first, sharp core on top
+  const PASSES = [
+    { lw: 22,  a: 0.025 },
+    { lw: 14,  a: 0.055 },
+    { lw: 7,   a: 0.13  },
+    { lw: 3.5, a: 0.50  },
+    { lw: 1.5, a: 1.0   },
+  ];
+
+  vizCtx.lineJoin = 'round';
+  vizCtx.lineCap  = 'round';
+
+  for (const { lw, a } of PASSES) {
+    vizCtx.beginPath();
+    vizCtx.lineWidth   = lw;
+    vizCtx.strokeStyle = color;
+    vizCtx.globalAlpha = a;
+    for (let i = 0; i < bassLine.length; i++) {
+      const x = (i / (bassLine.length - 1)) * W;
+      const y = mid + ((bassLine[i] / 128) - 1) * H * 0.46 * ampScale;
+      i === 0 ? vizCtx.moveTo(x, y) : vizCtx.lineTo(x, y);
+    }
+    vizCtx.stroke();
+  }
+  vizCtx.globalAlpha = 1;
+
+  // ── Small frequency bar strip at bottom ──
+  if (vizFD) {
+    const BC = 80;
+    const bW = W / BC;
+    const bMaxH = H * 0.09;
+    for (let i = 0; i < BC; i++) {
+      const t  = Math.pow(i / BC, 1.65);
+      const bi = Math.min(Math.floor(t * vizFD.length * 0.55), vizFD.length - 1);
+      const v  = vizFD[bi] / 255;
+      vizCtx.fillStyle = color;
+      vizCtx.globalAlpha = 0.10 + v * 0.52;
+      vizCtx.fillRect(i * bW + 0.5, H - Math.max(1, v * bMaxH), Math.max(1, bW - 1), Math.max(1, v * bMaxH));
+    }
+    vizCtx.globalAlpha = 1;
+  }
+}
+
+// ── MODE 1 — OSCILLOSCOPE ───────────────────────────────────────────
+// Triggered on zero-crossing for a stable display.
+function _vizScope(W, H, color) {
+  if (vizAnalyser) vizAnalyser.getByteTimeDomainData(vizTD);
+
+  vizCtx.fillStyle = '#0a0408';
+  vizCtx.fillRect(0, 0, W, H);
+
+  if (!vizTD) return;
+
+  // Subtle grid
+  vizCtx.strokeStyle = color + '08';
+  vizCtx.lineWidth = 0.5;
+  for (let d = 1; d <= 3; d++) {
+    const y = (d / 4) * H;
+    vizCtx.beginPath(); vizCtx.moveTo(0, y); vizCtx.lineTo(W, y); vizCtx.stroke();
+  }
+  for (let d = 1; d <= 5; d++) {
+    const x = (d / 6) * W;
+    vizCtx.beginPath(); vizCtx.moveTo(x, 0); vizCtx.lineTo(x, H); vizCtx.stroke();
+  }
+
+  // Trigger: find zero-crossing (low→high) for stable display
+  const sliceW = Math.floor(vizTD.length * 0.50);
+  let trigger  = 0;
+  for (let i = 8; i < vizTD.length - sliceW; i++) {
+    if (vizTD[i - 1] < 128 && vizTD[i] >= 128) { trigger = i; break; }
+  }
+
+  // Multi-pass glow
+  const PASSES = [
+    { lw: 12, a: 0.04 },
+    { lw: 6,  a: 0.10 },
+    { lw: 2.5,a: 0.45 },
+    { lw: 1,  a: 1.0  },
+  ];
+
+  vizCtx.lineJoin = 'round';
+  for (const { lw, a } of PASSES) {
+    vizCtx.beginPath();
+    vizCtx.lineWidth = lw; vizCtx.strokeStyle = color; vizCtx.globalAlpha = a;
+    for (let i = 0; i < sliceW; i++) {
+      const x = (i / (sliceW - 1)) * W;
+      const s = vizTD[trigger + i] ?? 128;
+      const y = H * 0.5 + ((s / 128) - 1) * H * 0.46;
+      i === 0 ? vizCtx.moveTo(x, y) : vizCtx.lineTo(x, y);
+    }
+    vizCtx.stroke();
+  }
+  vizCtx.globalAlpha = 1;
+
+  // Centre axis
+  vizCtx.strokeStyle = color + '18';
+  vizCtx.lineWidth = 1;
+  vizCtx.beginPath();
+  vizCtx.moveTo(0, H * 0.5); vizCtx.lineTo(W, H * 0.5);
+  vizCtx.stroke();
+}
+
+// ── MODE 2 — SPECTRUM ───────────────────────────────────────────────
+// Log-ish frequency mapping; bass → crimson, treble → moonlight purple.
+// Includes top-mirror reflection.
+function _vizSpectrum(W, H, color) {
+  if (vizAnalyser) vizAnalyser.getByteFrequencyData(vizFD);
+
+  vizCtx.fillStyle = 'rgba(10,4,8,0.20)';
+  vizCtx.fillRect(0, 0, W, H);
+
+  if (!vizFD) return;
+
+  const BC     = 128;
+  const pad    = W * 0.04;
+  const usableW = W - pad * 2;
+  const bW     = usableW / BC;
+  const maxBH  = H * 0.74;
+  const [r, g, b] = _hexRgb(color);
+  // Moonlight purple end colour
+  const [r2, g2, b2] = [180, 138, 216];
+
+  for (let i = 0; i < BC; i++) {
+    const t   = Math.pow(i / BC, 1.78);
+    const bi  = Math.min(Math.floor(t * vizFD.length * 0.78), vizFD.length - 1);
+    const val = vizFD[bi] / 255;
+    const bh  = Math.max(2, val * maxBH);
+    const x   = pad + i * bW;
+
+    const lo = i / BC;
+    const cr = Math.round(r + (r2 - r) * lo);
+    const cg = Math.round(g + (g2 - g) * lo);
+    const cb = Math.round(b + (b2 - b) * lo);
+
+    const grad = vizCtx.createLinearGradient(x, H - bh, x, H);
+    grad.addColorStop(0, `rgba(${cr},${cg},${cb},0.92)`);
+    grad.addColorStop(1, `rgba(${cr},${cg},${cb},0.12)`);
+
+    vizCtx.fillStyle = grad;
+    vizCtx.globalAlpha = 0.12 + val * 0.88;
+
+    if (vizCtx.roundRect) {
+      vizCtx.beginPath();
+      vizCtx.roundRect(x + 0.5, H - bh, Math.max(1, bW - 1), bh, Math.min(2, bW / 2));
+      vizCtx.fill();
+    } else {
+      vizCtx.fillRect(x + 0.5, H - bh, Math.max(1, bW - 1), bh);
+    }
+
+    // Top mirror
+    vizCtx.globalAlpha = (0.12 + val * 0.88) * 0.22;
+    vizCtx.fillRect(x + 0.5, 0, Math.max(1, bW - 1), bh * 0.32);
+  }
+  vizCtx.globalAlpha = 1;
+}
+
+// ── MODE 3 — RADIAL ─────────────────────────────────────────────────
+// 360° bars radiate outward; dual-ring with inner glow.
+function _vizRadial(W, H, color) {
+  if (vizAnalyser) vizAnalyser.getByteFrequencyData(vizFD);
+
+  vizCtx.fillStyle = 'rgba(10,4,8,0.13)';
+  vizCtx.fillRect(0, 0, W, H);
+
+  if (!vizFD) return;
+
+  const cx     = W * 0.5;
+  const cy     = H * 0.5;
+  const minDim = Math.min(W, H);
+  const baseR  = minDim * 0.17;
+  const maxExt = minDim * 0.32;
+  const BC     = 200;
+  const [r, g, b]   = _hexRgb(color);
+  const [r2,g2,b2]  = [180, 138, 216];
+
+  // Base ring
+  vizCtx.beginPath();
+  vizCtx.arc(cx, cy, baseR, 0, Math.PI * 2);
+  vizCtx.strokeStyle = color + '1a';
+  vizCtx.lineWidth = 1;
+  vizCtx.stroke();
+
+  for (let i = 0; i < BC; i++) {
+    const t   = Math.pow(i / BC, 1.55);
+    const bi  = Math.min(Math.floor(t * vizFD.length * 0.72), vizFD.length - 1);
+    const val = vizFD[bi] / 255;
+    const barH = Math.max(2, val * maxExt);
+    const angle = (i / BC) * Math.PI * 2 - Math.PI * 0.5;
+
+    const lo = i / BC;
+    const cr = Math.round(r + (r2 - r) * lo);
+    const cg = Math.round(g + (g2 - g) * lo);
+    const cb = Math.round(b + (b2 - b) * lo);
+
+    const x1 = cx + Math.cos(angle) * baseR;
+    const y1 = cy + Math.sin(angle) * baseR;
+    const x2 = cx + Math.cos(angle) * (baseR + barH);
+    const y2 = cy + Math.sin(angle) * (baseR + barH);
+
+    vizCtx.beginPath();
+    vizCtx.moveTo(x1, y1);
+    vizCtx.lineTo(x2, y2);
+    vizCtx.strokeStyle = `rgb(${cr},${cg},${cb})`;
+    vizCtx.lineWidth   = Math.max(1, minDim * 0.011);
+    vizCtx.globalAlpha = 0.12 + val * 0.88;
+    vizCtx.stroke();
+
+    // Mirror bar on opposite side (subtle, half opacity)
+    const x3 = cx - Math.cos(angle) * baseR;
+    const y3 = cy - Math.sin(angle) * baseR;
+    const x4 = cx - Math.cos(angle) * (baseR + barH * 0.55);
+    const y4 = cy - Math.sin(angle) * (baseR + barH * 0.55);
+    vizCtx.beginPath();
+    vizCtx.moveTo(x3, y3);
+    vizCtx.lineTo(x4, y4);
+    vizCtx.globalAlpha = (0.12 + val * 0.88) * 0.35;
+    vizCtx.stroke();
+  }
+
+  // Centre glow
+  const grd = vizCtx.createRadialGradient(cx, cy, 0, cx, cy, baseR);
+  grd.addColorStop(0, `rgba(${r},${g},${b},0.14)`);
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  vizCtx.fillStyle = grd;
+  vizCtx.globalAlpha = 1;
+  vizCtx.beginPath();
+  vizCtx.arc(cx, cy, baseR, 0, Math.PI * 2);
+  vizCtx.fill();
+
+  vizCtx.globalAlpha = 1;
+}
+// =====================================================================
