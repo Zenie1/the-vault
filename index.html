@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src * blob:; connect-src https://api.github.com https://raw.githubusercontent.com https://res.cloudinary.com https://api.anthropic.com https://corsproxy.io https://api.allorigins.win https://api.lyrics.ovh https://lrclib.net https://itunes.apple.com https://images.weserv.nl https://*.workers.dev https://fal.run https://queue.fal.run; frame-src 'none'; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src * blob:; connect-src https://api.github.com https://raw.githubusercontent.com https://res.cloudinary.com https://api.anthropic.com https://corsproxy.io https://api.allorigins.win https://api.lyrics.ovh https://lrclib.net https://itunes.apple.com https://images.weserv.nl https://*.workers.dev https://fal.run https://queue.fal.run https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com; frame-src 'none'; object-src 'none'; base-uri 'self';">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 <meta name="theme-color" content="#0a0408">
@@ -2646,6 +2646,250 @@ header {
   }
   .player-right-col { display: none; }
 }
+
+/* ===================================================================
+   LIVE SESSION UI
+   =================================================================== */
+
+/* SESSION button in toolbar */
+#player-toolbar .session-btn {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+#player-toolbar .session-btn:hover {
+  color: var(--text);
+  border-color: var(--border2);
+}
+#player-toolbar .session-btn.session-active {
+  color: var(--artist-primary, var(--accent));
+  border-color: var(--artist-primary, var(--accent));
+  box-shadow: 0 0 8px var(--artist-glow-30, rgba(196,30,58,0.3));
+}
+
+/* LIVE badge — pulsing pill next to the SESSION button */
+.session-live-badge {
+  display: none;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 1.5px;
+  color: var(--artist-primary, var(--accent));
+  padding: 2px 5px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  flex-shrink: 0;
+  animation: session-pulse 1.6s ease-in-out infinite;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+.session-live-badge.visible { display: inline-flex; align-items: center; }
+@keyframes session-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+/* Session panel — floating popup above the toolbar */
+.session-panel {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: max(16px, env(safe-area-inset-right));
+  width: 268px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  box-shadow: 0 -6px 32px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.03);
+  z-index: 300;
+  overflow: hidden;
+}
+.session-panel.visible { display: block; }
+
+/* Sub-views */
+.session-view {
+  padding: 16px;
+}
+.sv-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted2);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.sv-title.sv-live {
+  color: var(--artist-primary, var(--accent));
+  animation: session-pulse 1.6s ease-in-out infinite;
+}
+
+/* Inactive view — start + join */
+.sv-primary-btn {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 9px 14px;
+  background: var(--artist-primary, var(--accent));
+  color: #0a0408;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  transition: opacity 0.15s;
+  margin-bottom: 12px;
+}
+.sv-primary-btn:hover { opacity: 0.85; }
+.sv-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.sv-divider::before,
+.sv-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.sv-join-row {
+  display: flex;
+  gap: 6px;
+}
+.sv-code-input {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 8px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  text-transform: uppercase;
+  outline: none;
+  min-width: 0;
+}
+.sv-code-input:focus { border-color: var(--artist-primary, var(--accent)); }
+.sv-code-input::placeholder { color: var(--muted); letter-spacing: 1px; }
+.sv-join-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted2);
+  cursor: pointer;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.sv-join-btn:hover { color: var(--text); border-color: var(--artist-primary, var(--accent)); }
+
+/* Host view */
+.sv-code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+.sv-label {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.sv-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--artist-primary, var(--accent));
+  flex: 1;
+  text-align: center;
+}
+.sv-copy-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted2);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.sv-copy-btn:hover { color: var(--text); }
+.sv-guest-status {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  padding: 6px 0;
+}
+.sv-guest-status.connected {
+  color: #00e070;
+  animation: session-pulse 2s ease-in-out infinite;
+}
+.sv-end-btn {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 8px;
+  background: transparent;
+  border: 1px solid rgba(196,30,58,0.3);
+  color: var(--accent3);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sv-end-btn:hover { background: rgba(196,30,58,0.08); border-color: var(--accent3); }
+
+/* Guest view */
+.sv-locked-notice {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+
+/* ── Guest control lock ─────────────────────────────────────────── */
+/* Disable playback transport while in guest mode */
+body.session-guest .player-center {
+  pointer-events: none;
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+/* Keep volume / subwoofer usable */
+body.session-guest .player-right-col {
+  pointer-events: all;
+  opacity: 1;
+}
+/* Lock playback-related toolbar buttons */
+body.session-guest #player-toolbar .ptb-btn:not(#session-btn):not(#viz-btn):not(#canvas-toggle-btn):not(#lyrics-toggle-btn):not(#eq-btn) {
+  pointer-events: none;
+  opacity: 0.35;
+}
+/* Subtle left-border tint while listening live */
+body.session-guest #player-bar {
+  border-top-color: var(--artist-primary, var(--accent));
+  border-top-width: 2px;
+}
 </style>
 </head>
 <body>
@@ -2770,6 +3014,41 @@ header {
 
 <div id="player-bar">
 
+  <!-- SESSION PANEL — floats above the toolbar when active -->
+  <div id="session-panel" class="session-panel">
+
+    <!-- Inactive: start a session or join one -->
+    <div id="sv-inactive" class="session-view">
+      <div class="sv-title">LIVE SESSION</div>
+      <button class="sv-primary-btn" id="session-start-btn">⊕ START SESSION</button>
+      <div class="sv-divider"><span>OR JOIN</span></div>
+      <div class="sv-join-row">
+        <input type="text" id="session-join-input" class="sv-code-input" placeholder="VAULT-0000" maxlength="11" spellcheck="false" autocomplete="off" autocorrect="off">
+        <button class="sv-join-btn" id="session-join-btn">JOIN →</button>
+      </div>
+    </div>
+
+    <!-- Host: session is live -->
+    <div id="sv-host" class="session-view" style="display:none">
+      <div class="sv-title sv-live">● LIVE SESSION</div>
+      <div class="sv-code-row">
+        <span class="sv-label">CODE</span>
+        <span class="sv-code" id="session-room-code">VAULT-0000</span>
+        <button class="sv-copy-btn" id="session-code-copy-btn" title="Copy room code">⎘</button>
+      </div>
+      <div class="sv-guest-status" id="session-guest-status">WAITING FOR GUEST…</div>
+      <button class="sv-end-btn" id="session-end-btn">END SESSION</button>
+    </div>
+
+    <!-- Guest: listening live -->
+    <div id="sv-guest" class="session-view" style="display:none">
+      <div class="sv-title sv-live">● LISTENING LIVE</div>
+      <div class="sv-locked-notice">Controls locked<br>Host is in charge of playback</div>
+      <button class="sv-end-btn" id="session-leave-btn">LEAVE SESSION</button>
+    </div>
+
+  </div><!-- /#session-panel -->
+
   <!-- ══ TOOLBAR: all secondary controls in one thin strip ══ -->
   <div id="player-toolbar">
 
@@ -2817,6 +3096,14 @@ header {
     <div class="ptb-group">
       <button class="ptb-btn dl-btn" id="download-link" title="Download" onclick="(function(){const pl=getPlaylist();if(pl[currentTrackIdx])downloadTrack(pl[currentTrackIdx].id);})()">↓</button>
       <button class="ptb-btn speed-btn" id="speed-btn" title="Playback Speed">1×</button>
+    </div>
+
+    <div class="ptb-sep"></div>
+
+    <!-- G5: SESSION — live sync with a friend -->
+    <div class="ptb-group">
+      <span class="session-live-badge" id="session-live-badge">● LIVE</span>
+      <button class="ptb-btn session-btn" id="session-btn" title="Live Session — listen in sync with a friend">⊕ SESSION</button>
     </div>
 
   </div><!-- /#player-toolbar -->
@@ -3501,6 +3788,15 @@ header {
 <audio id="audio-xfade" crossorigin="anonymous"></audio>
 
 <script src="vault.js" defer></script>
+
+<!-- Firebase SDK (v8 compat — global firebase object) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<!-- Fill in your project values in firebase-config.js before enabling sessions -->
+<script src="firebase-config.js"></script>
+<!-- Live session logic — no vault.js modifications required -->
+<script src="session.js"></script>
 
 </body>
 </html>

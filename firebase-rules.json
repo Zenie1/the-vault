@@ -1,0 +1,39 @@
+{
+  "rules": {
+    ".read":  false,
+    ".write": false,
+
+    "sessions": {
+      "$roomCode": {
+
+        // Any signed-in user (including anonymous) can read the session.
+        ".read": "auth != null",
+
+        // Any authenticated user can create or delete a session document.
+        // In practice: host creates it; host removes it when ending.
+        ".write": "auth != null",
+
+        "hostId": {
+          // hostId can only be written if:
+          //   • the field doesn't exist yet (initial session creation), OR
+          //   • the current auth user IS the existing host (host updating or deleting)
+          ".validate": "!data.exists() || auth.uid == data.val()"
+        },
+
+        "state": {
+          // Only the session host may push playback state.
+          // .validate runs in ADDITION to the parent .write rule, so it can
+          // restrict what authenticated non-hosts are allowed to write here.
+          // When state is being removed (e.g. whole session deleted), newData
+          // won't exist, so the check is skipped — deletion is allowed.
+          ".validate": "newData.exists() ? auth.uid == root.child('sessions').child($roomCode).child('hostId').val() : true",
+
+          "trackId":    { ".validate": "newData.isString()" },
+          "isPlaying":  { ".validate": "newData.isBoolean()" },
+          "currentTime":{ ".validate": "newData.isNumber()" },
+          "timestamp":  { ".validate": "newData.isNumber()" }
+        }
+      }
+    }
+  }
+}
