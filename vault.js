@@ -69,8 +69,115 @@ function getArtistColor(artist) {
   return colors[hash % colors.length];
 }
 
+// ===== ARTIST PALETTE SYSTEM =====
+// Default palettes — loaded from artists.json at runtime (which overrides these).
+// Format: { primary, secondary, text, glow, gradient: [start, end] }
+const ARTIST_PALETTES_DEFAULT = {
+  'playboi carti': { primary:'#ff3c3c', secondary:'#1a0505', text:'#ff9999', glow:'#ff1111', gradient:['#ff3c3c','#8b0000'] },
+  'lil yachty':    { primary:'#00e5ff', secondary:'#00121a', text:'#80f2ff', glow:'#00ccff', gradient:['#00e5ff','#005f7a'] },
+  'young thug':    { primary:'#9f3cff', secondary:'#0d0019', text:'#cc99ff', glow:'#8800ff', gradient:['#9f3cff','#4a0080'] },
+  'lucki':         { primary:'#00ff9f', secondary:'#001a0d', text:'#80ffcc', glow:'#00ff7f', gradient:['#00ff9f','#008040'] },
+  'nine vicious':  { primary:'#ff9f00', secondary:'#1a0a00', text:'#ffcc80', glow:'#ff8800', gradient:['#ff9f00','#804f00'] },
+  'prettifun':     { primary:'#ff3c9f', secondary:'#1a0011', text:'#ff99cc', glow:'#ff0080', gradient:['#ff3c9f','#800040'] },
+  'slayr':         { primary:'#c8ff00', secondary:'#0d1a00', text:'#e4ff80', glow:'#aaff00', gradient:['#c8ff00','#558800'] },
+  'protect':       { primary:'#3c9fff', secondary:'#000d1a', text:'#80bfff', glow:'#0080ff', gradient:['#3c9fff','#004080'] },
+  'che':           { primary:'#ff6b3c', secondary:'#1a0500', text:'#ffaa88', glow:'#ff5500', gradient:['#ff6b3c','#802800'] },
+  'osamaon':       { primary:'#c8ff3c', secondary:'#0d1a00', text:'#e4ff99', glow:'#aaff22', gradient:['#c8ff3c','#558800'] },
+  'destroy lonely':{ primary:'#b06aff', secondary:'#0e0018', text:'#d4a0ff', glow:'#9933ff', gradient:['#b06aff','#520099'] },
+  'lil uzi vert':  { primary:'#ff69b4', secondary:'#1a0012', text:'#ffb3d9', glow:'#ff1493', gradient:['#ff69b4','#8b0057'] },
+  'ken carson':    { primary:'#00ff88', secondary:'#001a0d', text:'#80ffcc', glow:'#00e070', gradient:['#00ff88','#007040'] },
+  'osamason':      { primary:'#c8ff3c', secondary:'#0d1a00', text:'#e4ff99', glow:'#aaff22', gradient:['#c8ff3c','#558800'] },
+  '1oneam':        { primary:'#a0c4ff', secondary:'#060d1a', text:'#cce0ff', glow:'#7ab0ff', gradient:['#a0c4ff','#2255aa'] },
+};
+
+// Runtime store — loaded from artists.json on startup, populated by admin edits
+let artistPalettes = {};
+
+// ── Color math utilities ──────────────────────────────────────────────────────
+function hexToHsl(hex) {
+  let r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h=0, s=0, l=(max+min)/2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max) {
+      case r: h = ((g-b)/d + (g<b?6:0))/6; break;
+      case g: h = ((b-r)/d + 2)/6; break;
+      case b: h = ((r-g)/d + 4)/6; break;
+    }
+  }
+  return [h*360, s*100, l*100];
+}
+
+function hslToHex(h, s, l) {
+  h/=360; s/=100; l/=100;
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const q = l < 0.5 ? l*(1+s) : l+s-l*s, p = 2*l-q;
+    const hue2rgb = (p,q,t) => { if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; };
+    r=hue2rgb(p,q,h+1/3); g=hue2rgb(p,q,h); b=hue2rgb(p,q,h-1/3);
+  }
+  return '#'+[r,g,b].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');
+}
+
+// Auto-derive a complete palette from a single primary hex color
+function generatePaletteFromPrimary(primary) {
+  const [h, s, l] = hexToHsl(primary);
+  return {
+    primary,
+    secondary: hslToHex(h, Math.min(s*0.6,100), Math.max(l*0.12,2)),
+    text:      hslToHex(h, Math.min(s*0.65,100), Math.min(l+30,88)),
+    glow:      hslToHex(h, Math.min(s*1.05,100), Math.min(l+6,72)),
+    gradient:  [primary, hslToHex(h, s, Math.max(l-22,3))]
+  };
+}
+
+// Return full palette for an artist.
+// Priority: runtime artistPalettes → ARTIST_PALETTES_DEFAULT → auto-generate from ARTIST_COLORS.
+function getArtistPalette(artist) {
+  const key = (artist||'').toLowerCase();
+  for (const [k,v] of Object.entries(artistPalettes)) {
+    if (key.includes(k) || k.includes(key)) return v;
+  }
+  for (const [k,v] of Object.entries(ARTIST_PALETTES_DEFAULT)) {
+    if (key.includes(k)) return v;
+  }
+  return generatePaletteFromPrimary(getArtistColor(artist));
+}
+
+// Convert hex to rgba string with given alpha (0-1)
+function hexToRgba(hex, a) {
+  const r2 = parseInt(hex.slice(1,3),16), g2 = parseInt(hex.slice(3,5),16), b2 = parseInt(hex.slice(5,7),16);
+  return `rgba(${r2},${g2},${b2},${a})`;
+}
+
+// Apply full artist palette as CSS variables on :root and #player-bar
+function applyArtistPalette(artist) {
+  const p = getArtistPalette(artist);
+  const root = document.documentElement;
+  root.style.setProperty('--artist-primary',        p.primary);
+  root.style.setProperty('--artist-secondary',       p.secondary);
+  root.style.setProperty('--artist-text',            p.text);
+  root.style.setProperty('--artist-glow',            p.glow);
+  root.style.setProperty('--artist-gradient-start',  p.gradient[0]);
+  root.style.setProperty('--artist-gradient-end',    p.gradient[1]);
+  // Computed rgba helpers for CSS overlays that need opacity control
+  const sr = parseInt(p.secondary.slice(1,3),16), sg = parseInt(p.secondary.slice(3,5),16), sb = parseInt(p.secondary.slice(5,7),16);
+  root.style.setProperty('--artist-secondary-bg',   `rgba(${sr},${sg},${sb},0.42)`);
+  const gr = parseInt(p.glow.slice(1,3),16), gg = parseInt(p.glow.slice(3,5),16), gb = parseInt(p.glow.slice(5,7),16);
+  root.style.setProperty('--artist-glow-30',        `rgba(${gr},${gg},${gb},0.30)`);
+  // Backward compat
+  root.style.setProperty('--artist-color',           p.primary);
+  root.style.setProperty('--current-color',          p.primary);
+  const bar = document.getElementById('player-bar');
+  if (bar) bar.style.setProperty('--current-color', p.primary);
+}
+
 // ===== STORAGE — GitHub API + localStorage fallback =====
-let ghFileSha = null; // tracks the SHA of tracks.json for updates
+let ghFileSha = null;     // tracks the SHA of tracks.json for updates
+let ghArtistsSha = null;  // tracks the SHA of artists.json for updates
 
 async function loadTracks() {
   // Always try GitHub first if configured
@@ -193,6 +300,92 @@ async function saveTracks(t) {
   } catch(e) {
     /* suppressed */
     showToast('NETWORK ERROR — SAVED LOCALLY ONLY', 'error');
+  }
+}
+
+// ===== ARTISTS.JSON — palette storage =====
+async function loadArtists() {
+  if (ghConfigured()) {
+    try {
+      const c = getGHConfig();
+      const res = await fetch(
+        `https://api.github.com/repos/${c.owner}/${c.repo}/contents/artists.json?ref=${c.branch}&t=${Date.now()}`,
+        { headers: { 'Authorization': `token ${c.token}`, 'Accept': 'application/vnd.github.v3+json' } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        ghArtistsSha = data.sha;
+        const decoded = JSON.parse(atob(data.content.replace(/\n/g,'')));
+        localStorage.setItem('vault-artists-v1', JSON.stringify(decoded));
+        return decoded;
+      }
+      if (res.status === 404) { ghArtistsSha = null; return getLocalArtists(); }
+    } catch(e) { /* suppressed */ }
+  } else {
+    const pub = getPublicRepo();
+    if (pub) {
+      try {
+        const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/artists.json?t=${Date.now()}`);
+        if (res.ok) {
+          const decoded = await res.json();
+          localStorage.setItem('vault-artists-v1', JSON.stringify(decoded));
+          return decoded;
+        }
+      } catch(e) { /* suppressed */ }
+    }
+  }
+  return getLocalArtists();
+}
+
+function getLocalArtists() {
+  try {
+    const s = localStorage.getItem('vault-artists-v1');
+    return s ? JSON.parse(s) : {};
+  } catch { return {}; }
+}
+
+async function saveArtists(data) {
+  try { localStorage.setItem('vault-artists-v1', JSON.stringify(data)); } catch(e) {}
+
+  if (!ghConfigured()) {
+    showToast('PALETTE SAVED LOCALLY — SET UP GITHUB TO PERSIST', 'error');
+    return;
+  }
+
+  const c = getGHConfig();
+  let content;
+  try {
+    const json = JSON.stringify(data, null, 2);
+    const bytes = new TextEncoder().encode(json);
+    content = btoa(Array.from(bytes).map(b => String.fromCharCode(b)).join(''));
+  } catch(e) { showToast('ENCODING ERROR', 'error'); return; }
+
+  const body = {
+    message: `vault: update artists.json [${new Date().toISOString().split('T')[0]}]`,
+    content,
+    branch: c.branch,
+  };
+  if (ghArtistsSha) body.sha = ghArtistsSha;
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${c.owner}/${c.repo}/contents/artists.json`,
+      {
+        method: 'PUT',
+        headers: { 'Authorization': `token ${c.token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }
+    );
+    if (res.ok) {
+      const d2 = await res.json();
+      ghArtistsSha = d2.content.sha;
+      showToast('PALETTE SAVED TO GITHUB ✓', 'success');
+    } else {
+      const err = await res.json();
+      showToast(`PALETTE SAVE FAILED: ${(err.message||'').slice(0,40).toUpperCase()}`, 'error');
+    }
+  } catch(e) {
+    showToast('NETWORK ERROR — PALETTE SAVED LOCALLY ONLY', 'error');
   }
 }
 
@@ -447,7 +640,11 @@ function renderTracks() {
   const playlist = getPlaylist();
   const counts = getPlayCounts();
   grid.innerHTML = list.map((t, idx) => {
-    const color = getArtistColor(t.artist);
+    const pal = getArtistPalette(t.artist);
+    const color = pal.primary;
+    // Compute rgba helpers for CSS overlays (needed because we can't add opacity to hex vars in CSS)
+    const secR = parseInt(pal.secondary.slice(1,3),16), secG = parseInt(pal.secondary.slice(3,5),16), secB = parseInt(pal.secondary.slice(5,7),16);
+    const glowR = parseInt(pal.glow.slice(1,3),16), glowG = parseInt(pal.glow.slice(3,5),16), glowB = parseInt(pal.glow.slice(5,7),16);
     const tags = (t.tags||[]).map(tag=>`<span class="tag">${tag}</span>`).join('');
     const hasAudio = !!t.url;
     const pIdx = playlist.findIndex(x=>x.id===t.id);
@@ -459,7 +656,7 @@ function renderTracks() {
     const playCountEl = plays > 0 ? `<div class="track-play-count${plays >= 5 ? ' hot' : ''}">${plays} play${plays !== 1 ? 's' : ''}</div>` : '';
     const notesEl = t.notes ? `<div class="track-notes-preview" title="${t.notes.replace(/"/g,'&quot;')}">📝 ${t.notes}</div>` : '';
     return `
-      <div class="track-card${isCurrentlyPlaying?' playing':''}" style="--artist-color:${color}" data-id="${t.id}">
+      <div class="track-card${isCurrentlyPlaying?' playing':''}" style="--artist-color:${color};--artist-primary:${pal.primary};--artist-secondary:${pal.secondary};--artist-text:${pal.text};--artist-glow:${pal.glow};--artist-gradient-start:${pal.gradient[0]};--artist-gradient-end:${pal.gradient[1]};--artist-secondary-bg:rgba(${secR},${secG},${secB},0.42);--artist-glow-30:rgba(${glowR},${glowG},${glowB},0.30)" data-id="${t.id}">
         <div class="track-card-top">
           ${coverSrc ? `<img class="track-cover loaded" src="${coverSrc}" alt="cover" loading="lazy">` : `<img class="track-cover" src="" data-fetch-cover="${t.id}" alt="cover">`}
           <div class="track-card-meta">
@@ -500,25 +697,22 @@ function renderTracks() {
 }
 
 function showArtistHeader(artist) {
-  const color = getArtistColor(artist);
+  const pal = getArtistPalette(artist);
+  const color = pal.primary;
   document.getElementById('artist-header').classList.add('visible');
-  document.getElementById('artist-header').style.setProperty('--artist-glow', hexToRgba(color, 0.08));
+  document.getElementById('artist-header').style.setProperty('--artist-glow', hexToRgba(pal.glow, 0.12));
+  document.getElementById('artist-header').style.setProperty('--artist-primary', pal.primary);
   const avatar = document.getElementById('artist-avatar');
   avatar.style.color = color;
   avatar.style.borderColor = color;
   avatar.textContent = artist.slice(0,2).toUpperCase();
   const nameEl = document.getElementById('artist-name-display');
   nameEl.textContent = artist.toUpperCase();
-  nameEl.style.color = color;
+  nameEl.style.color = pal.text || color;
   const count = tracks.filter(t=>t.artist===artist).length;
   document.getElementById('artist-track-count').textContent = `${count} TRACK${count!==1?'S':''} IN VAULT`;
 }
 function hideArtistHeader() { document.getElementById('artist-header').classList.remove('visible'); }
-
-function hexToRgba(hex, a) {
-  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-  return `rgba(${r},${g},${b},${a})`;
-}
 
 function formatDate(d) {
   if (!d) return '';
@@ -650,8 +844,8 @@ function playAtIndex(idx) {
   }
   isPlaying = true;
 
-  const color = getArtistColor(t.artist);
-  document.getElementById('player-bar').style.setProperty('--current-color', color);
+  applyArtistPalette(t.artist);
+  const color = getArtistPalette(t.artist).primary;
   document.getElementById('player-title').textContent = t.title;
   document.getElementById('player-artist').textContent = t.artist.toUpperCase();
   const ppBtn = document.getElementById('play-pause-btn');
@@ -902,6 +1096,9 @@ function drawWaveform() {
 
   const rawColor = getComputedStyle(document.getElementById('player-bar'))
     .getPropertyValue('--current-color').trim() || '#c41e3a';
+  // Use the richer glow color for oscilloscope stroke lines
+  const glowColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--artist-glow').trim() || rawColor;
   // Use scrub position while dragging, else actual playback position
   const progress = isScrubbing ? scrubProgress : (audio.duration ? audio.currentTime / audio.duration : 0);
 
@@ -994,7 +1191,7 @@ function drawWaveform() {
         if (i === 0) waveCtx.moveTo(x, y);
         else waveCtx.lineTo(x, y);
       }
-      waveCtx.strokeStyle = isPastPass ? rawColor : rawColor + '44';
+      waveCtx.strokeStyle = isPastPass ? glowColor : glowColor + '44';
       waveCtx.lineWidth = 1.5;
       waveCtx.globalAlpha = isPastPass ? 1 : 0.4;
       waveCtx.stroke();
@@ -1012,12 +1209,12 @@ function drawWaveform() {
       waveCtx.restore();
     }
 
-    // Playhead line
+    // Playhead line — use glow color for extra pop
     waveCtx.globalAlpha = 0.9;
     waveCtx.beginPath();
     waveCtx.moveTo(playheadX, 4);
     waveCtx.lineTo(playheadX, H - 4);
-    waveCtx.strokeStyle = rawColor;
+    waveCtx.strokeStyle = glowColor;
     waveCtx.lineWidth = 2;
     waveCtx.stroke();
 
@@ -1464,6 +1661,24 @@ function openEditModal(id) {
   document.getElementById('edit-stem-keys').value   = (t.stems && t.stems.keys)   || '';
   document.getElementById('edit-notes').value       = t.notes || '';
 
+  // Populate palette editor
+  const _palKey = (t.artist || '').toLowerCase();
+  const _existingPal = artistPalettes[_palKey]
+    || (() => { for (const [k,v] of Object.entries(artistPalettes)) { if (_palKey.includes(k)||k.includes(_palKey)) return v; } return null; })()
+    || ARTIST_PALETTES_DEFAULT[_palKey]
+    || (() => { for (const [k,v] of Object.entries(ARTIST_PALETTES_DEFAULT)) { if (_palKey.includes(k)) return v; } return null; })()
+    || generatePaletteFromPrimary(getArtistColor(t.artist));
+  document.getElementById('pe-primary').value    = _existingPal.primary;
+  document.getElementById('pe-secondary').value  = _existingPal.secondary;
+  document.getElementById('pe-text').value       = _existingPal.text;
+  document.getElementById('pe-glow').value       = _existingPal.glow;
+  document.getElementById('pe-grad-start').value = _existingPal.gradient[0];
+  document.getElementById('pe-grad-end').value   = _existingPal.gradient[1];
+  // Update artist label in preview and re-render preview
+  const ppLabel = document.getElementById('pp-artist-label');
+  if (ppLabel) ppLabel.textContent = (t.artist || 'ARTIST').toUpperCase();
+  updatePalettePreview();
+
   // Show cover preview if URL exists
   const preview = document.getElementById('edit-cover-preview');
   const previewImg = document.getElementById('edit-cover-preview-img');
@@ -1533,6 +1748,25 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
   saveLyricsCache(cache);
   // If this track is currently loaded in the lyrics panel, reload it
   if (lyricsTrackId === editingTrackId) { lyricsTrackId = null; lyricsLines = []; }
+
+  // Save palette — stored by lowercase artist name, affects all tracks by this artist
+  const _paletteSaveKey = artist.toLowerCase();
+  const _newPalette = {
+    primary:  document.getElementById('pe-primary').value,
+    secondary:document.getElementById('pe-secondary').value,
+    text:     document.getElementById('pe-text').value,
+    glow:     document.getElementById('pe-glow').value,
+    gradient: [document.getElementById('pe-grad-start').value, document.getElementById('pe-grad-end').value],
+  };
+  artistPalettes[_paletteSaveKey] = _newPalette;
+  saveArtists(artistPalettes); // fire-and-forget; shows its own toast
+
+  // Re-apply palette immediately if this artist is currently playing
+  const _currentTrack = getPlaylist()[currentTrackIdx];
+  if (_currentTrack && _currentTrack.artist.toLowerCase() === _paletteSaveKey) {
+    applyArtistPalette(_currentTrack.artist);
+  }
+
   renderFilters();
   renderTracks();
   closeModal('edit-modal');
@@ -3398,7 +3632,10 @@ renderTracks();
 renderRecentlyPlayed();
 renderQueue();
 
-// Then async-load from GitHub (may update the list with newer tracks)
+// Seed artist palettes from localStorage immediately (so cards render with correct colors)
+artistPalettes = getLocalArtists();
+
+// Then async-load from GitHub (may update the list with newer tracks + palettes)
 loadTracks().then(loaded => {
   if (loaded && loaded.length > 0) {
     tracks = loaded;
@@ -3408,6 +3645,12 @@ loadTracks().then(loaded => {
   }
   if (isAdmin && !ghConfigured()) {
     showToast('GITHUB NOT SET UP — CLICK ⚙ TO CONFIGURE', 'error');
+  }
+});
+loadArtists().then(loaded => {
+  if (loaded && Object.keys(loaded).length > 0) {
+    artistPalettes = loaded;
+    renderTracks(); // re-render so cards pick up freshly loaded palettes
   }
 });
 
@@ -4091,8 +4334,8 @@ function crossfadeTo(idx) {
  * Extracted from playAtIndex so crossfadeTo can call it immediately.
  */
 function _updatePlayerUI(t, idx) {
-  const color = getArtistColor(t.artist);
-  playerBar.style.setProperty('--current-color', color);
+  applyArtistPalette(t.artist);
+  const color = getArtistPalette(t.artist).primary;
   document.getElementById('player-title').textContent = t.title;
   document.getElementById('player-artist').textContent = t.artist.toUpperCase();
   const ppBtn = document.getElementById('play-pause-btn');
@@ -4425,3 +4668,65 @@ async function setPitchSemitones(st) {
 // =====================================================================
 // end of The Vault feature extensions
 // =====================================================================
+
+// ===== PALETTE EDITOR =====
+// Updates the live preview strip inside the edit modal whenever a picker changes.
+function updatePalettePreview() {
+  const preview = document.getElementById('palette-preview');
+  if (!preview) return;
+  const vals = {
+    '--pe-primary':    document.getElementById('pe-primary')?.value    || '#c41e3a',
+    '--pe-secondary':  document.getElementById('pe-secondary')?.value  || '#1a0a0d',
+    '--pe-text':       document.getElementById('pe-text')?.value       || '#ff6b8a',
+    '--pe-glow':       document.getElementById('pe-glow')?.value       || '#ff003c',
+    '--pe-grad-start': document.getElementById('pe-grad-start')?.value || '#c41e3a',
+    '--pe-grad-end':   document.getElementById('pe-grad-end')?.value   || '#6b0020',
+  };
+  for (const [k, v] of Object.entries(vals)) {
+    preview.style.setProperty(k, v);
+  }
+}
+
+// Wire live-update on every picker input
+['pe-primary','pe-secondary','pe-text','pe-glow','pe-grad-start','pe-grad-end'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updatePalettePreview);
+});
+
+// "Generate from Primary" — derives the other 4 slots from the primary color
+const _peGenerateBtn = document.getElementById('pe-generate-btn');
+if (_peGenerateBtn) {
+  _peGenerateBtn.addEventListener('click', () => {
+    const primary = document.getElementById('pe-primary').value;
+    const pal = generatePaletteFromPrimary(primary);
+    document.getElementById('pe-secondary').value  = pal.secondary;
+    document.getElementById('pe-text').value       = pal.text;
+    document.getElementById('pe-glow').value       = pal.glow;
+    document.getElementById('pe-grad-start').value = pal.gradient[0];
+    document.getElementById('pe-grad-end').value   = pal.gradient[1];
+    updatePalettePreview();
+  });
+}
+
+// "Reset to Default" — restores ARTIST_PALETTES_DEFAULT for the current artist
+const _peResetBtn = document.getElementById('pe-reset-btn');
+if (_peResetBtn) {
+  _peResetBtn.addEventListener('click', () => {
+    if (!editingTrackId) return;
+    const t = tracks.find(x => x.id === editingTrackId);
+    if (!t) return;
+    const key = (t.artist || '').toLowerCase();
+    let defaultPal = null;
+    for (const [k, v] of Object.entries(ARTIST_PALETTES_DEFAULT)) {
+      if (key.includes(k)) { defaultPal = v; break; }
+    }
+    if (!defaultPal) defaultPal = generatePaletteFromPrimary(getArtistColor(t.artist));
+    document.getElementById('pe-primary').value    = defaultPal.primary;
+    document.getElementById('pe-secondary').value  = defaultPal.secondary;
+    document.getElementById('pe-text').value       = defaultPal.text;
+    document.getElementById('pe-glow').value       = defaultPal.glow;
+    document.getElementById('pe-grad-start').value = defaultPal.gradient[0];
+    document.getElementById('pe-grad-end').value   = defaultPal.gradient[1];
+    updatePalettePreview();
+  });
+}

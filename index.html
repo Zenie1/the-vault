@@ -39,6 +39,15 @@
   --font-mono: 'DM Mono', monospace;
   --font-body: 'Syne', sans-serif;
   --radius: 2px;
+  /* Per-artist palette — updated dynamically by applyArtistPalette() in vault.js */
+  --artist-primary:        #c41e3a;
+  --artist-secondary:      #1a0a0d;
+  --artist-text:           #ff6b8a;
+  --artist-glow:           #ff003c;
+  --artist-gradient-start: #c41e3a;
+  --artist-gradient-end:   #6b0020;
+  --artist-secondary-bg:   rgba(26,10,13,0.42);
+  --artist-glow-30:        rgba(255,0,60,0.30);
 }
 
 body {
@@ -227,21 +236,30 @@ header {
   position:absolute;
   top:0; left:0;
   width:3px; height:100%;
-  background: var(--artist-color, var(--accent));
+  background: var(--artist-primary, var(--artist-color, var(--accent)));
   opacity:0.5;
   transition: opacity 0.2s, width 0.2s;
 }
-.track-card:hover { background:var(--surface2); border-color:rgba(196,30,58,0.22); transform:translateY(-1px); box-shadow: 0 8px 30px -12px rgba(196,30,58,0.35); }
+.track-card:hover {
+  background: linear-gradient(135deg, var(--artist-secondary-bg, rgba(26,10,13,0.42)) 0%, transparent 55%), var(--surface2);
+  border-color: rgba(196,30,58,0.22);
+  transform: translateY(-1px);
+  box-shadow: inset 3px 0 30px -20px var(--artist-primary, rgba(196,30,58,0.35)), 0 8px 30px -12px var(--artist-glow-30, rgba(196,30,58,0.35));
+}
 .track-card:hover::before { opacity:1; width:4px; }
 
-.track-card.playing { background:var(--surface2); border-color:rgba(196,30,58,0.35); box-shadow: 0 0 24px -8px rgba(196,30,58,0.5); }
-.track-card.playing::before { opacity:1; background:var(--accent)!important; box-shadow: 0 0 12px var(--accent); }
+.track-card.playing {
+  background: linear-gradient(135deg, var(--artist-secondary-bg, rgba(26,10,13,0.42)) 0%, transparent 60%), var(--surface2);
+  border-color: var(--artist-primary, rgba(196,30,58,0.35));
+  box-shadow: 0 0 24px -8px var(--artist-glow, rgba(196,30,58,0.5));
+}
+.track-card.playing::before { opacity:1; background: var(--artist-primary, var(--accent)) !important; box-shadow: 0 0 12px var(--artist-glow, var(--accent)); }
 
 .track-artist {
   font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 3px;
-  color: var(--artist-color, var(--accent));
+  color: var(--artist-text, var(--artist-primary, var(--artist-color, var(--accent))));
   margin-bottom: 8px;
   text-transform: uppercase;
 }
@@ -344,21 +362,23 @@ header {
 #player-bar {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  background: rgba(10,4,8,0.97);
+  background:
+    linear-gradient(135deg, var(--artist-secondary-bg, rgba(26,10,13,0.42)) 0%, transparent 55%),
+    rgba(10,4,8,0.97);
   border-top: 1px solid var(--border2);
   padding: 0;
   z-index: 100;
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
   transform: translateY(100%);
-  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), background 0.6s ease;
   display: flex;
   flex-direction: column;
 }
 #player-bar.visible { transform: translateY(0); }
-#player-bar::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--current-color,var(--accent)),transparent); }
-/* Subtle glow under active track color */
-#player-bar::after { content:''; position:absolute; bottom:0; left:0; right:0; height:60px; background:radial-gradient(ellipse at 50% 100%, var(--current-color,var(--accent))08, transparent 70%); pointer-events:none; }
+#player-bar::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--artist-primary,var(--current-color,var(--accent))),transparent); }
+/* Glow wash using the artist glow color */
+#player-bar::after { content:''; position:absolute; bottom:0; left:0; right:0; height:80px; background:radial-gradient(ellipse at 30% 100%, var(--artist-glow-30, var(--artist-secondary-bg, rgba(196,30,58,0.08))), transparent 70%); pointer-events:none; }
 
 .player-vinyl {
   width: 52px; height: 52px;
@@ -408,7 +428,7 @@ header {
 
 .player-info { min-width:0; flex:1; overflow:hidden; }
 .player-title { font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-.player-artist { font-family:var(--font-mono); font-size:9px; color:var(--muted); letter-spacing:2px; margin-top:2px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.player-artist { font-family:var(--font-mono); font-size:9px; color:var(--artist-text, var(--artist-primary, var(--muted))); letter-spacing:2px; margin-top:2px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition: color 0.5s ease; }
 
 /* Like button on player info */
 .player-like-btn {
@@ -599,6 +619,144 @@ header {
 .tab-btn.active { background:var(--surface2); color:var(--text); }
 
 .modal-actions { display:flex; gap:10px; margin-top:24px; flex-wrap:wrap; }
+
+/* ===== PALETTE EDITOR ===== */
+.palette-editor-wrap {
+  border-top: 1px solid var(--border2);
+  padding-top: 18px;
+  margin-top: 6px;
+}
+.palette-hint {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  text-transform: none;
+  font-weight: 400;
+}
+.palette-swatches {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.palette-swatch-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+.palette-swatch-item input[type="color"] {
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.palette-swatch-item input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; border-radius: 1px; }
+.palette-swatch-item input[type="color"]::-webkit-color-swatch { border: none; border-radius: 1px; }
+.palette-swatch-item span {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+/* Live preview strip */
+.palette-preview-strip {
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 10px 0 14px;
+}
+.pp-bar-mock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg,
+    var(--pe-grad-start, #c41e3a) 0%,
+    var(--pe-grad-end, #6b0020) 100%);
+  box-shadow: inset 0 0 80px rgba(0,0,0,0.65);
+  position: relative;
+}
+.pp-bar-mock::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--pe-secondary, #1a0a0d);
+  opacity: 0.55;
+}
+.pp-art-mock {
+  width: 38px;
+  height: 38px;
+  border-radius: 2px;
+  background: var(--pe-primary, #c41e3a);
+  flex-shrink: 0;
+  position: relative;
+  opacity: 0.85;
+}
+.pp-info {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+.pp-artist-name {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--pe-text, #ff6b8a);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.pp-track-title {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  position: relative;
+  text-shadow: 0 0 14px var(--pe-glow, #ff003c);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pp-controls {
+  display: flex;
+  gap: 6px;
+  position: relative;
+  flex-shrink: 0;
+}
+.pp-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--pe-primary, #c41e3a);
+  color: var(--pe-primary, #c41e3a);
+  font-size: 9px;
+  border-radius: 2px;
+  user-select: none;
+}
+.pp-btn.pp-play {
+  background: var(--pe-primary, #c41e3a);
+  color: #0a0408;
+  font-size: 11px;
+}
+.palette-editor-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.palette-editor-actions .btn {
+  font-size: 10px;
+  padding: 7px 14px;
+  letter-spacing: 1px;
+}
 
 /* ADMIN LOGIN MODAL */
 #login-modal .modal { max-width:380px; }
@@ -2815,6 +2973,58 @@ header {
     <div class="form-group">
       <label>Admin Notes (optional — only visible in admin mode)</label>
       <textarea id="edit-notes" rows="2" placeholder="e.g. CDQ leak from Discord, v2 alternate mix, source: @user..." style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:10px 12px;outline:none;resize:vertical;letter-spacing:0.5px;line-height:1.6"></textarea>
+    </div>
+
+    <!-- ARTIST PALETTE EDITOR -->
+    <div class="form-group palette-editor-wrap">
+      <label>🎨 Artist Palette <span class="palette-hint">(applies to all tracks by this artist)</span></label>
+      <div class="palette-swatches">
+        <div class="palette-swatch-item">
+          <input type="color" id="pe-primary" value="#c41e3a" title="Primary accent">
+          <span>Primary</span>
+        </div>
+        <div class="palette-swatch-item">
+          <input type="color" id="pe-secondary" value="#1a0a0d" title="Dark bg tint">
+          <span>Secondary</span>
+        </div>
+        <div class="palette-swatch-item">
+          <input type="color" id="pe-text" value="#ff6b8a" title="Text on dark surfaces">
+          <span>Text</span>
+        </div>
+        <div class="palette-swatch-item">
+          <input type="color" id="pe-glow" value="#ff003c" title="Shadow / glow color">
+          <span>Glow</span>
+        </div>
+        <div class="palette-swatch-item">
+          <input type="color" id="pe-grad-start" value="#c41e3a" title="Gradient start">
+          <span>Grad A</span>
+        </div>
+        <div class="palette-swatch-item">
+          <input type="color" id="pe-grad-end" value="#6b0020" title="Gradient end">
+          <span>Grad B</span>
+        </div>
+      </div>
+
+      <!-- Live preview mockup -->
+      <div class="palette-preview-strip" id="palette-preview">
+        <div class="pp-bar-mock">
+          <div class="pp-art-mock"></div>
+          <div class="pp-info">
+            <div class="pp-artist-name" id="pp-artist-label">ARTIST</div>
+            <div class="pp-track-title">Track Title</div>
+          </div>
+          <div class="pp-controls">
+            <div class="pp-btn">◀◀</div>
+            <div class="pp-btn pp-play">▶</div>
+            <div class="pp-btn">▶▶</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="palette-editor-actions">
+        <button class="btn" id="pe-generate-btn" type="button">⟡ Generate from Primary</button>
+        <button class="btn" id="pe-reset-btn" type="button">↺ Reset to Default</button>
+      </div>
     </div>
 
     <div class="modal-actions">

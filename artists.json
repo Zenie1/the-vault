@@ -1,0 +1,107 @@
+{
+  "playboi carti": {
+    "primary": "#ff3c3c",
+    "secondary": "#1a0505",
+    "text": "#ff9999",
+    "glow": "#ff1111",
+    "gradient": ["#ff3c3c", "#8b0000"]
+  },
+  "lil yachty": {
+    "primary": "#00e5ff",
+    "secondary": "#00121a",
+    "text": "#80f2ff",
+    "glow": "#00ccff",
+    "gradient": ["#00e5ff", "#005f7a"]
+  },
+  "young thug": {
+    "primary": "#9f3cff",
+    "secondary": "#0d0019",
+    "text": "#cc99ff",
+    "glow": "#8800ff",
+    "gradient": ["#9f3cff", "#4a0080"]
+  },
+  "lucki": {
+    "primary": "#00ff9f",
+    "secondary": "#001a0d",
+    "text": "#80ffcc",
+    "glow": "#00ff7f",
+    "gradient": ["#00ff9f", "#008040"]
+  },
+  "nine vicious": {
+    "primary": "#ff9f00",
+    "secondary": "#1a0a00",
+    "text": "#ffcc80",
+    "glow": "#ff8800",
+    "gradient": ["#ff9f00", "#804f00"]
+  },
+  "prettifun": {
+    "primary": "#ff3c9f",
+    "secondary": "#1a0011",
+    "text": "#ff99cc",
+    "glow": "#ff0080",
+    "gradient": ["#ff3c9f", "#800040"]
+  },
+  "slayr": {
+    "primary": "#c8ff00",
+    "secondary": "#0d1a00",
+    "text": "#e4ff80",
+    "glow": "#aaff00",
+    "gradient": ["#c8ff00", "#558800"]
+  },
+  "protect": {
+    "primary": "#3c9fff",
+    "secondary": "#000d1a",
+    "text": "#80bfff",
+    "glow": "#0080ff",
+    "gradient": ["#3c9fff", "#004080"]
+  },
+  "che": {
+    "primary": "#ff6b3c",
+    "secondary": "#1a0500",
+    "text": "#ffaa88",
+    "glow": "#ff5500",
+    "gradient": ["#ff6b3c", "#802800"]
+  },
+  "osamaon": {
+    "primary": "#c8ff3c",
+    "secondary": "#0d1a00",
+    "text": "#e4ff99",
+    "glow": "#aaff22",
+    "gradient": ["#c8ff3c", "#558800"]
+  },
+  "destroy lonely": {
+    "primary": "#b06aff",
+    "secondary": "#0e0018",
+    "text": "#d4a0ff",
+    "glow": "#9933ff",
+    "gradient": ["#b06aff", "#520099"]
+  },
+  "lil uzi vert": {
+    "primary": "#ff69b4",
+    "secondary": "#1a0012",
+    "text": "#ffb3d9",
+    "glow": "#ff1493",
+    "gradient": ["#ff69b4", "#8b0057"]
+  },
+  "ken carson": {
+    "primary": "#00ff88",
+    "secondary": "#001a0d",
+    "text": "#80ffcc",
+    "glow": "#00e070",
+    "gradient": ["#00ff88", "#007040"]
+  },
+  "osamason": {
+    "primary": "#c8ff3c",
+    "secondary": "#0d1a00",
+    "text": "#e4ff99",
+    "glow": "#aaff22",
+    "gradient": ["#c8ff3c", "#558800"]
+  },
+  "1oneam": {
+    "primary": "#a0c4ff",
+    "secondary": "#060d1a",
+    "text": "#cce0ff",
+    "glow": "#7ab0ff",
+    "gradient": ["#a0c4ff", "#2255aa"]
+  }
+}
