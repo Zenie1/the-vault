@@ -1,25 +1,21 @@
-// firebase-config.js — The Vault · Firebase project configuration
+// firebase-config.js — The Vault · Firebase project configuration (ES module)
 // ─────────────────────────────────────────────────────────────────────────────
-// SETUP INSTRUCTIONS:
-//  1. Go to https://console.firebase.google.com → your project
-//  2. Project Settings → General → Your apps → Web app
-//  3. Copy the firebaseConfig object values into the fields below.
-//  4. In the Firebase Console, enable:
-//       • Realtime Database  (Build → Realtime Database → Create database)
-//       • Anonymous Authentication  (Build → Authentication → Sign-in method → Anonymous)
-//  5. Paste the security rules from firebase-rules.json into:
-//       Realtime Database → Rules tab
-//
-// ⚠  Do NOT commit this file to a public repo with real credentials.
-//    Add firebase-config.js to .gitignore if you keep credentials here.
+// Exports `app` and `db` for use in session.js and any other ES modules.
+// ⚠  Do NOT commit this file to a public repo.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL:       "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID",
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
+import { getDatabase }   from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey:            'AIzaSyDE64cLcQIKTjgLLIY7Njzdi9mNoIY_lHU',
+  authDomain:        'the-vault-88b96.firebaseapp.com',
+  databaseURL:       'https://the-vault-88b96-default-rtdb.firebaseio.com',
+  projectId:         'the-vault-88b96',
+  storageBucket:     'the-vault-88b96.firebasestorage.app',
+  messagingSenderId: '840138932766',
+  appId:             '1:840138932766:web:a488fb298c276476fb640f',
 };
+
+export const app = initializeApp(firebaseConfig);
+export const db  = getDatabase(app);

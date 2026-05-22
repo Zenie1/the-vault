@@ -3789,14 +3789,8 @@ body.session-guest #player-bar {
 
 <script src="vault.js" defer></script>
 
-<!-- Firebase SDK (v8 compat — global firebase object) -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<!-- Fill in your project values in firebase-config.js before enabling sessions -->
-<script src="firebase-config.js"></script>
-<!-- Live session logic — no vault.js modifications required -->
-<script src="session.js"></script>
+<!-- Live session — ES module; firebase-config.js + session.js import v12 SDK directly -->
+<script type="module" src="session.js"></script>
 
 </body>
 </html>
