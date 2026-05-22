@@ -46,6 +46,7 @@ let panelOpen     = false;
 
 let lastApplied   = null;   // last trackId applied as guest
 let syncCooldown  = false;  // prevents rapid re-syncs
+let authOk        = false;  // true only when Firebase anonymous auth succeeded
 
 const SESSION_VERSION = 1;
 const SESSION_TTL_MS  = 86400000; // 24 hours
@@ -57,9 +58,16 @@ async function boot() {
   try {
     const auth   = getAuth(app);
     const result = await signInAnonymously(auth);
-    myUid = result.user.uid;
+    myUid  = result.user.uid;
+    authOk = true;
+    console.log('[Session] Signed in anonymously — uid:', myUid);
   } catch (err) {
-    console.warn('[Session] Anonymous auth failed:', err.message, '— using local ID.');
+    console.error('[Session] Anonymous auth failed — code:', err.code, '|', err.message);
+    if (err.code === 'auth/configuration-not-found' ||
+        err.code === 'auth/admin-restricted-operation' ||
+        err.code === 'auth/operation-not-allowed') {
+      console.error('[Session] → Go to Firebase Console → Authentication → Sign-in method → enable Anonymous.');
+    }
     myUid = 'local-' + Math.random().toString(36).slice(2, 11);
   }
   wireUI();
@@ -134,7 +142,12 @@ function copyCode() {
 
 // ── Host: start session ───────────────────────────────────────────────────────
 async function startSession() {
-  if (!myUid) { toast('FIREBASE NOT READY', 'error'); return; }
+  if (!authOk) {
+    if (!myUid) { toast('FIREBASE NOT READY', 'error'); return; }
+    toast('ENABLE ANONYMOUS AUTH IN FIREBASE CONSOLE', 'error');
+    console.error('[Session] Cannot start — anonymous auth did not succeed. Enable it at: Firebase Console → Authentication → Sign-in method → Anonymous');
+    return;
+  }
 
   roomCode   = genCode();
   sessionRef = ref(db, 'sessions/' + roomCode);
@@ -156,8 +169,9 @@ async function startSession() {
     rtdbOnDisconnect(sessionRef).remove();
 
   } catch (e) {
-    console.error('[Session] startSession:', e);
-    toast('COULD NOT START SESSION', 'error');
+    console.error('[Session] startSession error — code:', e.code, '|', e.message);
+    const detail = fmtErr(e);
+    toast('SESSION ERROR: ' + detail, 'error');
     reset(); return;
   }
 
@@ -262,7 +276,10 @@ async function handleJoinClick() {
 }
 
 async function joinSession(code) {
-  if (!myUid) { toast('FIREBASE NOT READY', 'error'); return; }
+  if (!authOk) {
+    if (!myUid) { toast('FIREBASE NOT READY', 'error'); return; }
+    toast('ENABLE ANONYMOUS AUTH IN FIREBASE CONSOLE', 'error'); return;
+  }
 
   if (!/^VAULT-\d{4}$/.test(code)) {
     toast('INVALID CODE — FORMAT: VAULT-0000', 'error'); return;
@@ -273,8 +290,9 @@ async function joinSession(code) {
     const snap = await get(ref(db, 'sessions/' + code));
     if (!snap.exists()) { toast('SESSION NOT FOUND', 'error'); return; }
     data = snap.val();
-  } catch {
-    toast('COULD NOT REACH SERVER', 'error'); return;
+  } catch (e) {
+    console.error('[Session] joinSession lookup error:', e.code, e.message);
+    toast('COULD NOT REACH SERVER: ' + fmtErr(e), 'error'); return;
   }
 
   if (data.guestId && data.guestId !== myUid) {
@@ -495,4 +513,19 @@ function setEl(id, text) {
 function toast(msg, type) {
   if (typeof showToast === 'function') showToast(msg, type);
   else console.log('[Session]', msg);
+}
+
+// Format a Firebase error into a short readable string for toasts
+function fmtErr(e) {
+  if (!e) return 'UNKNOWN';
+  // Firebase codes look like "auth/operation-not-allowed" or "PERMISSION_DENIED"
+  const raw = (e.code || e.message || String(e)).toUpperCase();
+  if (raw.includes('PERMISSION_DENIED'))  return 'PERMISSION DENIED — CHECK DB RULES';
+  if (raw.includes('NETWORK'))            return 'NETWORK ERROR';
+  if (raw.includes('UNAUTHENTICATED'))    return 'NOT AUTHENTICATED';
+  if (raw.includes('NOT_ALLOWED') ||
+      raw.includes('OPERATION-NOT-ALLOWED')) return 'ENABLE ANONYMOUS AUTH';
+  if (raw.includes('CONFIGURATION-NOT-FOUND')) return 'AUTH NOT CONFIGURED';
+  // Trim to 40 chars so it fits in a toast
+  return raw.replace(/^(DATABASE\/|AUTH\/)/, '').slice(0, 40);
 }
