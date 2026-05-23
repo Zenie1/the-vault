@@ -471,7 +471,7 @@ function reset() {
  */
 function startChat(role) {
   const wrap = document.getElementById('chat-wrap');
-  if (wrap) wrap.style.display = '';
+  if (wrap) wrap.style.display = 'flex';
 
   setEl('chat-room-label', roomCode || '');
   clearChatDOM();
