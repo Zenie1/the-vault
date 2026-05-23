@@ -2890,6 +2890,231 @@ body.session-guest #player-bar {
   border-top-color: var(--artist-primary, var(--accent));
   border-top-width: 2px;
 }
+
+/* ── Live Chat ─────────────────────────────────────────────────────────────── */
+#chat-wrap {
+  position: fixed;
+  bottom: 76px;           /* sits just above the player bar */
+  right: 18px;
+  z-index: 1100;
+  display: none;          /* shown only during an active session */
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+/* ── Chat tab (always visible when session active) ── */
+#chat-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10,4,8,0.95);
+  border: 1px solid var(--artist-primary, var(--accent));
+  border-bottom: none;
+  color: var(--artist-primary, var(--accent));
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  padding: 6px 14px 7px;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  user-select: none;
+  transition: background 0.18s;
+}
+#chat-tab:hover {
+  background: color-mix(in srgb, var(--artist-primary, var(--accent)) 14%, rgba(10,4,8,0.95));
+}
+
+.chat-badge {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 3px;
+  background: var(--artist-primary, var(--accent));
+  color: #000;
+  border-radius: 9px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+}
+.chat-badge.visible { display: flex; }
+
+/* ── Chat panel ── */
+#chat-panel {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgba(8,3,6,0.98);
+  border: 1px solid var(--artist-primary, var(--accent));
+  border-bottom: none;
+  border-radius: 6px 0 0 0;
+  /* slide-up animation */
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: max-height 0.32s cubic-bezier(0.16,1,0.3,1),
+              opacity    0.22s ease;
+}
+#chat-panel.open {
+  max-height: 420px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Panel header */
+.chat-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px 7px;
+  border-bottom: 1px solid rgba(255,255,255,0.055);
+}
+#chat-room-label {
+  flex: 1;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--muted, #666);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-live-dot {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--artist-primary, var(--accent));
+  animation: session-pulse 2s ease-in-out infinite;
+  white-space: nowrap;
+}
+#chat-collapse-btn {
+  background: none;
+  border: none;
+  color: var(--muted, #666);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 1px 3px;
+  border-radius: 3px;
+  transition: color 0.15s;
+}
+#chat-collapse-btn:hover { color: var(--text, #eee); }
+
+/* Messages area */
+#chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 11px;
+  scroll-behavior: smooth;
+}
+#chat-messages::-webkit-scrollbar { width: 3px; }
+#chat-messages::-webkit-scrollbar-track { background: transparent; }
+#chat-messages::-webkit-scrollbar-thumb {
+  background: var(--artist-primary, var(--accent));
+  border-radius: 2px;
+}
+
+/* Individual message */
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 86%;
+  gap: 3px;
+}
+.chat-msg.mine   { align-self: flex-end;   align-items: flex-end; }
+.chat-msg.theirs { align-self: flex-start; align-items: flex-start; }
+
+.chat-bubble {
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+  max-width: 100%;
+  white-space: pre-wrap;
+}
+.chat-msg.mine   .chat-bubble {
+  background: var(--artist-primary, var(--accent));
+  color: #000;
+  border-bottom-right-radius: 3px;
+}
+.chat-msg.theirs .chat-bubble {
+  background: rgba(255,255,255,0.07);
+  color: var(--text, #ddd);
+  border-bottom-left-radius: 3px;
+}
+.chat-time {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--muted, #555);
+}
+
+/* Typing indicator */
+#chat-typing {
+  flex-shrink: 0;
+  padding: 2px 11px 3px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--muted, #555);
+  min-height: 16px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Input area */
+.chat-input-area {
+  flex-shrink: 0;
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px 9px;
+  border-top: 1px solid rgba(255,255,255,0.055);
+}
+#chat-input {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 5px;
+  color: var(--text, #eee);
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 6px 9px;
+  outline: none;
+  transition: border-color 0.18s;
+}
+#chat-input:focus {
+  border-color: var(--artist-primary, var(--accent));
+}
+#chat-input::placeholder {
+  color: var(--muted, #555);
+  letter-spacing: 0.1em;
+}
+#chat-send-btn {
+  flex-shrink: 0;
+  background: var(--artist-primary, var(--accent));
+  border: none;
+  border-radius: 5px;
+  color: #000;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  width: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s;
+}
+#chat-send-btn:hover  { opacity: 0.82; }
+#chat-send-btn:active { opacity: 0.65; }
 </style>
 </head>
 <body>
@@ -3181,6 +3406,43 @@ body.session-guest #player-bar {
   </div>
 
 </div><!-- /#player-bar -->
+
+<!-- ── Live Chat Panel ──────────────────────────────────────────────────────── -->
+<div id="chat-wrap">
+
+  <!-- Expanded panel (slides up above the tab) -->
+  <div id="chat-panel">
+    <div class="chat-header">
+      <span id="chat-room-label">VAULT-0000</span>
+      <span class="chat-live-dot">● LIVE</span>
+      <button id="chat-collapse-btn" title="Collapse chat">✕</button>
+    </div>
+
+    <div id="chat-messages"></div>
+
+    <div id="chat-typing"></div>
+
+    <div class="chat-input-area">
+      <input
+        type="text"
+        id="chat-input"
+        placeholder="SAY SOMETHING…"
+        maxlength="280"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+      >
+      <button id="chat-send-btn" title="Send message">↑</button>
+    </div>
+  </div><!-- /#chat-panel -->
+
+  <!-- Tab (always visible when session active) -->
+  <div id="chat-tab" role="button" aria-label="Toggle live chat">
+    <span>💬 CHAT</span>
+    <span id="chat-badge" class="chat-badge">0</span>
+  </div>
+
+</div><!-- /#chat-wrap -->
 
 <!-- EDIT TRACK MODAL -->
 <div class="modal-overlay" id="edit-modal">

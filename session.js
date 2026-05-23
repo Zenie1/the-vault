@@ -1,19 +1,26 @@
-// session.js — Real-time listening session for The Vault
+// session.js — Real-time listening session + live chat for The Vault
 // ─────────────────────────────────────────────────────────────────────────────
 // ES module — loaded via <script type="module" src="session.js">.
 // Uses Firebase v12.13.0 modular SDK; imports db + app from firebase-config.js.
 //
 // Firebase data layout:
 //   sessions/{VAULT-XXXX}/
-//     hostId      : string  — anonymous UID of the host
-//     guestId     : string | null
-//     createdAt   : number  — server timestamp (ms)
-//     version     : number
+//     hostId        : string
+//     guestId       : string | null
+//     createdAt     : number
+//     version       : number
 //     state/
-//       trackId   : string
-//       isPlaying : boolean
+//       trackId     : string
+//       isPlaying   : boolean
 //       currentTime : number
-//       timestamp : number  — Date.now() when host wrote this
+//       timestamp   : number
+//     messages/{pushId}/
+//       uid         : 'host' | 'guest'
+//       text        : string
+//       timestamp   : number
+//     typing/
+//       host        : boolean
+//       guest       : boolean
 //
 // Vault.js interop:
 //   • getPlaylist(), playAtIndex(), showToast() — window globals (function decls)
@@ -22,36 +29,43 @@
 
 import { db, app } from './firebase-config.js';
 import {
-  ref, set, get, remove, onValue,
+  ref, set, get, remove, onValue, push, onChildAdded,
   onDisconnect as rtdbOnDisconnect,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js';
 import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js';
 
-// ── Module state ──────────────────────────────────────────────────────────────
-let sessionRef    = null;   // ref(db, 'sessions/' + roomCode)
-let stateRef      = null;   // ref(db, 'sessions/' + roomCode + '/state')
+// ── Session state ─────────────────────────────────────────────────────────────
+let sessionRef    = null;
+let stateRef      = null;
 let heartbeatTimer= null;
 let titleObserver = null;
 let audioListeners= null;
-let guestStateOff = null;   // unsubscribe fn — guest listening to host state
-let guestIdOff    = null;   // unsubscribe fn — host watching for guest join
-let hostIdOff     = null;   // unsubscribe fn — guest watching for host removal
+let guestStateOff = null;   // unsubscribe — guest watching host state
+let guestIdOff    = null;   // unsubscribe — host watching for guest join
+let hostIdOff     = null;   // unsubscribe — guest watching for host removal
 
 let sessionRole   = null;   // 'host' | 'guest' | null
 let roomCode      = null;
 let myUid         = null;
 let isActive      = false;
 let panelOpen     = false;
-
-let lastApplied   = null;   // last trackId applied as guest
-let syncCooldown  = false;  // prevents rapid re-syncs
-let authOk        = false;  // true only when Firebase anonymous auth succeeded
+let lastApplied   = null;
+let syncCooldown  = false;
+let authOk        = false;
 
 const SESSION_VERSION = 1;
-const SESSION_TTL_MS  = 86400000; // 24 hours
+const SESSION_TTL_MS  = 86400000; // 24 h
 
-// ── Bootstrap: sign in then wire UI ──────────────────────────────────────────
+// ── Chat state ────────────────────────────────────────────────────────────────
+let chatOpen       = false;
+let unreadCount    = 0;
+let messagesOff    = null;  // onChildAdded unsubscribe
+let typingOff      = null;  // onValue unsubscribe for other party typing
+let typingTimer    = null;  // debounce handle for own typing state
+const MAX_MSG_LEN  = 280;
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => setTimeout(boot, 650));
 
 async function boot() {
@@ -66,15 +80,16 @@ async function boot() {
     if (err.code === 'auth/configuration-not-found' ||
         err.code === 'auth/admin-restricted-operation' ||
         err.code === 'auth/operation-not-allowed') {
-      console.error('[Session] → Go to Firebase Console → Authentication → Sign-in method → enable Anonymous.');
+      console.error('[Session] → Firebase Console → Authentication → Sign-in method → enable Anonymous.');
     }
     myUid = 'local-' + Math.random().toString(36).slice(2, 11);
   }
   wireUI();
 }
 
-// ── Wire up UI event listeners ────────────────────────────────────────────────
+// ── Wire up UI ────────────────────────────────────────────────────────────────
 function wireUI() {
+  // Session panel
   on('session-btn',          'click', togglePanel);
   on('session-start-btn',    'click', startSession);
   on('session-join-btn',     'click', handleJoinClick);
@@ -82,25 +97,39 @@ function wireUI() {
   on('session-leave-btn',    'click', () => endSession());
   on('session-code-copy-btn','click', copyCode);
 
-  const inp = document.getElementById('session-join-input');
-  if (inp) {
-    inp.addEventListener('keydown', e => {
+  const joinInp = document.getElementById('session-join-input');
+  if (joinInp) {
+    joinInp.addEventListener('keydown', e => {
       if (e.key === 'Enter') handleJoinClick();
-      requestAnimationFrame(() => { inp.value = inp.value.toUpperCase(); });
+      requestAnimationFrame(() => { joinInp.value = joinInp.value.toUpperCase(); });
     });
   }
 
-  // Close panel when clicking outside
+  // Close session panel on outside click
   document.addEventListener('click', e => {
     const panel = document.getElementById('session-panel');
     const btn   = document.getElementById('session-btn');
-    if (panel && panelOpen && !panel.contains(e.target) && e.target !== btn) {
-      closePanel();
-    }
+    if (panel && panelOpen && !panel.contains(e.target) && e.target !== btn) closePanel();
   }, true);
+
+  // Chat UI
+  on('chat-tab',         'click', toggleChat);
+  on('chat-collapse-btn','click', closeChat);
+  on('chat-send-btn',    'click', sendMessage);
+
+  const ci = document.getElementById('chat-input');
+  if (ci) {
+    ci.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+    ci.addEventListener('input', onChatInput);
+  }
 }
 
-// ── Panel helpers ─────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// SESSION — PANEL HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
+
 function togglePanel() { panelOpen ? closePanel() : openPanel(); }
 
 function openPanel() {
@@ -128,10 +157,8 @@ function setBtnActive(active) {
   if (badge) badge.classList.toggle('visible', active);
 }
 
-// ── Room code ─────────────────────────────────────────────────────────────────
-function genCode() {
-  return 'VAULT-' + (Math.floor(Math.random() * 9000) + 1000);
-}
+// ── Room code ──────────────────────────────────────────────────────────────────
+function genCode() { return 'VAULT-' + (Math.floor(Math.random() * 9000) + 1000); }
 
 function copyCode() {
   if (!roomCode) return;
@@ -140,12 +167,15 @@ function copyCode() {
     .catch(()  => toast(roomCode, ''));
 }
 
-// ── Host: start session ───────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// SESSION — HOST
+// ══════════════════════════════════════════════════════════════════════════════
+
 async function startSession() {
   if (!authOk) {
     if (!myUid) { toast('FIREBASE NOT READY', 'error'); return; }
     toast('ENABLE ANONYMOUS AUTH IN FIREBASE CONSOLE', 'error');
-    console.error('[Session] Cannot start — anonymous auth did not succeed. Enable it at: Firebase Console → Authentication → Sign-in method → Anonymous');
+    console.error('[Session] Anonymous auth not ready — enable it in Firebase Console → Authentication → Sign-in method → Anonymous.');
     return;
   }
 
@@ -154,24 +184,17 @@ async function startSession() {
   stateRef   = ref(db, 'sessions/' + roomCode + '/state');
 
   try {
-    // Step 1 — write metadata first (hostId must exist before state validate runs)
     await set(sessionRef, {
       hostId   : myUid,
       guestId  : null,
       version  : SESSION_VERSION,
       createdAt: serverTimestamp(),
     });
-
-    // Step 2 — write initial playback state
     await set(stateRef, snapshot());
-
-    // Auto-remove the whole session when the host tab closes
     rtdbOnDisconnect(sessionRef).remove();
-
   } catch (e) {
     console.error('[Session] startSession error — code:', e.code, '|', e.message);
-    const detail = fmtErr(e);
-    toast('SESSION ERROR: ' + detail, 'error');
+    toast('SESSION ERROR: ' + fmtErr(e), 'error');
     reset(); return;
   }
 
@@ -183,11 +206,9 @@ async function startSession() {
   document.getElementById('session-guest-status')?.classList.remove('connected');
   openPanel();
   showView('sv-host');
-
   navigator.clipboard.writeText(roomCode).catch(() => {});
   toast('SESSION STARTED — CODE: ' + roomCode, 'success');
 
-  // Watch for a guest joining
   const guestIdRef = ref(db, 'sessions/' + roomCode + '/guestId');
   guestIdOff = onValue(guestIdRef, snap => {
     const guestId  = snap.val();
@@ -204,10 +225,10 @@ async function startSession() {
 
   attachHostListeners();
   startHeartbeat();
+  startChat('host');
   window.addEventListener('beforeunload', onUnload);
 }
 
-// ── Host: snapshot + push state ───────────────────────────────────────────────
 function snapshot() {
   const audio = getAudio();
   return {
@@ -220,27 +241,21 @@ function snapshot() {
 
 function pushState() {
   if (!myUid || sessionRole !== 'host' || !stateRef || !isActive) return;
-  set(stateRef, snapshot()).catch(e =>
-    console.warn('[Session] pushState failed:', e.message)
-  );
+  set(stateRef, snapshot()).catch(e => console.warn('[Session] pushState failed:', e.message));
 }
 
 function attachHostListeners() {
   const audio = getAudio();
   if (!audio) return;
-
   const onPlay      = () => pushState();
   const onPause     = () => pushState();
   const onSeeked    = () => pushState();
-  const onLoadStart = () => requestAnimationFrame(pushState); // new track src
-
+  const onLoadStart = () => requestAnimationFrame(pushState);
   audio.addEventListener('play',      onPlay);
   audio.addEventListener('pause',     onPause);
   audio.addEventListener('seeked',    onSeeked);
   audio.addEventListener('loadstart', onLoadStart);
   audioListeners = { audio, onPlay, onPause, onSeeked, onLoadStart };
-
-  // Watch for track title changes (vault.js sets #player-title on track change)
   const titleEl = document.getElementById('player-title');
   if (titleEl) {
     titleObserver = new MutationObserver(() => setTimeout(pushState, 160));
@@ -260,14 +275,13 @@ function detachHostListeners() {
   if (titleObserver) { titleObserver.disconnect(); titleObserver = null; }
 }
 
-function startHeartbeat() {
-  heartbeatTimer = setInterval(pushState, 5000);
-}
-function stopHeartbeat() {
-  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
-}
+function startHeartbeat() { heartbeatTimer = setInterval(pushState, 5000); }
+function stopHeartbeat()  { if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; } }
 
-// ── Guest: join session ───────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// SESSION — GUEST
+// ══════════════════════════════════════════════════════════════════════════════
+
 async function handleJoinClick() {
   const inp  = document.getElementById('session-join-input');
   const code = (inp?.value || '').trim().toUpperCase();
@@ -280,7 +294,6 @@ async function joinSession(code) {
     if (!myUid) { toast('FIREBASE NOT READY', 'error'); return; }
     toast('ENABLE ANONYMOUS AUTH IN FIREBASE CONSOLE', 'error'); return;
   }
-
   if (!/^VAULT-\d{4}$/.test(code)) {
     toast('INVALID CODE — FORMAT: VAULT-0000', 'error'); return;
   }
@@ -295,12 +308,8 @@ async function joinSession(code) {
     toast('COULD NOT REACH SERVER: ' + fmtErr(e), 'error'); return;
   }
 
-  if (data.guestId && data.guestId !== myUid) {
-    toast('SESSION IS FULL', 'error'); return;
-  }
-  if (data.createdAt && Date.now() - data.createdAt > SESSION_TTL_MS) {
-    toast('SESSION EXPIRED', 'error'); return;
-  }
+  if (data.guestId && data.guestId !== myUid) { toast('SESSION IS FULL', 'error'); return; }
+  if (data.createdAt && Date.now() - data.createdAt > SESSION_TTL_MS) { toast('SESSION EXPIRED', 'error'); return; }
 
   roomCode    = code;
   sessionRef  = ref(db, 'sessions/' + roomCode);
@@ -310,7 +319,7 @@ async function joinSession(code) {
   try {
     const guestIdRef = ref(db, 'sessions/' + roomCode + '/guestId');
     await set(guestIdRef, myUid);
-    rtdbOnDisconnect(guestIdRef).set(null); // clear guestId when tab closes
+    rtdbOnDisconnect(guestIdRef).set(null);
   } catch {
     toast('COULD NOT JOIN SESSION', 'error');
     reset(); return;
@@ -323,57 +332,42 @@ async function joinSession(code) {
   showView('sv-guest');
   toast('JOINED — LISTENING LIVE 🎵', 'success');
 
-  // React to host state changes
   guestStateOff = onValue(stateRef, onGuestState);
-
-  // Detect session end (host removed the document)
   const hostIdRef = ref(db, 'sessions/' + roomCode + '/hostId');
   hostIdOff = onValue(hostIdRef, snap => {
     if (snap.val() === null && isActive) handleEndedByHost();
   });
 
+  startChat('guest');
   window.addEventListener('beforeunload', onUnload);
 }
 
-// ── Guest: apply host state ───────────────────────────────────────────────────
 function onGuestState(snap) {
   if (!snap.exists() || sessionRole !== 'guest') return;
   const s = snap.val();
   if (!s) return;
-
-  const audio = getAudio();
+  const audio      = getAudio();
   if (!audio) return;
-
-  // Latency-compensated playback position
   const latency    = Math.max(0, (Date.now() - s.timestamp) / 1000);
   const targetTime = s.currentTime + (s.isPlaying ? latency : 0);
-
-  // ── Track change ──
   if (s.trackId && String(s.trackId) !== String(lastApplied)) {
     lastApplied = String(s.trackId);
     applyTrackChange(s.trackId, targetTime, s.isPlaying);
     return;
   }
-
-  // ── Silent drift correction (±2 second tolerance) ──
   if (!syncCooldown && Math.abs(audio.currentTime - targetTime) > 2) {
     syncCooldown = true;
     audio.currentTime = Math.max(0, targetTime);
     setTimeout(() => { syncCooldown = false; }, 2500);
   }
-
-  // ── Play / pause sync ──
   syncPlayPause(audio, s.isPlaying);
 }
 
 function applyTrackChange(trackId, targetTime, shouldPlay) {
   const playlist = getPlaylist_();
   const idx      = playlist.findIndex(x => String(x.id) === String(trackId));
-  if (idx === -1) return; // track not in local vault
-
-  const audio = getAudio();
-
-  // Already on this track — just seek
+  if (idx === -1) return;
+  const audio       = getAudio();
   const playingCard = document.querySelector('.track-card.playing');
   const currentId   = playingCard?.dataset?.id;
   if (String(currentId) === String(trackId) && audio?.src) {
@@ -381,20 +375,13 @@ function applyTrackChange(trackId, targetTime, shouldPlay) {
     syncPlayPause(audio, shouldPlay);
     return;
   }
-
-  // Load via vault.js global (function declarations are window-accessible)
   if (typeof playAtIndex === 'function') playAtIndex(idx);
-
-  // Seek after the audio element has buffered enough
   const seekAfterLoad = () => {
     audio.currentTime = Math.max(0, targetTime);
     syncPlayPause(audio, shouldPlay);
   };
-  if (audio.readyState >= 3) {
-    seekAfterLoad();
-  } else {
-    audio.addEventListener('canplay', seekAfterLoad, { once: true });
-  }
+  if (audio.readyState >= 3) seekAfterLoad();
+  else audio.addEventListener('canplay', seekAfterLoad, { once: true });
 }
 
 function syncPlayPause(audio, shouldPlay) {
@@ -407,27 +394,28 @@ function syncPlayPause(audio, shouldPlay) {
   }
 }
 
-// ── Guest: lock / unlock controls ────────────────────────────────────────────
 function lockControls()   { document.body.classList.add('session-guest'); }
 function unlockControls() { document.body.classList.remove('session-guest'); }
 
-// ── End / leave session ───────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// SESSION — END / RESET
+// ══════════════════════════════════════════════════════════════════════════════
+
 async function endSession() {
   if (!isActive) return;
-
   try {
     if (sessionRole === 'host') {
-      // Deleting the node signals all guests via hostId → null
-      if (sessionRef) await remove(sessionRef);
+      if (sessionRef) await remove(sessionRef); // wipes messages + typing too
     } else {
       if (guestStateOff) { guestStateOff(); guestStateOff = null; }
       if (hostIdOff)     { hostIdOff();     hostIdOff     = null; }
-      const guestIdRef = ref(db, 'sessions/' + roomCode + '/guestId');
+      const guestIdRef   = ref(db, 'sessions/' + roomCode + '/guestId');
       await set(guestIdRef, null);
       unlockControls();
     }
   } catch { /* ignore cleanup errors */ }
 
+  stopChat();
   reset();
   showView('sv-inactive');
   setBtnActive(false);
@@ -440,6 +428,7 @@ function handleEndedByHost() {
   if (guestStateOff) { guestStateOff(); guestStateOff = null; }
   if (hostIdOff)     { hostIdOff();     hostIdOff     = null; }
   unlockControls();
+  stopChat();
   reset();
   showView('sv-inactive');
   setBtnActive(false);
@@ -452,8 +441,8 @@ function onUnload() {
     remove(sessionRef);
   }
   if (sessionRole === 'guest' && roomCode) {
-    const guestIdRef = ref(db, 'sessions/' + roomCode + '/guestId');
-    set(guestIdRef, null);
+    set(ref(db, 'sessions/' + roomCode + '/guestId'), null);
+    set(ref(db, 'sessions/' + roomCode + '/typing/guest'), false);
   }
 }
 
@@ -472,23 +461,173 @@ function reset() {
   stateRef   = null;
 }
 
-// ── Vault.js interop helpers ──────────────────────────────────────────────────
-function getAudio() {
-  return document.getElementById('audio-player');
+// ══════════════════════════════════════════════════════════════════════════════
+// CHAT
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Called right after a session becomes active.
+ * Wires Firebase listeners and shows the chat tab.
+ */
+function startChat(role) {
+  const wrap = document.getElementById('chat-wrap');
+  if (wrap) wrap.style.display = '';
+
+  setEl('chat-room-label', roomCode || '');
+  clearChatDOM();
+
+  // Stream incoming messages
+  const msgsRef = ref(db, 'sessions/' + roomCode + '/messages');
+  messagesOff = onChildAdded(msgsRef, snap => {
+    const msg = snap.val();
+    if (msg) renderMessage(msg);
+  });
+
+  // Watch the OTHER party's typing indicator
+  const otherRole    = role === 'host' ? 'guest' : 'host';
+  const otherTypingR = ref(db, 'sessions/' + roomCode + '/typing/' + otherRole);
+  typingOff = onValue(otherTypingR, snap => onTypingChange(snap.val(), otherRole));
 }
 
+/**
+ * Called when a session ends (either party).
+ * Cleans up Firebase listeners and hides the chat UI.
+ */
+function stopChat() {
+  if (messagesOff) { messagesOff(); messagesOff = null; }
+  if (typingOff)   { typingOff();   typingOff   = null; }
+  if (typingTimer) { clearTimeout(typingTimer); typingTimer = null; }
+
+  // Clear own typing flag from Firebase
+  if (roomCode && sessionRole) {
+    set(ref(db, 'sessions/' + roomCode + '/typing/' + sessionRole), false).catch(() => {});
+  }
+
+  // Hide UI
+  closeChat();
+  const wrap = document.getElementById('chat-wrap');
+  if (wrap) wrap.style.display = 'none';
+  clearChatDOM();
+  setUnread(0);
+}
+
+// ── Panel toggle ──────────────────────────────────────────────────────────────
+function toggleChat() { chatOpen ? closeChat() : openChat(); }
+
+function openChat() {
+  const panel = document.getElementById('chat-panel');
+  if (panel) panel.classList.add('open');
+  chatOpen = true;
+  setUnread(0);
+  requestAnimationFrame(scrollMessages);
+}
+
+function closeChat() {
+  const panel = document.getElementById('chat-panel');
+  if (panel) panel.classList.remove('open');
+  chatOpen = false;
+}
+
+// ── Send ──────────────────────────────────────────────────────────────────────
+function sendMessage() {
+  if (!isActive || !roomCode || !sessionRole) return;
+  const inp  = document.getElementById('chat-input');
+  const text = (inp?.value || '').trim().slice(0, MAX_MSG_LEN);
+  if (!text) return;
+
+  push(ref(db, 'sessions/' + roomCode + '/messages'), {
+    uid      : sessionRole,
+    text,
+    timestamp: Date.now(),
+  }).catch(e => console.warn('[Chat] send failed:', e.message));
+
+  inp.value = '';
+  clearTyping(); // stop own typing indicator immediately
+}
+
+// ── Render a single message bubble ────────────────────────────────────────────
+function renderMessage(msg) {
+  const wrap = document.getElementById('chat-messages');
+  if (!wrap) return;
+
+  const isMine = msg.uid === sessionRole;
+
+  const msgEl  = document.createElement('div');
+  msgEl.className = 'chat-msg ' + (isMine ? 'mine' : 'theirs');
+
+  const bubble = document.createElement('div');
+  bubble.className  = 'chat-bubble';
+  bubble.textContent = msg.text;
+
+  const time = document.createElement('span');
+  time.className  = 'chat-time';
+  time.textContent = fmtTime(msg.timestamp);
+
+  msgEl.append(bubble, time);
+  wrap.appendChild(msgEl);
+
+  if (chatOpen) {
+    scrollMessages();
+  } else {
+    setUnread(unreadCount + 1);
+  }
+}
+
+function clearChatDOM() {
+  const wrap   = document.getElementById('chat-messages');
+  const typing = document.getElementById('chat-typing');
+  if (wrap)   wrap.innerHTML = '';
+  if (typing) typing.textContent = '';
+}
+
+function scrollMessages() {
+  const wrap = document.getElementById('chat-messages');
+  if (wrap) wrap.scrollTop = wrap.scrollHeight;
+}
+
+// ── Unread badge ──────────────────────────────────────────────────────────────
+function setUnread(n) {
+  unreadCount = n;
+  const badge = document.getElementById('chat-badge');
+  if (!badge) return;
+  badge.textContent = n > 9 ? '9+' : String(n);
+  badge.classList.toggle('visible', n > 0);
+}
+
+// ── Typing indicator ──────────────────────────────────────────────────────────
+function onChatInput() {
+  if (!isActive || !roomCode || !sessionRole) return;
+  set(ref(db, 'sessions/' + roomCode + '/typing/' + sessionRole), true).catch(() => {});
+  if (typingTimer) clearTimeout(typingTimer);
+  typingTimer = setTimeout(clearTyping, 2000);
+}
+
+function clearTyping() {
+  if (typingTimer) { clearTimeout(typingTimer); typingTimer = null; }
+  if (!roomCode || !sessionRole) return;
+  set(ref(db, 'sessions/' + roomCode + '/typing/' + sessionRole), false).catch(() => {});
+}
+
+function onTypingChange(isTyping, role) {
+  const el = document.getElementById('chat-typing');
+  if (!el) return;
+  el.textContent = isTyping ? (role.toUpperCase() + ' IS TYPING…') : '';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// VAULT.JS INTEROP
+// ══════════════════════════════════════════════════════════════════════════════
+
+function getAudio() { return document.getElementById('audio-player'); }
+
 function getPlaylist_() {
-  try {
-    if (typeof getPlaylist === 'function') return getPlaylist();
-  } catch { /* ignore */ }
+  try { if (typeof getPlaylist === 'function') return getPlaylist(); } catch { /* ignore */ }
   return [];
 }
 
 function currentTrackId() {
-  // Primary: read from the playing card in the DOM (reliable from ES modules)
   const playingCard = document.querySelector('.track-card.playing');
   if (playingCard?.dataset?.id) return String(playingCard.dataset.id);
-  // Fallback: try vault.js globals (works only if they're declared as `var`/function)
   try {
     const pl = getPlaylist_();
     if (pl.length && typeof currentTrackIdx !== 'undefined') {
@@ -499,7 +638,7 @@ function currentTrackId() {
   return '';
 }
 
-// ── DOM shortcuts ─────────────────────────────────────────────────────────────
+// ── DOM helpers ───────────────────────────────────────────────────────────────
 function on(id, event, fn) {
   const el = document.getElementById(id);
   if (el) el.addEventListener(event, fn);
@@ -515,17 +654,24 @@ function toast(msg, type) {
   else console.log('[Session]', msg);
 }
 
-// Format a Firebase error into a short readable string for toasts
 function fmtErr(e) {
   if (!e) return 'UNKNOWN';
-  // Firebase codes look like "auth/operation-not-allowed" or "PERMISSION_DENIED"
   const raw = (e.code || e.message || String(e)).toUpperCase();
-  if (raw.includes('PERMISSION_DENIED'))  return 'PERMISSION DENIED — CHECK DB RULES';
-  if (raw.includes('NETWORK'))            return 'NETWORK ERROR';
-  if (raw.includes('UNAUTHENTICATED'))    return 'NOT AUTHENTICATED';
+  if (raw.includes('PERMISSION_DENIED'))     return 'PERMISSION DENIED — CHECK DB RULES';
+  if (raw.includes('NETWORK'))               return 'NETWORK ERROR';
+  if (raw.includes('UNAUTHENTICATED'))       return 'NOT AUTHENTICATED';
   if (raw.includes('NOT_ALLOWED') ||
       raw.includes('OPERATION-NOT-ALLOWED')) return 'ENABLE ANONYMOUS AUTH';
   if (raw.includes('CONFIGURATION-NOT-FOUND')) return 'AUTH NOT CONFIGURED';
-  // Trim to 40 chars so it fits in a toast
   return raw.replace(/^(DATABASE\/|AUTH\/)/, '').slice(0, 40);
+}
+
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d    = new Date(ts);
+  let   h    = d.getHours();
+  const m    = d.getMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return h + ':' + String(m).padStart(2, '0') + ' ' + ampm;
 }
