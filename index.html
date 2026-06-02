@@ -3115,6 +3115,120 @@ body.session-guest #player-bar {
 }
 #chat-send-btn:hover  { opacity: 0.82; }
 #chat-send-btn:active { opacity: 0.65; }
+
+/* ── Offline badge ── */
+#offline-badge {
+  display: none;
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  z-index: 2000;
+  align-items: center;
+  gap: 5px;
+  background: rgba(30,30,30,0.92);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 5px;
+  padding: 4px 9px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #aaa;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+#offline-badge::before {
+  content: '⊘';
+  font-size: 11px;
+}
+
+/* ── Offline-uncached track cards ── */
+.track-card.offline-uncached {
+  opacity: 0.38;
+  pointer-events: none;
+}
+.track-card.offline-uncached::after {
+  content: '⊘';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: rgba(255,255,255,0.25);
+  pointer-events: none;
+}
+
+/* ── Swipe card indicator (revealed behind the card) ── */
+.swipe-card-indicator {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  display: flex;
+  align-items: center;
+  font-size: 26px;
+  font-weight: bold;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.08s;
+  pointer-events: none;
+  z-index: 0;
+}
+.track-card {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Cache modal ── */
+#cache-modal .modal { max-width: 480px; }
+.cache-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  font-family: 'IBM Plex Mono', monospace;
+}
+#cache-track-count { font-size: 13px; color: var(--text-primary, #eee); }
+.cache-progress-wrap {
+  display: none;
+  margin: 10px 0;
+}
+.cache-progress-bar {
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+#cache-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--artist-primary, #ff3c3c);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+#cache-progress-text {
+  font-size: 10px;
+  color: var(--text-muted, #888);
+  font-family: 'IBM Plex Mono', monospace;
+}
+#cache-track-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 8px 0;
+}
+.cache-track-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 11px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.cache-track-name { color: var(--text-primary, #eee); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cache-track-sz { color: var(--text-muted, #888); margin-left: 10px; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -3134,8 +3248,11 @@ body.session-guest #player-bar {
       <button class="btn primary" id="add-btn" style="display:none">+ Add Track</button>
       <button class="btn purple" id="gdrive-btn" style="display:none">⬡ Import Drive</button>
       <button class="btn" id="gh-settings-btn" style="display:none" title="GitHub Settings">⚙ GitHub</button>
+      <button class="btn" id="cache-btn" style="display:none" title="Audio Cache">⊙ Cache</button>
     </div>
   </header>
+
+  <div id="offline-badge">OFFLINE</div>
 
   <!-- CONTROLS -->
   <div class="controls">
@@ -3890,6 +4007,28 @@ body.session-guest #player-bar {
   </div>
 </div>
 
+<!-- CACHE MODAL (admin only) -->
+<div class="modal-overlay" id="cache-modal">
+  <div class="modal" style="max-width:460px">
+    <button class="modal-close" id="cache-modal-close">×</button>
+    <h2>⊙ AUDIO CACHE</h2>
+    <div class="cache-info">
+      <span id="cache-track-count">Loading…</span>
+      <span id="cache-total-size"></span>
+    </div>
+    <div class="cache-progress-wrap" id="cache-progress-wrap">
+      <div class="cache-progress-bar"><div id="cache-progress-fill"></div></div>
+      <div id="cache-progress-text"></div>
+    </div>
+    <div id="cache-track-list"></div>
+    <div class="modal-actions" style="flex-wrap:wrap;gap:8px">
+      <button class="btn primary" id="cache-all-btn">⬇ Cache All Tracks</button>
+      <button class="btn" id="cache-clear-btn" style="color:#e57373">✕ Clear Audio Cache</button>
+      <button class="btn" onclick="closeModal('cache-modal')">CLOSE</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- QUEUE PANEL -->
@@ -4052,9 +4191,9 @@ body.session-guest #player-bar {
 <audio id="audio-xfade" crossorigin="anonymous"></audio>
 
 <script src="vault.js" defer></script>
+<script src="swipe.js" defer></script>
 
 <!-- Live session — ES module; firebase-config.js + session.js import v12 SDK directly -->
 <script type="module" src="session.js"></script>
-
 </body>
 </html>

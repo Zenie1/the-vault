@@ -404,6 +404,7 @@ function setAdmin(val) {
     addBtn.style.display = 'flex';
     gdriveBtn.style.display = 'flex';
     document.getElementById('gh-settings-btn').style.display = 'flex';
+    document.getElementById('cache-btn').style.display = 'flex';
     loginBtn.textContent = '⚿ Logout';
     document.body.classList.add('admin-mode');
   } else {
@@ -412,6 +413,7 @@ function setAdmin(val) {
     addBtn.style.display = 'none';
     gdriveBtn.style.display = 'none';
     document.getElementById('gh-settings-btn').style.display = 'none';
+    document.getElementById('cache-btn').style.display = 'none';
     loginBtn.textContent = '⚿ Admin';
     document.body.classList.remove('admin-mode');
   }
@@ -846,6 +848,7 @@ function playAtIndex(idx) {
 
   applyArtistPalette(t.artist);
   applyVizArtistConfig(t.artist);
+  _updateMediaSession();
   const color = getArtistPalette(t.artist).primary;
   document.getElementById('player-title').textContent = t.title;
   document.getElementById('player-artist').textContent = t.artist.toUpperCase();
@@ -2378,6 +2381,19 @@ function updateLikeBtn() {
   const liked = likedTracks.has(t.id);
   btn.textContent = liked ? '♥' : '♡';
   btn.classList.toggle('liked', liked);
+}
+
+// Called by swipe.js for right-swipe on track cards
+function toggleTrackLike(id) {
+  if (likedTracks.has(id)) {
+    likedTracks.delete(id);
+    showToast('REMOVED FROM LIKED', '');
+  } else {
+    likedTracks.add(id);
+    showToast('ADDED TO LIKED ♥', 'success');
+  }
+  saveLiked();
+  updateLikeBtn();
 }
 
 // ===== KEYBOARD SHORTCUTS =====
@@ -4561,6 +4577,7 @@ function crossfadeTo(idx) {
 function _updatePlayerUI(t, idx) {
   applyArtistPalette(t.artist);
   applyVizArtistConfig(t.artist);
+  _updateMediaSession();
   const color = getArtistPalette(t.artist).primary;
   document.getElementById('player-title').textContent = t.title;
   document.getElementById('player-artist').textContent = t.artist.toUpperCase();
@@ -4955,4 +4972,239 @@ if (_peResetBtn) {
     document.getElementById('pe-grad-end').value   = defaultPal.gradient[1];
     updatePalettePreview();
   });
+}
+
+// =====================================================================
+// MEDIA SESSION API — Lock screen / notification tray controls
+// =====================================================================
+
+function _updateMediaSession() {
+  try {
+    if (!('mediaSession' in navigator)) return;
+    const pl = getPlaylist();
+    const t  = pl[currentTrackIdx];
+    if (!t) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title:   t.title,
+      artist:  t.artist,
+      album:   'The Vault',
+      artwork: t.cover
+        ? [{ src: t.cover, sizes: '512x512', type: 'image/jpeg' }]
+        : [],
+    });
+  } catch (e) {}
+}
+
+function _updatePositionState() {
+  try {
+    if (!('mediaSession' in navigator) || !audio.duration || !isFinite(audio.duration)) return;
+    navigator.mediaSession.setPositionState({
+      duration:     audio.duration,
+      playbackRate: audio.playbackRate || 1,
+      position:     Math.min(audio.currentTime, audio.duration),
+    });
+  } catch (e) {}
+}
+
+let _positionStateTimer = null;
+
+// Wire media session to audio events
+audio.addEventListener('play', () => {
+  try { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
+  if (!_positionStateTimer) _positionStateTimer = setInterval(_updatePositionState, 5000);
+});
+audio.addEventListener('pause', () => {
+  try { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; } catch (e) {}
+  clearInterval(_positionStateTimer); _positionStateTimer = null;
+  _updatePositionState();
+});
+audio.addEventListener('ended', () => {
+  try { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+  clearInterval(_positionStateTimer); _positionStateTimer = null;
+});
+audio.addEventListener('seeked', _updatePositionState);
+
+// Set up action handlers (safe to call multiple times)
+(function _setupMediaSessionHandlers() {
+  try {
+    if (!('mediaSession' in navigator)) return;
+
+    const setH = (action, fn) => {
+      try { navigator.mediaSession.setActionHandler(action, fn); } catch (e) {}
+    };
+
+    setH('play',          () => audio.play().catch(() => {}));
+    setH('pause',         () => audio.pause());
+    setH('nexttrack',     () => document.getElementById('next-btn')?.click());
+    setH('previoustrack', () => document.getElementById('prev-btn')?.click());
+    setH('seekto',        d  => {
+      if (audio.duration) audio.currentTime = d.seekTime;
+      _updatePositionState();
+    });
+    setH('seekbackward',  d  => {
+      audio.currentTime = Math.max(0, audio.currentTime - (d.seekOffset || 10));
+      _updatePositionState();
+    });
+    setH('seekforward',   d  => {
+      if (audio.duration) audio.currentTime = Math.min(audio.duration, audio.currentTime + (d.seekOffset || 10));
+      _updatePositionState();
+    });
+  } catch (e) {}
+})();
+
+// =====================================================================
+// SERVICE WORKER + OFFLINE
+// =====================================================================
+
+const _cachedTrackUrls = new Set();
+let   _swReady         = false;
+
+function _swSend(msg) {
+  if (!navigator.serviceWorker?.controller) return;
+  navigator.serviceWorker.controller.postMessage(msg);
+}
+
+function _cacheCurrentTrack() {
+  const pl = getPlaylist();
+  const t  = pl[currentTrackIdx];
+  if (t && t.url) _swSend({ type: 'CACHE_TRACK', url: t.url, trackId: t.id });
+}
+
+// Offline UI
+function _setOffline(offline) {
+  const badge = document.getElementById('offline-badge');
+  if (badge) badge.style.display = offline ? 'flex' : 'none';
+  if (!offline) {
+    // Restore track styles
+    document.querySelectorAll('.track-card.offline-uncached').forEach(c => c.classList.remove('offline-uncached'));
+  } else {
+    _applyOfflineState();
+  }
+}
+
+function _applyOfflineState() {
+  if (navigator.onLine) return;
+  document.querySelectorAll('#tracks-grid .track-card').forEach(card => {
+    const id = parseInt(card.dataset.id);
+    const t  = tracks.find(x => x.id === id);
+    if (!t || !t.url || _cachedTrackUrls.has(t.url)) {
+      card.classList.remove('offline-uncached');
+    } else {
+      card.classList.add('offline-uncached');
+    }
+  });
+}
+
+window.addEventListener('online',  () => _setOffline(false));
+window.addEventListener('offline', () => _setOffline(true));
+if (!navigator.onLine) _setOffline(true);
+
+// Cache current track when audio starts playing
+audio.addEventListener('play', _cacheCurrentTrack);
+
+// SW registration and message handling
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+    .then(() => { _swReady = true; })
+    .catch(() => {});
+
+  navigator.serviceWorker.addEventListener('message', event => {
+    const d = event.data;
+    if (!d) return;
+    switch (d.type) {
+      case 'SERVED_OFFLINE':
+        showToast('PLAYING FROM CACHE', '');
+        break;
+      case 'TRACK_CACHED':
+        if (d.url) _cachedTrackUrls.add(d.url);
+        break;
+      case 'CACHED_URLS':
+        (d.urls || []).forEach(u => _cachedTrackUrls.add(u));
+        if (!navigator.onLine) _applyOfflineState();
+        break;
+      case 'CACHE_INFO':
+        _renderCacheInfo(d);
+        break;
+      case 'CACHE_PROGRESS':
+        _renderCacheProgress(d.done, d.total);
+        break;
+      case 'AUDIO_CACHE_CLEARED':
+        _cachedTrackUrls.clear();
+        showToast('AUDIO CACHE CLEARED', 'success');
+        _refreshCacheInfo();
+        if (!navigator.onLine) _applyOfflineState();
+        break;
+    }
+  });
+
+  // On load, fetch cached URL list so offline indicators show immediately
+  navigator.serviceWorker.ready.then(reg => {
+    if (reg.active) reg.active.postMessage({ type: 'GET_CACHED_URLS' });
+  });
+}
+
+// ── Admin cache modal ──────────────────────────────────────────────────────────
+
+document.getElementById('cache-btn').addEventListener('click', () => {
+  openModal('cache-modal');
+  _refreshCacheInfo();
+});
+
+document.getElementById('cache-clear-btn').addEventListener('click', () => {
+  _swSend({ type: 'CLEAR_AUDIO_CACHE' });
+  document.getElementById('cache-track-list').innerHTML = '';
+  document.getElementById('cache-track-count').textContent = '0 tracks cached';
+  document.getElementById('cache-total-size').textContent = '';
+});
+
+document.getElementById('cache-all-btn').addEventListener('click', () => {
+  const toCache = tracks
+    .filter(t => t.url)
+    .map(t => ({ url: t.url, trackId: t.id }));
+  if (!toCache.length) { showToast('NO AUDIO URLS TO CACHE', 'error'); return; }
+  _swSend({ type: 'CACHE_ALL_TRACKS', tracks: toCache });
+  document.getElementById('cache-progress-wrap').style.display = 'block';
+  _renderCacheProgress(0, toCache.length);
+});
+
+document.getElementById('cache-modal-close').addEventListener('click', () => closeModal('cache-modal'));
+
+function _refreshCacheInfo() {
+  document.getElementById('cache-track-count').textContent = 'Loading…';
+  _swSend({ type: 'GET_CACHE_INFO' });
+}
+
+function _renderCacheInfo(data) {
+  const count = (data.tracks || []).length;
+  const mb    = ((data.totalBytes || 0) / (1024 * 1024)).toFixed(1);
+  document.getElementById('cache-track-count').textContent = `${count} track${count === 1 ? '' : 's'} cached`;
+  document.getElementById('cache-total-size').textContent  = data.totalBytes ? `${mb} MB` : '';
+
+  const list = document.getElementById('cache-track-list');
+  list.innerHTML = '';
+  (data.tracks || []).forEach(entry => {
+    const t   = tracks.find(x => x.url === entry.url);
+    const li  = document.createElement('div');
+    li.className = 'cache-track-row';
+    const name = t ? `${t.artist} — ${t.title}` : entry.url.split('/').pop();
+    const sz   = entry.size ? `${(entry.size / (1024 * 1024)).toFixed(1)} MB` : '';
+    li.innerHTML = `<span class="cache-track-name">${name}</span><span class="cache-track-sz">${sz}</span>`;
+    list.appendChild(li);
+  });
+}
+
+function _renderCacheProgress(done, total) {
+  const wrap = document.getElementById('cache-progress-wrap');
+  const fill = document.getElementById('cache-progress-fill');
+  const text = document.getElementById('cache-progress-text');
+  if (!wrap || !fill || !text) return;
+  wrap.style.display = 'block';
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  fill.style.width = pct + '%';
+  text.textContent = done >= total
+    ? `✓ All ${total} tracks cached`
+    : `Caching ${done} / ${total}…`;
+  if (done >= total) {
+    setTimeout(() => { wrap.style.display = 'none'; _refreshCacheInfo(); }, 2000);
+  }
 }
