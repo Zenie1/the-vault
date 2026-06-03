@@ -1,18 +1,21 @@
 // swipe.js — Touch gesture support for The Vault
-// Only runs on touch/coarse-pointer devices (skips desktop mouse users).
+// Touch-only guard: exits immediately on non-coarse-pointer devices.
 
 (function () {
   'use strict';
 
-  // ── Guard: touch devices only ──────────────────────────────────────────────
   if (!window.matchMedia('(pointer: coarse)').matches) return;
 
-  const SWIPE_MIN      = 50;   // px — minimum travel before a swipe triggers
+  // ── Constants ────────────────────────────────────────────────────────────────
+  const SWIPE_MIN      = 50;   // px — minimum distance to register a swipe
   const SWIPE_MAX_MS   = 400;  // ms — maximum duration for an intentional swipe
-  const CARD_THRESHOLD = 80;   // px — card swipe distance before action fires
-  const CARD_CLAMP     = 130;  // px — max translate on card during drag
+  const CARD_THRESHOLD = 80;   // px — card must travel this far to trigger action
+  const CARD_CLAMP     = 130;  // px — maximum card translation during drag
+  const TITLE_CLAMP    = 60;   // px — maximum player-info translation during drag
+  const ANIM_MS        = 220;  // ms — slide animation duration
+  const LONG_PRESS_MS  = 500;  // ms — long-press delay for track options
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  // ── Shared utilities ─────────────────────────────────────────────────────────
 
   function isModalOpen() {
     return !!(
@@ -21,288 +24,506 @@
     );
   }
 
-  function reducedMotion() {
+  function rmo() {
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
-  function springBack(el, duration) {
-    duration = duration || 280;
-    el.style.transition = `transform ${duration}ms cubic-bezier(0.34,1.56,0.64,1)`;
-    el.style.transform  = '';
-    setTimeout(() => { el.style.transition = ''; }, duration);
+  // Remove a set of CSS properties (kebab-case) from an element's inline style
+  function clearCSS(el) {
+    for (var i = 1; i < arguments.length; i++) {
+      el.style.removeProperty(arguments[i]);
+    }
   }
 
-  // ── Player Bar ─────────────────────────────────────────────────────────────
+  // ── Zone 1 — Player bar ──────────────────────────────────────────────────────
+  //
+  // Swipe left  → next track
+  // Swipe right → previous track
+  // Swipe up    → open queue panel
+  //
+  // Visual feedback:
+  //   • title + artist text follow the finger (max ±TITLE_CLAMP px)
+  //   • a directional hint ("⟩⟩", "⟨⟨", "≡ QUEUE") fades in
+  //   • on confirm: title slides out, vault.js updates text, title slides in
 
   function initPlayerBar() {
-    const bar = document.getElementById('player-bar');
-    if (!bar) return;
+    const bar      = document.getElementById('player-bar');
+    const titleEl  = document.getElementById('player-title');
+    const artistEl = document.getElementById('player-artist');
+    if (!bar || !titleEl || !artistEl) return;
 
-    let sx, sy, st, active = false;
+    // ── Hint overlay ──────────────────────────────────────────────────────────
+    // Appended directly to player-info so it's clipped by its overflow:hidden.
+    const info = titleEl.parentElement;
+    info.style.position = 'relative';
 
-    bar.addEventListener('pointerdown', e => {
-      // Ignore touches originating on interactive controls
-      if (e.target.closest('button, input, canvas, #progress-bar, #waveform-canvas, #session-panel')) return;
-      sx = e.clientX; sy = e.clientY; st = Date.now(); active = true;
+    const hint = document.createElement('div');
+    hint.setAttribute('aria-hidden', 'true');
+    Object.assign(hint.style, {
+      position:      'absolute',
+      inset:         '0',
+      display:       'flex',
+      alignItems:    'center',
+      pointerEvents: 'none',
+      opacity:       '0',
+      fontFamily:    "var(--font-mono, 'IBM Plex Mono', monospace)",
+      fontSize:      '11px',
+      letterSpacing: '0.12em',
+      fontWeight:    '700',
+      color:         'var(--artist-primary, #ff3c3c)',
+      transition:    'opacity 0.12s ease',
+      userSelect:    'none',
+    });
+    info.appendChild(hint);
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    var sx, sy, st, active = false, locked = false;
+
+    function resetInfo(instant) {
+      if (rmo() || instant) {
+        clearCSS(titleEl,  'transition', 'transform', 'opacity');
+        clearCSS(artistEl, 'transition', 'transform', 'opacity');
+      } else {
+        var ease = 'transform ' + ANIM_MS + 'ms cubic-bezier(0.34,1.56,0.64,1)';
+        titleEl.style.transition  = ease;
+        artistEl.style.transition = ease;
+        titleEl.style.transform   = '';
+        artistEl.style.transform  = '';
+        titleEl.style.opacity     = '';
+        artistEl.style.opacity    = '';
+        setTimeout(function () {
+          clearCSS(titleEl,  'transition', 'transform', 'opacity');
+          clearCSS(artistEl, 'transition', 'transform', 'opacity');
+        }, ANIM_MS);
+      }
+      hint.style.opacity  = '0';
+      hint.textContent    = '';
+    }
+
+    // ── Listeners ─────────────────────────────────────────────────────────────
+    bar.addEventListener('pointerdown', function (e) {
+      if (isModalOpen()) return;
+      if (e.target.closest(
+        'button, input, canvas, #waveform-canvas, #session-panel, .player-progress'
+      )) return;
+      sx = e.clientX; sy = e.clientY;
+      st = Date.now();
+      active = true; locked = false;
     }, { passive: true });
 
-    bar.addEventListener('pointermove', e => {
-      if (!active) return;
-      const dx = e.clientX - sx;
-      const dy = e.clientY - sy;
-      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8 && !reducedMotion()) {
-        bar.style.transform = `translateX(${Math.sign(dx) * Math.min(Math.abs(dx), 40)}px)`;
+    bar.addEventListener('pointermove', function (e) {
+      if (!active || locked) return;
+
+      var dx  = e.clientX - sx;
+      var dy  = e.clientY - sy;
+      var adx = Math.abs(dx);
+      var ady = Math.abs(dy);
+      if (adx < 5 && ady < 5) return;
+
+      if (rmo()) return;
+
+      // Translate title + artist
+      if (adx >= ady) {
+        var tx = Math.sign(dx) * Math.min(adx, TITLE_CLAMP);
+        titleEl.style.transition  = 'none';
+        artistEl.style.transition = 'none';
+        titleEl.style.transform   = 'translateX(' + tx + 'px)';
+        artistEl.style.transform  = 'translateX(' + tx + 'px)';
+
+        var prog = Math.min(1, adx / SWIPE_MIN);
+        hint.style.opacity = (prog * 0.80).toFixed(2);
+        if (dx < 0) {
+          hint.textContent          = '⟩⟩';
+          hint.style.justifyContent = 'flex-end';
+          hint.style.paddingRight   = '6px';
+          hint.style.paddingLeft    = '';
+        } else {
+          hint.textContent          = '⟨⟨';
+          hint.style.justifyContent = 'flex-start';
+          hint.style.paddingLeft    = '6px';
+          hint.style.paddingRight   = '';
+        }
+      } else if (dy < 0) {
+        // Up swipe
+        var upProg = Math.min(1, ady / SWIPE_MIN);
+        hint.style.opacity        = (upProg * 0.80).toFixed(2);
+        hint.textContent          = '≡ QUEUE';
+        hint.style.justifyContent = 'center';
+        hint.style.paddingLeft    = '';
+        hint.style.paddingRight   = '';
+      } else {
+        hint.style.opacity = '0';
       }
     }, { passive: true });
 
-    bar.addEventListener('pointerup', e => {
+    bar.addEventListener('pointerup', function (e) {
       if (!active) return;
       active = false;
 
-      // Spring back
-      bar.style.transition = 'transform 280ms cubic-bezier(0.34,1.56,0.64,1)';
-      bar.style.transform  = '';
-      setTimeout(() => { bar.style.transition = ''; }, 280);
+      var dx   = e.clientX - sx;
+      var dy   = e.clientY - sy;
+      var dt   = Date.now() - st;
+      var adx  = Math.abs(dx);
+      var ady  = Math.abs(dy);
+      var dist = Math.sqrt(dx * dx + dy * dy);
 
-      const dx = e.clientX - sx;
-      const dy = e.clientY - sy;
-      const dt = Date.now() - st;
-      if (dt > SWIPE_MAX_MS) return;
-      if (Math.abs(dx) < SWIPE_MIN && Math.abs(dy) < SWIPE_MIN) return;
+      hint.style.opacity = '0';
 
-      if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx < -SWIPE_MIN) {
-          _animateTitle('left');
-          document.getElementById('next-btn')?.click();
-        } else if (dx > SWIPE_MIN) {
-          _animateTitle('right');
-          document.getElementById('prev-btn')?.click();
+      if (dt > SWIPE_MAX_MS || dist < SWIPE_MIN) {
+        resetInfo();
+        return;
+      }
+
+      if (adx >= ady) {
+        // Horizontal — next / prev
+        if (adx >= SWIPE_MIN) {
+          locked = true;
+          slideBarAction(dx < 0 ? 'left' : 'right');
+        } else {
+          resetInfo();
         }
       } else {
+        // Vertical
         if (dy < -SWIPE_MIN) {
           if (typeof openQueuePanel === 'function') openQueuePanel();
-        } else if (dy > SWIPE_MIN) {
-          if (typeof closeLyricsPanel === 'function') closeLyricsPanel();
         }
+        resetInfo();
       }
     }, { passive: true });
 
-    bar.addEventListener('pointercancel', () => {
+    bar.addEventListener('pointercancel', function () {
       active = false;
-      springBack(bar);
+      resetInfo();
     }, { passive: true });
+
+    // ── Title slide-out → action → slide-in ──────────────────────────────────
+    function slideBarAction(dir) {
+      if (rmo()) {
+        // No animation — just fire
+        if (dir === 'left') {
+          document.getElementById('next-btn')?.click();
+        } else {
+          document.getElementById('prev-btn')?.click();
+        }
+        clearCSS(titleEl,  'transition', 'transform', 'opacity');
+        clearCSS(artistEl, 'transition', 'transform', 'opacity');
+        locked = false;
+        return;
+      }
+
+      var outX = dir === 'left' ? -90 : 90;
+      var easeOut = 'transform ' + ANIM_MS + 'ms ease-out, opacity ' + ANIM_MS + 'ms ease-out';
+
+      // Slide out
+      titleEl.style.transition  = easeOut;
+      artistEl.style.transition = easeOut;
+      titleEl.style.transform   = 'translateX(' + outX + 'px)';
+      artistEl.style.transform  = 'translateX(' + outX + 'px)';
+      titleEl.style.opacity     = '0';
+      artistEl.style.opacity    = '0';
+
+      setTimeout(function () {
+        // Fire action — vault.js updates title synchronously in the same tick
+        if (dir === 'left') {
+          document.getElementById('next-btn')?.click();
+        } else {
+          document.getElementById('prev-btn')?.click();
+        }
+
+        // Position for slide-in from opposite side
+        var inX = -outX;
+        titleEl.style.transition  = 'none';
+        artistEl.style.transition = 'none';
+        titleEl.style.transform   = 'translateX(' + inX + 'px)';
+        artistEl.style.transform  = 'translateX(' + inX + 'px)';
+        // Force reflow before re-enabling transition
+        void titleEl.offsetHeight;
+
+        titleEl.style.transition  = easeOut;
+        artistEl.style.transition = easeOut;
+        titleEl.style.transform   = '';
+        artistEl.style.transform  = '';
+        titleEl.style.opacity     = '';
+        artistEl.style.opacity    = '';
+
+        setTimeout(function () {
+          clearCSS(titleEl,  'transition', 'transform', 'opacity');
+          clearCSS(artistEl, 'transition', 'transform', 'opacity');
+          locked = false;
+        }, ANIM_MS);
+      }, ANIM_MS);
+    }
   }
 
-  function _animateTitle(dir) {
-    if (reducedMotion()) return;
-    const el = document.getElementById('player-title');
-    if (!el) return;
-    const out = dir === 'left' ? -55 : 55;
-    el.style.transition = 'transform 180ms ease-out, opacity 180ms ease-out';
-    el.style.transform  = `translateX(${out}px)`;
-    el.style.opacity    = '0';
-    setTimeout(() => {
-      el.style.transition = 'none';
-      el.style.transform  = `translateX(${-out}px)`;
-      el.style.opacity    = '0';
-      void el.offsetHeight; // force reflow
-      el.style.transition = 'transform 180ms ease-out, opacity 180ms ease-out';
-      el.style.transform  = '';
-      el.style.opacity    = '';
-    }, 180);
-  }
-
-  // ── Track Card Gestures ────────────────────────────────────────────────────
+  // ── Zone 2 — Track cards ─────────────────────────────────────────────────────
+  //
+  // Swipe left  → add to queue (reveals "＋ QUEUE" panel behind card)
+  // Swipe right → like/unlike  (reveals "♥" panel behind card)
+  // Long press  → open admin edit if available
+  //
+  // The card is wrapped in an overflow:hidden container on first drag move.
+  // A reveal panel sits behind the card inside the wrapper.
+  // On action: card flies off screen, callback fires, wrapper removed.
+  // On cancel: card springs back, wrapper removed.
 
   function initCardGestures() {
     if (!document.getElementById('tracks-grid')) return;
 
-    let state = null; // { card, sx, sy, st, swiping, indicator, longTimer }
+    var state = null; // single active gesture
 
-    document.addEventListener('pointerdown', e => {
+    // ── Pointer delegation from document ────────────────────────────────────
+    document.addEventListener('pointerdown', function (e) {
       if (isModalOpen()) return;
-      const card = e.target.closest('#tracks-grid .track-card');
+      var card = e.target.closest('#tracks-grid .track-card');
       if (!card) return;
       if (e.target.closest('button, a, input')) return;
 
       state = {
-        card,
-        sx: e.clientX,
-        sy: e.clientY,
-        st: Date.now(),
-        swiping: false,
-        indicator: null,
-        longTimer: setTimeout(() => {
-          if (state && !state.swiping) {
-            // Long press → open track options (admin edit button if present)
-            const editBtn = card.querySelector('[onclick*="openEditModal"]');
-            if (editBtn) editBtn.click();
-            state = null;
+        card:      card,
+        sx:        e.clientX,
+        sy:        e.clientY,
+        st:        Date.now(),
+        phase:     'pending',  // pending | swiping | done
+        wrap:      null,
+        reveal:    null,
+        longTimer: setTimeout(function () {
+          if (state && state.phase === 'pending') {
+            var btn = card.querySelector('[onclick*="openEditModal"]');
+            if (btn) btn.click();
+            cancelGesture();
           }
-        }, 600),
+        }, LONG_PRESS_MS),
       };
     }, { passive: true });
 
-    document.addEventListener('pointermove', e => {
-      if (!state) return;
-      const dx = e.clientX - state.sx;
-      const dy = e.clientY - state.sy;
+    document.addEventListener('pointermove', function (e) {
+      if (!state || state.phase === 'done') return;
 
-      if (!state.swiping) {
-        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-        if (Math.abs(dy) >= Math.abs(dx)) {
-          // Vertical scroll intent — cancel card gesture
-          clearTimeout(state.longTimer);
-          state = null;
+      var dx  = e.clientX - state.sx;
+      var dy  = e.clientY - state.sy;
+      var adx = Math.abs(dx);
+      var ady = Math.abs(dy);
+
+      if (state.phase === 'pending') {
+        if (adx < 6 && ady < 6) return;
+        // Cancel if clearly vertical
+        if (ady > adx * 1.4) {
+          cancelGesture();
           return;
         }
-        state.swiping = true;
+        // Confirmed horizontal swipe
         clearTimeout(state.longTimer);
+        state.phase = 'swiping';
+        wrapCard(state);
       }
 
-      const clamped = Math.sign(dx) * Math.min(Math.abs(dx), CARD_CLAMP);
-      if (!reducedMotion()) state.card.style.transform = `translateX(${clamped}px)`;
-
-      _updateCardIndicator(state, dx);
+      // Move card
+      var tx = Math.sign(dx) * Math.min(adx, CARD_CLAMP);
+      if (!rmo()) {
+        state.card.style.transition = 'none';
+        state.card.style.transform  = 'translateX(' + tx + 'px)';
+      }
+      updateReveal(state, dx);
     }, { passive: true });
 
-    document.addEventListener('pointerup', e => {
-      if (!state) return;
-      const s  = state;
-      state    = null;
+    document.addEventListener('pointerup', function (e) {
+      if (!state || state.phase === 'done') return;
+
+      if (state.phase === 'pending') {
+        cancelGesture();
+        return;
+      }
+
+      var s   = state;
+      state   = null;
       clearTimeout(s.longTimer);
-      _removeCardIndicator(s);
 
-      if (!s.swiping) return;
+      var dx  = e.clientX - s.sx;
+      var dt  = Date.now() - s.st;
+      var adx = Math.abs(dx);
 
-      const dx = e.clientX - s.sx;
-      const dt = Date.now() - s.st;
-      const id = parseInt(s.card.dataset.id);
-
-      if (dt <= SWIPE_MAX_MS && Math.abs(dx) >= CARD_THRESHOLD) {
+      if (dt <= SWIPE_MAX_MS && adx >= CARD_THRESHOLD) {
+        s.phase = 'done';
+        var id  = parseInt(s.card.dataset.id);
         if (dx > 0) {
-          _flyCard(s.card, 'right', () => {
+          flyCard(s, 'right', function () {
             if (typeof toggleTrackLike === 'function') toggleTrackLike(id);
           });
         } else {
-          _flyCard(s.card, 'left', () => {
+          flyCard(s, 'left', function () {
             if (typeof addToQueue === 'function') addToQueue(id);
           });
         }
       } else {
-        springBack(s.card);
+        snapBack(s);
       }
     }, { passive: true });
 
-    document.addEventListener('pointercancel', () => {
-      if (!state) return;
-      clearTimeout(state.longTimer);
-      _removeCardIndicator(state);
-      springBack(state.card);
-      state = null;
+    document.addEventListener('pointercancel', function () {
+      if (state) cancelGesture();
     }, { passive: true });
-  }
 
-  function _updateCardIndicator(state, dx) {
-    if (!state.indicator) {
-      const ind = document.createElement('div');
-      ind.className = 'swipe-card-indicator';
-      state.card.parentNode.insertBefore(ind, state.card);
-      state.indicator = ind;
+    // ── Gesture lifecycle helpers ────────────────────────────────────────────
+
+    function cancelGesture() {
+      if (!state) return;
+      var s = state;
+      state = null;
+      clearTimeout(s.longTimer);
+      if (s.phase === 'swiping') snapBack(s);
+      else unwrapCard(s);  // no-op if wrap is null
     }
-    const ind = state.indicator;
-    const progress = Math.min(1, Math.abs(dx) / CARD_THRESHOLD);
-    ind.style.opacity = progress.toFixed(2);
 
-    if (dx > 0) {
-      ind.textContent  = '♥';
-      ind.style.background = '#e51c23';
-      ind.style.left  = '0';
-      ind.style.right = 'auto';
-      ind.style.justifyContent = 'flex-start';
-      ind.style.paddingLeft    = '24px';
-    } else {
-      ind.textContent  = '+';
-      ind.style.background = 'var(--artist-primary, #ff3c3c)';
-      ind.style.right = '0';
-      ind.style.left  = 'auto';
-      ind.style.justifyContent = 'flex-end';
-      ind.style.paddingRight   = '24px';
+    function snapBack(s) {
+      if (rmo()) {
+        unwrapCard(s);
+        return;
+      }
+      s.card.style.transition = 'transform ' + ANIM_MS + 'ms cubic-bezier(0.34,1.56,0.64,1)';
+      s.card.style.transform  = '';
+      setTimeout(function () {
+        clearCSS(s.card, 'transition');
+        unwrapCard(s);
+      }, ANIM_MS);
+    }
+
+    function flyCard(s, dir, callback) {
+      if (rmo()) {
+        callback();
+        unwrapCard(s);
+        return;
+      }
+      // Card needs to fly past the wrap's edge — open overflow first
+      if (s.wrap) s.wrap.style.overflow = 'visible';
+      var dist = dir === 'right' ? window.innerWidth : -window.innerWidth;
+      s.card.style.transition = 'transform 280ms ease-out, opacity 280ms ease-out';
+      s.card.style.transform  = 'translateX(' + dist + 'px)';
+      s.card.style.opacity    = '0';
+      setTimeout(function () {
+        callback();
+        unwrapCard(s);
+      }, 280);
+    }
+
+    // ── DOM wrapping ─────────────────────────────────────────────────────────
+
+    function wrapCard(s) {
+      var card = s.card;
+      var cs   = window.getComputedStyle(card);
+      var wrap = document.createElement('div');
+
+      // The wrap takes the card's grid slot; card moves inside it
+      wrap.style.cssText =
+        'position:relative;' +
+        'overflow:hidden;' +
+        'border-radius:' + cs.borderRadius + ';' +
+        'width:100%;';
+
+      card.parentNode.insertBefore(wrap, card);
+      wrap.appendChild(card);
+
+      // Reveal panel — sits behind the card
+      var reveal = document.createElement('div');
+      reveal.style.cssText =
+        'position:absolute;' +
+        'inset:0;' +
+        'display:flex;' +
+        'align-items:center;' +
+        'font-family:var(--font-mono,"IBM Plex Mono",monospace);' +
+        'font-size:13px;' +
+        'letter-spacing:0.1em;' +
+        'font-weight:700;' +
+        'color:#fff;' +
+        'opacity:0;' +
+        'z-index:0;' +
+        'pointer-events:none;';
+      wrap.insertBefore(reveal, card);
+
+      // Ensure card renders above reveal
+      card.style.position = 'relative';
+      card.style.zIndex   = '1';
+
+      s.wrap   = wrap;
+      s.reveal = reveal;
+    }
+
+    function unwrapCard(s) {
+      if (!s.wrap) return;
+      clearCSS(s.card, 'transition', 'transform', 'opacity', 'z-index', 'position');
+      s.wrap.parentNode.insertBefore(s.card, s.wrap);
+      s.wrap.remove();
+      s.wrap = s.reveal = null;
+    }
+
+    function updateReveal(s, dx) {
+      if (!s.reveal) return;
+      var progress = Math.min(1, Math.abs(dx) / CARD_THRESHOLD);
+      s.reveal.style.opacity = progress > 0.03 ? (0.2 + progress * 0.8).toFixed(2) : '0';
+
+      if (dx > 0) {
+        // Right swipe → like (♥ revealed on left)
+        s.reveal.style.background    = '#c62828';
+        s.reveal.style.justifyContent = 'flex-start';
+        s.reveal.style.paddingLeft   = '22px';
+        s.reveal.style.paddingRight  = '';
+        s.reveal.textContent = '♥';
+      } else {
+        // Left swipe → queue (＋ QUEUE revealed on right)
+        var col = getComputedStyle(document.documentElement)
+          .getPropertyValue('--artist-primary').trim() || '#ff3c3c';
+        s.reveal.style.background    = col;
+        s.reveal.style.justifyContent = 'flex-end';
+        s.reveal.style.paddingRight  = '22px';
+        s.reveal.style.paddingLeft   = '';
+        s.reveal.textContent = '＋ QUEUE';
+      }
     }
   }
 
-  function _removeCardIndicator(state) {
-    if (state.indicator) { state.indicator.remove(); state.indicator = null; }
-    state.card.style.transform  = '';
-    state.card.style.transition = '';
-  }
-
-  function _flyCard(card, dir, callback) {
-    if (reducedMotion()) { callback(); return; }
-    const dist = dir === 'right' ? window.innerWidth : -window.innerWidth;
-    card.style.transition = 'transform 280ms ease-out, opacity 280ms ease-out';
-    card.style.transform  = `translateX(${dist}px)`;
-    card.style.opacity    = '0';
-    setTimeout(() => {
-      callback();
-      // Card will be re-rendered by vault.js on state change — reset style in case it isn't
-      card.style.transition = 'none';
-      card.style.transform  = '';
-      card.style.opacity    = '';
-    }, 280);
-  }
-
-  // ── Lyrics Panel — swipe down to close ────────────────────────────────────
+  // ── Zone 3 — Lyrics panel: swipe down to close ───────────────────────────────
 
   function initLyricsPanel() {
-    const panel = document.getElementById('lyrics-panel');
+    var panel = document.getElementById('lyrics-panel');
     if (!panel) return;
-
-    // Only detect swipe on the header, not inside the scrollable lyrics body
-    const header = panel.querySelector('.lyrics-header, .panel-header') || panel;
-    let sy, st, active = false;
-
-    header.addEventListener('pointerdown', e => {
-      sy = e.clientY; st = Date.now(); active = true;
-    }, { passive: true });
-    header.addEventListener('pointerup', e => {
-      if (!active) return;
-      active = false;
-      const dy = e.clientY - sy;
-      const dt = Date.now() - st;
-      if (dy > SWIPE_MIN && dt <= SWIPE_MAX_MS && typeof closeLyricsPanel === 'function') {
-        closeLyricsPanel();
-      }
-    }, { passive: true });
-    header.addEventListener('pointercancel', () => { active = false; }, { passive: true });
+    var header = panel.querySelector('.lyrics-header') || panel;
+    attachDownSwipe(header, function () {
+      if (typeof closeLyricsPanel === 'function') closeLyricsPanel();
+    });
   }
 
-  // ── Queue Panel — swipe down to close ─────────────────────────────────────
+  // ── Zone 4 — Queue panel: swipe down to close ────────────────────────────────
 
   function initQueuePanel() {
-    const panel = document.getElementById('queue-panel');
+    var panel = document.getElementById('queue-panel');
     if (!panel) return;
-
-    const header = panel.querySelector('.panel-header, .queue-header') || panel;
-    let sy, st, active = false;
-
-    header.addEventListener('pointerdown', e => {
-      if (e.target.closest('.queue-item, button')) return;
-      sy = e.clientY; st = Date.now(); active = true;
-    }, { passive: true });
-    header.addEventListener('pointerup', e => {
-      if (!active) return;
-      active = false;
-      const dy = e.clientY - sy;
-      const dt = Date.now() - st;
-      if (dy > SWIPE_MIN && dt <= SWIPE_MAX_MS && typeof closeQueuePanel === 'function') {
-        closeQueuePanel();
-      }
-    }, { passive: true });
-    header.addEventListener('pointercancel', () => { active = false; }, { passive: true });
+    var header = panel.querySelector('.queue-header') || panel;
+    attachDownSwipe(header, function () {
+      if (typeof closeQueuePanel === 'function') closeQueuePanel();
+    }, function (e) {
+      return !!e.target.closest('.queue-item, button');
+    });
   }
 
-  // ── Boot ───────────────────────────────────────────────────────────────────
+  // Generic "swipe down to dismiss" helper
+  function attachDownSwipe(el, callback, ignoreIf) {
+    var sy, st, active = false;
+    el.addEventListener('pointerdown', function (e) {
+      if (ignoreIf && ignoreIf(e)) return;
+      sy = e.clientY; st = Date.now(); active = true;
+    }, { passive: true });
+    el.addEventListener('pointerup', function (e) {
+      if (!active) return;
+      active = false;
+      var dy = e.clientY - sy;
+      var dt = Date.now() - st;
+      if (dy > SWIPE_MIN && dt <= SWIPE_MAX_MS) callback();
+    }, { passive: true });
+    el.addEventListener('pointercancel', function () {
+      active = false;
+    }, { passive: true });
+  }
+
+  // ── Boot ─────────────────────────────────────────────────────────────────────
 
   function init() {
     initPlayerBar();
