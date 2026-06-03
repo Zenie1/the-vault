@@ -4,119 +4,235 @@
     "secondary": "#1a0505",
     "text": "#ff9999",
     "glow": "#ff1111",
-    "gradient": ["#ff3c3c", "#8b0000"],
-    "visualizer": { "mode": "tunnel", "intensity": 1.8, "rotationSpeed": 2.0, "particleBurst": false }
+    "gradient": [
+      "#ff3c3c",
+      "#8b0000"
+    ],
+    "visualizer": {
+      "mode": "tunnel",
+      "intensity": 1.8,
+      "rotationSpeed": 2,
+      "particleBurst": false
+    }
   },
   "lil yachty": {
     "primary": "#00e5ff",
     "secondary": "#00121a",
     "text": "#80f2ff",
     "glow": "#00ccff",
-    "gradient": ["#00e5ff", "#005f7a"],
-    "visualizer": { "mode": "aurora", "intensity": 0.9 }
+    "gradient": [
+      "#00e5ff",
+      "#005f7a"
+    ],
+    "visualizer": {
+      "mode": "aurora",
+      "intensity": 0.9
+    }
   },
   "young thug": {
     "primary": "#9f3cff",
     "secondary": "#0d0019",
     "text": "#cc99ff",
     "glow": "#8800ff",
-    "gradient": ["#9f3cff", "#4a0080"],
-    "visualizer": { "mode": "spectrum", "intensity": 1.1, "mirrorMode": false }
+    "gradient": [
+      "#9f3cff",
+      "#4a0080"
+    ],
+    "visualizer": {
+      "mode": "spectrum",
+      "intensity": 1.1,
+      "mirrorMode": false
+    }
   },
   "lucki": {
     "primary": "#00ff9f",
     "secondary": "#001a0d",
     "text": "#80ffcc",
     "glow": "#00ff7f",
-    "gradient": ["#00ff9f", "#008040"],
-    "visualizer": { "mode": "808", "intensity": 1.1, "trailLength": 60, "particleBurst": false }
+    "gradient": [
+      "#00ff9f",
+      "#008040"
+    ],
+    "visualizer": {
+      "mode": "808",
+      "intensity": 1.1,
+      "trailLength": 60,
+      "particleBurst": false
+    }
   },
   "nine vicious": {
     "primary": "#ff9f00",
     "secondary": "#1a0a00",
     "text": "#ffcc80",
     "glow": "#ff8800",
-    "gradient": ["#ff9f00", "#804f00"],
-    "visualizer": { "mode": "oscilloscope", "intensity": 1.4, "trailLength": 80, "particleBurst": true }
+    "gradient": [
+      "#ff9f00",
+      "#804f00"
+    ],
+    "visualizer": {
+      "mode": "oscilloscope",
+      "intensity": 1.5,
+      "particleBurst": false,
+      "trailLength": 65
+    }
   },
   "prettifun": {
     "primary": "#ff3c9f",
     "secondary": "#1a0011",
     "text": "#ff99cc",
     "glow": "#ff0080",
-    "gradient": ["#ff3c9f", "#800040"],
-    "visualizer": { "mode": "aurora", "intensity": 1.1, "particleBurst": false }
+    "gradient": [
+      "#ff3c9f",
+      "#800040"
+    ],
+    "visualizer": {
+      "mode": "aurora",
+      "intensity": 1.1,
+      "particleBurst": false
+    }
   },
   "slayr": {
     "primary": "#c8ff00",
     "secondary": "#0d1a00",
     "text": "#e4ff80",
     "glow": "#aaff00",
-    "gradient": ["#c8ff00", "#558800"],
-    "visualizer": { "mode": "808", "intensity": 1.3, "trailLength": 70, "particleBurst": true }
+    "gradient": [
+      "#c8ff00",
+      "#558800"
+    ],
+    "visualizer": {
+      "mode": "808",
+      "intensity": 1.3,
+      "trailLength": 70,
+      "particleBurst": true
+    }
   },
   "protect": {
     "primary": "#3c9fff",
     "secondary": "#000d1a",
     "text": "#80bfff",
     "glow": "#0080ff",
-    "gradient": ["#3c9fff", "#004080"],
-    "visualizer": { "mode": "oscilloscope", "intensity": 1.0, "trailLength": 70, "particleBurst": false }
+    "gradient": [
+      "#3c9fff",
+      "#004080"
+    ],
+    "visualizer": {
+      "mode": "oscilloscope",
+      "intensity": 1,
+      "trailLength": 70,
+      "particleBurst": false
+    }
   },
   "che": {
     "primary": "#ff6b3c",
     "secondary": "#1a0500",
     "text": "#ffaa88",
     "glow": "#ff5500",
-    "gradient": ["#ff6b3c", "#802800"],
-    "visualizer": { "mode": "radial", "intensity": 1.2, "rotationSpeed": 1.2, "particleBurst": false }
+    "gradient": [
+      "#ff6b3c",
+      "#802800"
+    ],
+    "visualizer": {
+      "mode": "radial",
+      "intensity": 1.2,
+      "rotationSpeed": 1.2,
+      "particleBurst": false
+    }
   },
   "osamaon": {
     "primary": "#c8ff3c",
     "secondary": "#0d1a00",
     "text": "#e4ff99",
     "glow": "#aaff22",
-    "gradient": ["#c8ff3c", "#558800"],
-    "visualizer": { "mode": "radial", "intensity": 1.5, "rotationSpeed": 1.0, "particleBurst": true }
+    "gradient": [
+      "#c8ff3c",
+      "#558800"
+    ],
+    "visualizer": {
+      "mode": "radial",
+      "intensity": 1.5,
+      "rotationSpeed": 1,
+      "particleBurst": true
+    }
   },
   "destroy lonely": {
     "primary": "#b06aff",
     "secondary": "#0e0018",
     "text": "#d4a0ff",
     "glow": "#9933ff",
-    "gradient": ["#b06aff", "#520099"],
-    "visualizer": { "mode": "oscilloscope", "intensity": 1.0, "trailLength": 100, "particleBurst": false }
+    "gradient": [
+      "#b06aff",
+      "#520099"
+    ],
+    "visualizer": {
+      "mode": "oscilloscope",
+      "intensity": 1,
+      "trailLength": 100,
+      "particleBurst": false
+    }
   },
   "lil uzi vert": {
     "primary": "#ff69b4",
     "secondary": "#1a0012",
     "text": "#ffb3d9",
     "glow": "#ff1493",
-    "gradient": ["#ff69b4", "#8b0057"],
-    "visualizer": { "mode": "radial", "intensity": 1.3, "rotationSpeed": 1.5, "particleBurst": false }
+    "gradient": [
+      "#ff69b4",
+      "#8b0057"
+    ],
+    "visualizer": {
+      "mode": "radial",
+      "intensity": 1.3,
+      "rotationSpeed": 1.5,
+      "particleBurst": false
+    }
   },
   "ken carson": {
     "primary": "#00ff88",
     "secondary": "#001a0d",
     "text": "#80ffcc",
     "glow": "#00e070",
-    "gradient": ["#00ff88", "#007040"],
-    "visualizer": { "mode": "spectrum", "intensity": 1.2, "mirrorMode": true, "particleBurst": false }
+    "gradient": [
+      "#00ff88",
+      "#007040"
+    ],
+    "visualizer": {
+      "mode": "spectrum",
+      "intensity": 1.2,
+      "mirrorMode": true,
+      "particleBurst": false
+    }
   },
   "osamason": {
     "primary": "#c8ff3c",
     "secondary": "#0d1a00",
     "text": "#e4ff99",
     "glow": "#aaff22",
-    "gradient": ["#c8ff3c", "#558800"],
-    "visualizer": { "mode": "radial", "intensity": 1.5, "rotationSpeed": 1.0, "particleBurst": true }
+    "gradient": [
+      "#c8ff3c",
+      "#558800"
+    ],
+    "visualizer": {
+      "mode": "radial",
+      "intensity": 1.5,
+      "rotationSpeed": 1,
+      "particleBurst": true
+    }
   },
   "1oneam": {
     "primary": "#a0c4ff",
     "secondary": "#060d1a",
     "text": "#cce0ff",
     "glow": "#7ab0ff",
-    "gradient": ["#a0c4ff", "#2255aa"],
-    "visualizer": { "mode": "oscilloscope", "intensity": 0.8, "trailLength": 40, "particleBurst": false }
+    "gradient": [
+      "#a0c4ff",
+      "#2255aa"
+    ],
+    "visualizer": {
+      "mode": "oscilloscope",
+      "intensity": 0.8,
+      "trailLength": 40,
+      "particleBurst": false
+    }
   }
 }
