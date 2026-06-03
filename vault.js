@@ -753,6 +753,19 @@ function _preloadCoverArt(url) {
   _coverCache.set(url, img);
 }
 
+// Returns the index of the track that will play next, respecting queue/shuffle/loop.
+function _getNextIdx() {
+  const pl = getPlaylist();
+  if (!pl.length) return 0;
+  if (isLooping) return currentTrackIdx;
+  if (queue.length) {
+    const qi = pl.findIndex(t => t.id === queue[0]);
+    return qi !== -1 ? qi : 0;
+  }
+  if (isShuffled) return Math.floor(Math.random() * pl.length);
+  return currentTrackIdx >= pl.length - 1 ? 0 : currentTrackIdx + 1;
+}
+
 function schedulePreload(playlist, idx) {
   // Preload up to 2 tracks ahead and 1 behind (non-blocking, low priority)
   const toPreload = [];
@@ -900,6 +913,7 @@ function playAtIndex(idx) {
 
 document.getElementById('play-pause-btn').addEventListener('click', () => {
   if (!audio.src) return;
+  _cancelSleepFade();
   const ppBtn = document.getElementById('play-pause-btn');
   if (isPlaying) {
     audio.pause(); isPlaying = false;
@@ -917,6 +931,7 @@ document.getElementById('play-pause-btn').addEventListener('click', () => {
 });
 
 document.getElementById('prev-btn').addEventListener('click', () => {
+  _cancelSleepFade();
   const playlist = getPlaylist();
   if (playlist.length === 0) return;
   const newIdx = isShuffled
@@ -925,6 +940,7 @@ document.getElementById('prev-btn').addEventListener('click', () => {
   crossfadeTo(newIdx);
 });
 document.getElementById('next-btn').addEventListener('click', () => {
+  _cancelSleepFade();
   const playlist = getPlaylist();
   if (playlist.length === 0) return;
   const newIdx = isShuffled
@@ -935,6 +951,12 @@ document.getElementById('next-btn').addEventListener('click', () => {
 
 audio.addEventListener('ended', () => {
   if (isLooping) return; // audio.loop handles it
+  // End-of-track sleep mode: fade out instead of advancing
+  if (_sleepEOT) {
+    _sleepEOT = false;
+    _startSleepFade(10000); // 10s fade on EOT
+    return;
+  }
   gaplessTriggered = false; // reset gapless flag for next track
   isXfading = false;        // ensure clean state
   // Reset gain to 1 in case a fade was in progress
@@ -1484,6 +1506,21 @@ audio.addEventListener('timeupdate', () => {
   document.getElementById('time-current').textContent = fmt(audio.currentTime);
   document.getElementById('time-total').textContent = fmt(audio.duration);
 
+  // ── T-10s: pre-buffer the next track into audioXfade so the crossfade
+  //    starts instantly with no network wait. Only for tracks > 15s.
+  if (gaplessEnabled && !isXfading && !gaplessTriggered && !isLooping && audio.duration > 15) {
+    const _remaining = audio.duration - audio.currentTime;
+    const _triggerAt = Math.max(0.5, xfadeDuration) + 0.25;
+    if (_remaining > _triggerAt && _remaining <= 10) {
+      const _ni = _getNextIdx();
+      const _nt = getPlaylist()[_ni];
+      if (_nt && _nt.url && audioXfade.src !== _nt.url) {
+        audioXfade.src = _nt.url;
+        audioXfade.load();         // buffer silently — no play() call
+      }
+    }
+  }
+
   // ── Gapless playback ─────────────────────────────────────────────
   // When the track is within (xfadeDuration + 0.5s) of ending, start
   // the crossfade automatically so the next track begins seamlessly.
@@ -1508,6 +1545,7 @@ audio.addEventListener('timeupdate', () => {
 });
 
 document.getElementById('volume-slider').addEventListener('input', (e) => {
+  _cancelSleepFade();
   const val = parseFloat(e.target.value);
   if (stemOpen && stemMaster && stemAudioCtx) {
     // Control stem master volume
@@ -1683,6 +1721,22 @@ function openEditModal(id) {
   if (ppLabel) ppLabel.textContent = (t.artist || 'ARTIST').toUpperCase();
   updatePalettePreview();
 
+  // Populate visualizer editor
+  const _vizCfg = (_existingPal && _existingPal.visualizer) || {};
+  const _mode = document.getElementById('ve-mode');
+  if (_mode) {
+    _mode.value = _vizCfg.mode || '808';
+    document.getElementById('ve-intensity').value   = _vizCfg.intensity     ?? 1.0;
+    document.getElementById('ve-trail').value        = _vizCfg.trailLength   ?? 50;
+    document.getElementById('ve-rotation').value     = _vizCfg.rotationSpeed ?? 1.0;
+    document.getElementById('ve-mirror').checked     = !!_vizCfg.mirrorMode;
+    document.getElementById('ve-burst').checked      = _vizCfg.particleBurst !== false;
+    document.getElementById('ve-intensity-val').textContent = parseFloat(_vizCfg.intensity ?? 1.0).toFixed(1);
+    document.getElementById('ve-trail-val').textContent     = _vizCfg.trailLength   ?? 50;
+    document.getElementById('ve-rotation-val').textContent  = parseFloat(_vizCfg.rotationSpeed ?? 1.0).toFixed(1);
+    _veUpdateVisibility(_mode.value);
+  }
+
   // Show cover preview if URL exists
   const preview = document.getElementById('edit-cover-preview');
   const previewImg = document.getElementById('edit-cover-preview-img');
@@ -1762,6 +1816,33 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
     glow:     document.getElementById('pe-glow').value,
     gradient: [document.getElementById('pe-grad-start').value, document.getElementById('pe-grad-end').value],
   };
+  // Include visualizer config if the editor fields exist
+  if (document.getElementById('ve-mode')) {
+    const _veMode = document.getElementById('ve-mode').value;
+    const _veViz = { mode: _veMode };
+    _veViz.intensity     = parseFloat(document.getElementById('ve-intensity').value);
+    _veViz.particleBurst = document.getElementById('ve-burst').checked;
+    if (_veMode === '808' || _veMode === 'oscilloscope') {
+      _veViz.trailLength = parseInt(document.getElementById('ve-trail').value);
+    }
+    if (_veMode === 'radial' || _veMode === 'tunnel') {
+      _veViz.rotationSpeed = parseFloat(document.getElementById('ve-rotation').value);
+    }
+    if (_veMode === 'spectrum') {
+      _veViz.mirrorMode = document.getElementById('ve-mirror').checked;
+    }
+    _newPalette.visualizer = _veViz;
+    // Update live settings if this artist is currently playing
+    const _ct = getPlaylist()[currentTrackIdx];
+    if (_ct && _ct.artist.toLowerCase() === _paletteSaveKey) {
+      applyVizArtistConfig(_ct.artist);
+    }
+  }
+  // Preserve existing visualizer if editor not rendered
+  const _existEntry = artistPalettes[_paletteSaveKey];
+  if (_existEntry && _existEntry.visualizer && !_newPalette.visualizer) {
+    _newPalette.visualizer = _existEntry.visualizer;
+  }
   artistPalettes[_paletteSaveKey] = _newPalette;
   saveArtists(artistPalettes); // fire-and-forget; shows its own toast
 
@@ -3694,9 +3775,89 @@ speedBtn.addEventListener('click', () => {
 });
 
 // ===== SLEEP TIMER =====
-let sleepTimer = null;
-let sleepEndTime = null;
+let sleepTimer    = null;
+let sleepEndTime  = null;
+let _sleepEOT     = false;  // "end of track" mode
 
+// ── Fade-out engine ─────────────────────────────────────────────────────────
+let _sleepFadeRaf    = null;
+let _sleepFadePreVol = 1;
+let _sleepFading     = false;
+
+function _startSleepFade(fadeDuration) {
+  fadeDuration = fadeDuration || 20000;
+  if (_sleepFading) return;
+  _sleepFading     = true;
+  _sleepFadePreVol = audio.volume;
+  const startVol  = audio.volume;
+  const startTime = performance.now();
+
+  function tick(now) {
+    const t      = Math.min(1, (now - startTime) / fadeDuration);
+    const eased  = t * t;                        // ease-in: slow start, faster at end
+    const vol    = Math.max(0, startVol * (1 - eased));
+
+    audio.volume = vol;
+    if (waveformMuteGain && audioCtx) {
+      waveformMuteGain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    }
+    const slider = document.getElementById('volume-slider');
+    if (slider) slider.value = vol;
+
+    if (t < 1) {
+      _sleepFadeRaf = requestAnimationFrame(tick);
+    } else {
+      _finishSleepFade();
+    }
+  }
+  _sleepFadeRaf = requestAnimationFrame(tick);
+}
+
+function _finishSleepFade() {
+  _sleepFading = false;
+  _sleepFadeRaf = null;
+  audio.pause();
+  // Restore volume to pre-fade level
+  audio.volume = _sleepFadePreVol;
+  if (waveformMuteGain && audioCtx) {
+    waveformMuteGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    waveformMuteGain.gain.setValueAtTime(_sleepFadePreVol, audioCtx.currentTime);
+  }
+  const slider = document.getElementById('volume-slider');
+  if (slider) slider.value = _sleepFadePreVol;
+  const icon = document.getElementById('vol-icon');
+  if (icon) icon.textContent = _sleepFadePreVol < 0.05 ? '🔇' : _sleepFadePreVol < 0.5 ? '🔉' : '🔊';
+
+  isPlaying = false;
+  document.getElementById('play-pause-btn').innerHTML = '▶';
+  document.getElementById('play-pause-btn').classList.remove('is-playing');
+  document.getElementById('player-vinyl').classList.remove('spinning');
+  stopWaveform();
+  hideCanvas();
+  sleepBtn.classList.remove('active');
+  sleepBtn.textContent = '☽ Sleep';
+  sleepTimer = null; sleepEndTime = null; _sleepEOT = false;
+  document.querySelectorAll('.sleep-option').forEach(o => o.classList.remove('active'));
+  showToast('SLEEP TIMER — GOODNIGHT 🌙', 'success');
+}
+
+function _cancelSleepFade() {
+  if (!_sleepFading) return;
+  if (_sleepFadeRaf) { cancelAnimationFrame(_sleepFadeRaf); _sleepFadeRaf = null; }
+  _sleepFading = false;
+  audio.volume = _sleepFadePreVol;
+  if (waveformMuteGain && audioCtx) {
+    waveformMuteGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    waveformMuteGain.gain.setValueAtTime(_sleepFadePreVol, audioCtx.currentTime);
+  }
+  const slider = document.getElementById('volume-slider');
+  if (slider) slider.value = _sleepFadePreVol;
+  const icon = document.getElementById('vol-icon');
+  if (icon) icon.textContent = _sleepFadePreVol < 0.05 ? '🔇' : _sleepFadePreVol < 0.5 ? '🔉' : '🔊';
+  showToast('SLEEP TIMER CANCELLED', '');
+}
+
+// ── Timer UI ─────────────────────────────────────────────────────────────────
 const sleepBtn  = document.getElementById('sleep-btn');
 const sleepDrop = document.getElementById('sleep-dropdown');
 
@@ -3709,33 +3870,48 @@ document.querySelectorAll('.sleep-option').forEach(opt => {
   opt.addEventListener('click', () => {
     const mins = parseInt(opt.dataset.mins);
     sleepDrop.classList.remove('open');
+    // Cancel any running fade
+    _cancelSleepFade();
     // Clear existing timer
     if (sleepTimer) { clearTimeout(sleepTimer); sleepTimer = null; sleepEndTime = null; }
+    _sleepEOT = false;
     document.querySelectorAll('.sleep-option').forEach(o => o.classList.remove('active'));
+
     if (mins === 0) {
+      // Cancel
       sleepBtn.classList.remove('active');
       sleepBtn.textContent = '☽ Sleep';
       showToast('SLEEP TIMER CANCELLED', '');
       return;
     }
+
+    if (mins === -1) {
+      // Fade now — start 20s fade immediately
+      _startSleepFade(20000);
+      opt.classList.add('active');
+      sleepBtn.classList.add('active');
+      sleepBtn.textContent = '☽ Fading…';
+      return;
+    }
+
+    if (mins === -2) {
+      // End of track — start 10s fade when current track ends
+      _sleepEOT = true;
+      opt.classList.add('active');
+      sleepBtn.classList.add('active');
+      sleepBtn.textContent = '☽ EOT';
+      showToast('SLEEP AT END OF TRACK', 'success');
+      return;
+    }
+
     opt.classList.add('active');
     sleepEndTime = Date.now() + mins * 60 * 1000;
     sleepBtn.classList.add('active');
     sleepBtn.textContent = `☽ ${mins}m`;
     showToast(`SLEEP TIMER: ${mins} MINUTES`, 'success');
     sleepTimer = setTimeout(() => {
-      audio.pause();
-      isPlaying = false;
-      document.getElementById('play-pause-btn').innerHTML = '▶';
-      document.getElementById('play-pause-btn').classList.remove('is-playing');
-      document.getElementById('player-vinyl').classList.remove('spinning');
-      stopWaveform();
-      hideCanvas();
-      sleepBtn.classList.remove('active');
-      sleepBtn.textContent = '☽ Sleep';
       sleepTimer = null;
-      document.querySelectorAll('.sleep-option').forEach(o => o.classList.remove('active'));
-      showToast('SLEEP TIMER — GOODNIGHT 🌙', 'success');
+      _startSleepFade(20000);
     }, mins * 60 * 1000);
   });
 });
@@ -4511,10 +4687,17 @@ function crossfadeTo(idx) {
 
   isXfading = true;
 
-  // Load + start the incoming track on the secondary element
-  audioXfade.src = t.url;
+  // Load + start the incoming track on the secondary element.
+  // If the T-10s pre-buffer already loaded this URL, skip the src
+  // re-assignment so the browser can start from its buffer immediately.
+  const _preBuffered = audioXfade.src === t.url && audioXfade.readyState >= 2;
+  if (!_preBuffered) {
+    audioXfade.src = t.url;
+    audioXfade.currentTime = 0;
+  } else {
+    audioXfade.currentTime = 0; // rewind to start for the xfade
+  }
   audioXfade.volume = 1;
-  audioXfade.currentTime = 0;
   const xp = audioXfade.play();
   if (xp) xp.catch(() => {});
 
@@ -4973,6 +5156,57 @@ if (_peResetBtn) {
     updatePalettePreview();
   });
 }
+
+// =====================================================================
+// VISUALIZER EDITOR — wired to edit modal fields
+// =====================================================================
+
+function _veUpdateVisibility(mode) {
+  const trailRow    = document.getElementById('ve-trail-row');
+  const rotRow      = document.getElementById('ve-rotation-row');
+  const mirrorRow   = document.getElementById('ve-mirror-row');
+  if (!trailRow) return;
+  trailRow.style.display  = (mode === '808' || mode === 'oscilloscope') ? '' : 'none';
+  rotRow.style.display    = (mode === 'radial' || mode === 'tunnel')    ? '' : 'none';
+  mirrorRow.style.display = (mode === 'spectrum')                       ? '' : 'none';
+}
+
+(function _wireVizEditor() {
+  const modeEl = document.getElementById('ve-mode');
+  if (!modeEl) return;
+
+  modeEl.addEventListener('change', () => _veUpdateVisibility(modeEl.value));
+
+  const rangePairs = [
+    ['ve-intensity', 've-intensity-val', v => parseFloat(v).toFixed(1)],
+    ['ve-trail',     've-trail-val',     v => parseInt(v)],
+    ['ve-rotation',  've-rotation-val',  v => parseFloat(v).toFixed(1)],
+  ];
+  rangePairs.forEach(([inputId, labelId, fmt]) => {
+    const el = document.getElementById(inputId);
+    const lb = document.getElementById(labelId);
+    if (el && lb) el.addEventListener('input', () => { lb.textContent = fmt(el.value); });
+  });
+
+  // Preview button — opens the visualizer in the selected mode with current settings
+  const previewBtn = document.getElementById('ve-preview-btn');
+  if (previewBtn) {
+    previewBtn.addEventListener('click', () => {
+      const MODE_MAP = { '808': 0, 'oscilloscope': 1, 'spectrum': 2, 'radial': 3, 'tunnel': 4, 'aurora': 5 };
+      const mode = document.getElementById('ve-mode').value;
+      const modeIdx = MODE_MAP[mode] ?? 0;
+      // Apply settings to live vars so preview is accurate
+      vizIntensity     = parseFloat(document.getElementById('ve-intensity').value);
+      vizTrailLength   = parseInt(document.getElementById('ve-trail').value);
+      vizRotationSpeed = parseFloat(document.getElementById('ve-rotation').value);
+      vizMirrorMode    = document.getElementById('ve-mirror').checked;
+      vizParticleBurst = document.getElementById('ve-burst').checked;
+      vizManualOverride = true;
+      _setVizMode(modeIdx, true);
+      if (typeof openVisualizer === 'function' && !vizOpen) openVisualizer();
+    });
+  }
+})();
 
 // =====================================================================
 // MEDIA SESSION API — Lock screen / notification tray controls

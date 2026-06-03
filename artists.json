@@ -37,7 +37,7 @@
     "text": "#ffcc80",
     "glow": "#ff8800",
     "gradient": ["#ff9f00", "#804f00"],
-    "visualizer": { "mode": "808", "intensity": 1.4, "trailLength": 80, "particleBurst": true }
+    "visualizer": { "mode": "oscilloscope", "intensity": 1.4, "trailLength": 80, "particleBurst": true }
   },
   "prettifun": {
     "primary": "#ff3c9f",

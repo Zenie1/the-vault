@@ -3116,6 +3116,17 @@ body.session-guest #player-bar {
 #chat-send-btn:hover  { opacity: 0.82; }
 #chat-send-btn:active { opacity: 0.65; }
 
+/* ── Visualizer editor (inside edit modal) ── */
+.viz-editor-wrap { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 14px; }
+.viz-editor-row  { display: flex; gap: 14px; margin-bottom: 10px; align-items: flex-end; }
+.viz-editor-col  { flex: 1; min-width: 0; }
+.viz-toggle-col  { display: flex; align-items: center; gap: 8px; padding-bottom: 6px; }
+.viz-sub-label   { display: block; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; }
+.viz-val         { color: var(--artist-primary, #ff3c3c); margin-left: 4px; }
+.viz-select      { width: 100%; background: var(--surface2); color: var(--text); border: 1px solid var(--border); padding: 6px 8px; font-family: var(--font-mono); font-size: 11px; border-radius: 3px; }
+.viz-range       { width: 100%; accent-color: var(--artist-primary, #ff3c3c); }
+.viz-toggle      { width: 16px; height: 16px; accent-color: var(--artist-primary, #ff3c3c); flex-shrink: 0; }
+
 /* ── Offline badge ── */
 #offline-badge {
   display: none;
@@ -3402,6 +3413,8 @@ body.session-guest #player-bar {
           <button class="sleep-option" data-mins="15">15 minutes</button>
           <button class="sleep-option" data-mins="30">30 minutes</button>
           <button class="sleep-option" data-mins="60">60 minutes</button>
+          <button class="sleep-option" data-mins="-2">End of track</button>
+          <button class="sleep-option" data-mins="-1">Fade now</button>
           <button class="sleep-option" data-mins="0">Cancel timer</button>
         </div>
       </div>
@@ -3690,6 +3703,60 @@ body.session-guest #player-bar {
       <div class="palette-editor-actions">
         <button class="btn" id="pe-generate-btn" type="button">⟡ Generate from Primary</button>
         <button class="btn" id="pe-reset-btn" type="button">↺ Reset to Default</button>
+      </div>
+    </div>
+
+    <!-- Visualizer Preferences -->
+    <div class="form-group viz-editor-wrap">
+      <label>⊞ Visualizer <span class="palette-hint">(applies to all tracks by this artist)</span></label>
+
+      <div class="viz-editor-row">
+        <div class="viz-editor-col">
+          <label class="viz-sub-label">Mode</label>
+          <select id="ve-mode" class="viz-select">
+            <option value="808">808 Bass</option>
+            <option value="oscilloscope">Oscilloscope</option>
+            <option value="spectrum">Spectrum</option>
+            <option value="radial">Radial</option>
+            <option value="tunnel">Tunnel</option>
+            <option value="aurora">Aurora</option>
+          </select>
+        </div>
+        <div class="viz-editor-col">
+          <label class="viz-sub-label">Intensity <span class="viz-val" id="ve-intensity-val">1.0</span></label>
+          <input type="range" id="ve-intensity" min="0.5" max="2.0" step="0.1" value="1.0" class="viz-range">
+        </div>
+      </div>
+
+      <div class="viz-editor-row" id="ve-trail-row">
+        <div class="viz-editor-col">
+          <label class="viz-sub-label">Trail Length <span class="viz-val" id="ve-trail-val">50</span></label>
+          <input type="range" id="ve-trail" min="20" max="120" step="5" value="50" class="viz-range">
+        </div>
+      </div>
+
+      <div class="viz-editor-row" id="ve-rotation-row" style="display:none">
+        <div class="viz-editor-col">
+          <label class="viz-sub-label">Rotation Speed <span class="viz-val" id="ve-rotation-val">1.0</span></label>
+          <input type="range" id="ve-rotation" min="0.5" max="3.0" step="0.1" value="1.0" class="viz-range">
+        </div>
+      </div>
+
+      <div class="viz-editor-row" id="ve-mirror-row" style="display:none">
+        <div class="viz-editor-col viz-toggle-col">
+          <label class="viz-sub-label">Mirror Mode</label>
+          <input type="checkbox" id="ve-mirror" class="viz-toggle">
+        </div>
+      </div>
+
+      <div class="viz-editor-row">
+        <div class="viz-editor-col viz-toggle-col">
+          <label class="viz-sub-label">Particle Burst</label>
+          <input type="checkbox" id="ve-burst" class="viz-toggle" checked>
+        </div>
+        <div class="viz-editor-col">
+          <button class="btn" id="ve-preview-btn" type="button" style="width:100%;margin-top:14px">▶ Preview</button>
+        </div>
       </div>
     </div>
 
