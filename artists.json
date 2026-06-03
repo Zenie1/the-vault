@@ -71,7 +71,7 @@
     ],
     "visualizer": {
       "mode": "oscilloscope",
-      "intensity": 1.5,
+      "intensity": 1,
       "particleBurst": false,
       "trailLength": 65
     }
