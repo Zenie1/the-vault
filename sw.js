@@ -22,8 +22,11 @@ const SHELL_FILES = [
   '/session.js',
   '/firebase-config.js',
   '/artists.json',
+  '/tracks.json',
   '/sw.js',
   '/swipe.js',
+  '/visualizer.js',
+  '/pitch-processor.js',
 ];
 
 // ── Install ────────────────────────────────────────────────────────────────────
@@ -67,7 +70,8 @@ self.addEventListener('fetch', event => {
     url.hostname.includes('identitytoolkit')  ||
     url.hostname.includes('securetoken')      ||
     url.hostname.includes('github.com')       ||
-    url.hostname.includes('githubusercontent')
+    url.hostname.includes('githubusercontent') ||
+    url.hostname === 'api.cloudinary.com'
   ) return;
 
   if (_isAudio(url, request)) {

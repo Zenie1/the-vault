@@ -192,8 +192,11 @@ async function loadTracks() {
         const data = await res.json();
         ghFileSha = data.sha;
         const decoded = JSON.parse(atob(data.content.replace(/\n/g,'')));
+        const trackArr = _extractTracks(decoded);
+        const projArr  = _extractProjects(decoded);
         localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
-        return decoded;
+        if (projArr.length) { projects = projArr; localStorage.setItem(PROJECTS_KEY, JSON.stringify(projArr)); }
+        return trackArr;
       }
       if (res.status === 404) { ghFileSha = null; return getLocalTracks(); }
     } catch(e) { /* suppressed */ }
@@ -205,8 +208,11 @@ async function loadTracks() {
         const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/tracks.json?t=${Date.now()}`);
         if (res.ok) {
           const decoded = await res.json();
+          const trackArr = _extractTracks(decoded);
+          const projArr  = _extractProjects(decoded);
           localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
-          return decoded;
+          if (projArr.length) { projects = projArr; localStorage.setItem(PROJECTS_KEY, JSON.stringify(projArr)); }
+          return trackArr;
         }
       } catch(e) { /* suppressed */ }
     }
@@ -230,8 +236,35 @@ const DEFAULT_TRACKS = [
 function getLocalTracks() {
   try {
     const s = localStorage.getItem('vault-tracks-v2');
-    return s ? JSON.parse(s) : DEFAULT_TRACKS;
+    if (!s) return DEFAULT_TRACKS;
+    const p = JSON.parse(s);
+    if (Array.isArray(p)) return p;
+    if (p && Array.isArray(p.tracks)) return p.tracks;
+    return DEFAULT_TRACKS;
   } catch { return DEFAULT_TRACKS; }
+}
+
+function getLocalProjects() {
+  try {
+    const s = localStorage.getItem(PROJECTS_KEY);
+    return s ? JSON.parse(s) : [];
+  } catch { return []; }
+}
+
+function _extractTracks(decoded) {
+  if (Array.isArray(decoded)) return decoded;
+  if (decoded && Array.isArray(decoded.tracks)) return decoded.tracks;
+  return [];
+}
+function _extractProjects(decoded) {
+  if (decoded && Array.isArray(decoded.projects)) return decoded.projects;
+  return [];
+}
+
+async function saveProjects(p) {
+  projects = p;
+  localStorage.setItem(PROJECTS_KEY, JSON.stringify(p));
+  await saveTracks(tracks); // re-save tracks so GitHub file includes updated projects
 }
 
 async function saveTracks(t) {
@@ -244,8 +277,8 @@ async function saveTracks(t) {
     return track;
   });
 
-  // Always save full version (with data URLs) to localStorage
-  try { localStorage.setItem('vault-tracks-v2', JSON.stringify(t)); } catch(e) {}
+  // Always save full version (with data URLs) to localStorage (new {tracks,projects} shape)
+  try { localStorage.setItem('vault-tracks-v2', JSON.stringify({ tracks: t, projects })); } catch(e) {}
 
   if (!ghConfigured()) {
     showToast('SAVED LOCALLY — SET UP GITHUB TO PERSIST', 'error');
@@ -256,7 +289,7 @@ async function saveTracks(t) {
   let content;
   try {
     // Use TextEncoder for safe base64 encoding (handles all Unicode)
-    const json = JSON.stringify(forGithub, null, 2);
+    const json = JSON.stringify({ tracks: forGithub, projects }, null, 2);
     const bytes = new TextEncoder().encode(json);
     const binStr = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
     content = btoa(binStr);
@@ -407,6 +440,8 @@ function setAdmin(val) {
     document.getElementById('cache-btn').style.display = 'flex';
     loginBtn.textContent = '⚿ Logout';
     document.body.classList.add('admin-mode');
+    const cpb = document.getElementById('create-proj-btn');
+    if (cpb) cpb.style.display = 'flex';
   } else {
     badge.className = 'status-badge guest';
     statusText.textContent = 'GUEST';
@@ -416,6 +451,8 @@ function setAdmin(val) {
     document.getElementById('cache-btn').style.display = 'none';
     loginBtn.textContent = '⚿ Admin';
     document.body.classList.remove('admin-mode');
+    const cpb = document.getElementById('create-proj-btn');
+    if (cpb) cpb.style.display = 'none';
   }
   renderTracks();
   updateStemSeparateBtn();
@@ -451,6 +488,10 @@ function resetAdminInactivityTimer() {
 
 // ===== STATE =====
 let tracks = [], activeFilter = 'all', searchQuery = '', sortMode = 'default';
+let projects = [];
+let activeView = 'tracks'; // 'tracks' | 'projects' | 'project-detail'
+let activeProjectId = null;
+const PROJECTS_KEY = 'vault-projects-v1';
 let currentTrackIdx = -1, isPlaying = false;
 let uploadedFile = null, uploadedDataUrl = null, activeTab = 'link';
 
@@ -623,9 +664,34 @@ function renderFilters() {
       fb.querySelectorAll('.filter-btn').forEach(x => x.classList.toggle('active', x.dataset.filter===activeFilter));
       if (activeFilter !== 'all') { setArtistBG(activeFilter); showArtistHeader(activeFilter); }
       else { setDefaultBG(); hideArtistHeader(); }
-      renderTracks();
+      setView('tracks');
     });
   });
+
+  // PROJECTS and HISTORY view buttons — injected once
+  const sortWrap = document.querySelector('.sort-wrap');
+  if (sortWrap && !sortWrap.querySelector('.view-btn')) {
+    const projectsBtn = document.createElement('button');
+    projectsBtn.className = 'sort-btn view-btn' + (activeView === 'projects' || activeView === 'project-detail' ? ' active' : '');
+    projectsBtn.id = 'projects-view-btn';
+    projectsBtn.textContent = '⊞ Projects';
+    projectsBtn.addEventListener('click', () => {
+      if (activeView === 'projects' || activeView === 'project-detail') { setView('tracks'); }
+      else { setView('projects'); }
+    });
+
+    const historyBtn = document.createElement('button');
+    historyBtn.className = 'sort-btn view-btn' + (activeView === 'history' ? ' active' : '');
+    historyBtn.id = 'history-view-btn';
+    historyBtn.textContent = '◷ History';
+    historyBtn.addEventListener('click', () => {
+      if (activeView === 'history') { setView('tracks'); }
+      else { setView('history'); }
+    });
+
+    sortWrap.appendChild(projectsBtn);
+    sortWrap.appendChild(historyBtn);
+  }
 }
 
 function renderTracks() {
@@ -648,6 +714,8 @@ function renderTracks() {
     const secR = parseInt(pal.secondary.slice(1,3),16), secG = parseInt(pal.secondary.slice(3,5),16), secB = parseInt(pal.secondary.slice(5,7),16);
     const glowR = parseInt(pal.glow.slice(1,3),16), glowG = parseInt(pal.glow.slice(3,5),16), glowB = parseInt(pal.glow.slice(5,7),16);
     const tags = (t.tags||[]).map(tag=>`<span class="tag">${tag}</span>`).join('');
+    const proj = t.projectId ? projects.find(p => p.id === t.projectId) : null;
+    const projBadge = proj ? `<button class="track-project-badge" onclick="event.stopPropagation();openProjectDetail('${proj.id}')" title="${proj.title}">${proj.title.slice(0,12)}</button>` : '';
     const hasAudio = !!t.url;
     const pIdx = playlist.findIndex(x=>x.id===t.id);
     const isCurrentlyPlaying = currentTrackIdx === pIdx && isPlaying;
@@ -662,7 +730,7 @@ function renderTracks() {
         <div class="track-card-top">
           ${coverSrc ? `<img class="track-cover loaded" src="${coverSrc}" alt="cover" loading="lazy">` : `<img class="track-cover" src="" data-fetch-cover="${t.id}" alt="cover">`}
           <div class="track-card-meta">
-            <div class="track-artist">${t.artist}${sourceBadge}${fireBadge}</div>
+            <div class="track-artist">${t.artist}${sourceBadge}${fireBadge}${projBadge}</div>
             <div class="track-title">${t.title}</div>
           </div>
         </div>
@@ -970,9 +1038,14 @@ audio.addEventListener('ended', () => {
   const newIdx = isShuffled
     ? Math.floor(Math.random() * playlist.length)
     : (currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1);
-  // Use direct play — gapless handles the smooth transition before this fires;
-  // when audio.ended fires unexpectedly (short track, buffering issue), just start next.
-  playAtIndex(newIdx);
+  // "You Might Like" — show suggestions before auto-advance (natural track end only)
+  const _sessionOn = !!document.getElementById('session-btn')?.classList.contains('session-active');
+  if (!_sleepFading && !_sleepEOT && !_sessionOn && playlist.length >= 5) {
+    const shown = _showYML(newIdx);
+    if (!shown) playAtIndex(newIdx);
+  } else {
+    playAtIndex(newIdx);
+  }
 });
 
 // ===== WAVEFORM VISUALIZER (live frequency-reactive) =====
@@ -1505,6 +1578,7 @@ audio.addEventListener('timeupdate', () => {
   if (!audio.duration) return;
   document.getElementById('time-current').textContent = fmt(audio.currentTime);
   document.getElementById('time-total').textContent = fmt(audio.duration);
+  _historyTimeUpdate();
 
   // ── T-10s: pre-buffer the next track into audioXfade so the crossfade
   //    starts instantly with no network wait. Only for tracks > 15s.
@@ -3725,6 +3799,7 @@ setDefaultBG();
 
 // Seed default tracks immediately so the page never shows empty
 tracks = getLocalTracks();
+projects = getLocalProjects();
 renderFilters();
 renderTracks();
 renderRecentlyPlayed();
@@ -5441,4 +5516,697 @@ function _renderCacheProgress(done, total) {
   if (done >= total) {
     setTimeout(() => { wrap.style.display = 'none'; _refreshCacheInfo(); }, 2000);
   }
+}
+
+// =====================================================================
+// VIEW MANAGEMENT
+// =====================================================================
+function setView(v) {
+  activeView = v;
+
+  const tracksGrid   = document.getElementById('tracks-grid');
+  const filterBtns   = document.getElementById('filter-btns');
+  const sortWrap     = document.querySelector('.sort-wrap');
+  const sectionLabel = document.getElementById('section-label');
+  const recentSec    = document.getElementById('recently-played-section');
+  const artistHdr    = document.getElementById('artist-header');
+  const projectsOv   = document.getElementById('projects-overlay');
+  const historyOv    = document.getElementById('history-overlay');
+  const projDetailOv = document.getElementById('project-detail-overlay');
+
+  // Show/hide main track grid
+  const showTracks = v === 'tracks';
+  if (tracksGrid)   tracksGrid.style.display  = showTracks ? '' : 'none';
+  if (filterBtns)   filterBtns.style.display  = showTracks ? '' : 'none';
+  if (sectionLabel) sectionLabel.style.display = showTracks ? '' : 'none';
+  if (recentSec)    recentSec.style.display    = showTracks ? '' : 'none';
+  if (artistHdr && v !== 'tracks') artistHdr.classList.remove('visible');
+
+  if (projectsOv)   projectsOv.classList.toggle('open', v === 'projects');
+  if (projDetailOv) projDetailOv.classList.toggle('open', v === 'project-detail');
+  if (historyOv)    historyOv.classList.toggle('open', v === 'history');
+
+  // Update PROJECTS/HISTORY button active states
+  const pb = document.getElementById('projects-view-btn');
+  const hb = document.getElementById('history-view-btn');
+  if (pb) pb.classList.toggle('active', v === 'projects' || v === 'project-detail');
+  if (hb) hb.classList.toggle('active', v === 'history');
+
+  if (v === 'projects')      renderProjectsGrid();
+  if (v === 'project-detail') renderProjectDetail(activeProjectId);
+  if (v === 'history')       renderHistoryPage();
+  if (v === 'tracks') { renderTracks(); }
+}
+
+function openProjectDetail(id) {
+  activeProjectId = id;
+  setView('project-detail');
+}
+
+// =====================================================================
+// FEATURE 2: PROJECTS
+// =====================================================================
+function renderProjectsGrid() {
+  const ov = document.getElementById('projects-overlay');
+  if (!ov) return;
+  const grid = ov.querySelector('.projects-grid');
+  if (!grid) return;
+
+  if (!projects.length) {
+    grid.innerHTML = '<div class="empty-state"><span class="big">∅</span>NO PROJECTS YET' +
+      (isAdmin ? '<br><button class="btn primary" onclick="openProjectModal()">+ CREATE PROJECT</button>' : '') + '</div>';
+    return;
+  }
+
+  grid.innerHTML = projects.map(p => {
+    const count = tracks.filter(t => t.projectId === p.id).length;
+    return `<div class="proj-card" onclick="openProjectDetail('${p.id}')">
+      ${p.cover ? `<img class="proj-card-cover" src="${p.cover}" alt="">` : '<div class="proj-card-cover-placeholder">◈</div>'}
+      <div class="proj-card-info">
+        <div class="proj-card-title">${p.title}</div>
+        <div class="proj-card-artist">${p.artist}</div>
+        <div class="proj-card-meta">${count} track${count!==1?'s':''} · ${p.releaseDate||''}</div>
+      </div>
+      ${isAdmin ? `<div class="proj-card-actions">
+        <button onclick="event.stopPropagation();openProjectModal('${p.id}')" title="Edit">✎</button>
+        <button onclick="event.stopPropagation();deleteProject('${p.id}')" title="Delete">✕</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderProjectDetail(id) {
+  const ov = document.getElementById('project-detail-overlay');
+  if (!ov) return;
+  const p = projects.find(x => x.id === id);
+  if (!p) { setView('projects'); return; }
+
+  const projTracks = (p.trackIds || [])
+    .map(tid => tracks.find(t => String(t.id) === String(tid)))
+    .filter(Boolean);
+
+  const pal = getArtistPalette(p.artist);
+
+  ov.innerHTML = `
+    <div class="proj-detail-header" style="--artist-primary:${pal.primary};--artist-secondary:${pal.secondary}">
+      ${p.cover ? `<img class="proj-detail-cover" src="${p.cover}" alt="">` : '<div class="proj-detail-cover-placeholder">◈</div>'}
+      <div class="proj-detail-info">
+        <div class="proj-detail-title">${p.title}</div>
+        <div class="proj-detail-artist">${p.artist}</div>
+        ${p.releaseDate ? `<div class="proj-detail-date">${p.releaseDate}</div>` : ''}
+        ${p.description ? `<div class="proj-detail-desc">${p.description}</div>` : ''}
+        <div class="proj-detail-btns">
+          <button class="btn primary" onclick="playProject('${p.id}')">▶ Play All</button>
+          <button class="btn" onclick="shuffleProject('${p.id}')">⇄ Shuffle</button>
+          <button class="sort-btn" onclick="setView('projects')">← Back</button>
+        </div>
+      </div>
+    </div>
+    <div class="proj-tracklist">
+      ${projTracks.map((t, i) => {
+        const liked = likedTracks.has(String(t.id));
+        return `<div class="proj-track-row" onclick="playProjectTrack('${p.id}',${i})">
+          <span class="proj-track-num">${i+1}</span>
+          <span class="proj-track-title">${t.title}</span>
+          <span class="proj-track-artist">${t.artist}</span>
+          <span class="proj-track-dur" id="ptdur-${t.id}">—</span>
+          <button class="icon-btn" onclick="event.stopPropagation();toggleTrackLike(${t.id})" title="Like">${liked?'♥':'♡'}</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  // Attempt to fill in durations from audio metadata
+  projTracks.forEach(t => {
+    const tmp = new Audio();
+    tmp.src = t.url;
+    tmp.addEventListener('loadedmetadata', () => {
+      const el = document.getElementById('ptdur-' + t.id);
+      if (el) el.textContent = fmt(tmp.duration);
+    }, { once: true });
+  });
+}
+
+function playProject(id) {
+  const p = projects.find(x => x.id === id);
+  if (!p || !p.trackIds?.length) return;
+  activeFilter = 'all';
+  searchQuery = '';
+  const first = tracks.findIndex(t => String(t.id) === String(p.trackIds[0]));
+  if (first !== -1) playAtIndex(first);
+}
+
+function shuffleProject(id) {
+  const p = projects.find(x => x.id === id);
+  if (!p || !p.trackIds?.length) return;
+  const ridx = Math.floor(Math.random() * p.trackIds.length);
+  const tid = p.trackIds[ridx];
+  const idx = tracks.findIndex(t => String(t.id) === String(tid));
+  if (idx !== -1) playAtIndex(idx);
+}
+
+function playProjectTrack(pid, trackIdx) {
+  const p = projects.find(x => x.id === pid);
+  if (!p || !p.trackIds?.length) return;
+  const tid = p.trackIds[trackIdx];
+  const idx = tracks.findIndex(t => String(t.id) === String(tid));
+  if (idx !== -1) playAtIndex(idx);
+}
+
+// ── Admin project management ──────────────────────────────────────────────────
+let _editingProjectId = null;
+
+function openProjectModal(id) {
+  _editingProjectId = id || null;
+  const modal = document.getElementById('project-modal');
+  if (!modal) return;
+
+  const p = id ? projects.find(x => x.id === id) : null;
+  modal.querySelector('#pm-title').value        = p?.title       || '';
+  modal.querySelector('#pm-artist').value       = p?.artist      || '';
+  modal.querySelector('#pm-cover').value        = p?.cover       || '';
+  modal.querySelector('#pm-release').value      = p?.releaseDate || '';
+  modal.querySelector('#pm-desc').value         = p?.description || '';
+
+  // Build searchable track checklist
+  const list = modal.querySelector('#pm-track-list');
+  list.innerHTML = tracks.map(t => {
+    const checked = (p?.trackIds || []).map(String).includes(String(t.id));
+    return `<label class="pm-track-item">
+      <input type="checkbox" value="${t.id}" ${checked ? 'checked' : ''}>
+      <span>${t.artist} — ${t.title}</span>
+    </label>`;
+  }).join('');
+
+  openModal('project-modal');
+}
+
+async function saveProject() {
+  const modal = document.getElementById('project-modal');
+  if (!modal) return;
+  const title  = modal.querySelector('#pm-title').value.trim();
+  const artist = modal.querySelector('#pm-artist').value.trim();
+  if (!title) { showToast('PROJECT NEEDS A TITLE', 'error'); return; }
+
+  const checked = [...modal.querySelectorAll('#pm-track-list input:checked')].map(i => i.value);
+
+  if (_editingProjectId) {
+    const idx = projects.findIndex(x => x.id === _editingProjectId);
+    if (idx !== -1) {
+      projects[idx] = {
+        ...projects[idx],
+        title,
+        artist,
+        cover:       modal.querySelector('#pm-cover').value.trim(),
+        releaseDate: modal.querySelector('#pm-release').value.trim(),
+        description: modal.querySelector('#pm-desc').value.trim(),
+        trackIds:    checked,
+      };
+    }
+  } else {
+    projects.push({
+      id:          'proj-' + Date.now(),
+      title,
+      artist,
+      cover:       modal.querySelector('#pm-cover').value.trim(),
+      releaseDate: modal.querySelector('#pm-release').value.trim(),
+      description: modal.querySelector('#pm-desc').value.trim(),
+      trackIds:    checked,
+    });
+  }
+
+  // Assign projectId to each track
+  tracks.forEach(t => {
+    const inProject = projects.find(p => (p.trackIds||[]).map(String).includes(String(t.id)));
+    if (inProject) t.projectId = inProject.id;
+    else delete t.projectId;
+  });
+
+  await saveProjects(projects);
+  closeModal('project-modal');
+  showToast(_editingProjectId ? 'PROJECT UPDATED' : 'PROJECT CREATED', 'success');
+  if (activeView === 'projects') renderProjectsGrid();
+  if (activeView === 'project-detail') renderProjectDetail(activeProjectId);
+  renderTracks();
+}
+
+async function deleteProject(id) {
+  if (!confirm('Delete this project? Tracks are not deleted.')) return;
+  projects = projects.filter(p => p.id !== id);
+  tracks.forEach(t => { if (t.projectId === id) delete t.projectId; });
+  await saveProjects(projects);
+  showToast('PROJECT DELETED', 'success');
+  renderProjectsGrid();
+  renderTracks();
+}
+
+// Search filter for pm-track-list
+function _pmSearch(q) {
+  const modal = document.getElementById('project-modal');
+  if (!modal) return;
+  const lq = q.toLowerCase();
+  modal.querySelectorAll('.pm-track-item').forEach(item => {
+    item.style.display = !lq || item.textContent.toLowerCase().includes(lq) ? '' : 'none';
+  });
+}
+
+// iTunes cover art search for project modal
+async function _pmFindCover() {
+  const modal = document.getElementById('project-modal');
+  if (!modal) return;
+  const q = (modal.querySelector('#pm-artist').value + ' ' + modal.querySelector('#pm-title').value).trim();
+  if (!q) return;
+  try {
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=album&limit=5`);
+    const data = await res.json();
+    const results = modal.querySelector('#pm-cover-results');
+    results.innerHTML = (data.results||[]).map(r =>
+      `<img src="${r.artworkUrl100.replace('100x100','300x300')}" onclick="document.getElementById('project-modal').querySelector('#pm-cover').value='${r.artworkUrl100.replace('100x100','600x600')}';this.parentNode.innerHTML=''" style="width:60px;height:60px;object-fit:cover;border-radius:4px;cursor:pointer;margin:2px">`
+    ).join('');
+  } catch { showToast('COVER SEARCH FAILED', 'error'); }
+}
+
+// =====================================================================
+// FEATURE 3 helper — expose session active state for YML
+// =====================================================================
+// (session.js sets window.sessionIsActive on start/end)
+
+// =====================================================================
+// FEATURE 4: YOU MIGHT LIKE
+// =====================================================================
+const HISTORY_MAX_RECENT = 10;
+let _ymlRecentIds = [];
+let _ymlTimer = null;
+let _ymlCountdownRaf = null;
+let _ymlNextIdx = -1;
+
+function _showYML(nextIdx) {
+  _ymlNextIdx = nextIdx;
+  const playlist = getPlaylist();
+  const current  = playlist[currentTrackIdx];
+  if (!current) return false;
+
+  // Build candidate pool: exclude current + last 10
+  const excluded = new Set([String(current.id), ..._ymlRecentIds.map(String)]);
+  let candidates = tracks.filter(t => !excluded.has(String(t.id)));
+
+  // Priority 1: same artist, not in last 10
+  let picks = candidates.filter(t => t.artist === current.artist);
+  // Priority 2: matching tags
+  if (picks.length < 2) {
+    const tags = new Set(current.tags || []);
+    picks = [...picks, ...candidates.filter(t => t.artist !== current.artist && (t.tags||[]).some(tag => tags.has(tag)))];
+  }
+  // Priority 3: any unplayed
+  if (picks.length < 2) {
+    picks = [...picks, ...candidates.filter(t => !picks.find(p => p.id === t.id))];
+  }
+
+  // Dedupe and slice 2–3
+  const seen = new Set();
+  picks = picks.filter(t => { if (seen.has(t.id)) return false; seen.add(t.id); return true; }).slice(0, 3);
+  if (picks.length < 2) return false;
+
+  const tray = document.getElementById('yml-tray');
+  if (!tray) return false;
+
+  const cards = tray.querySelector('.yml-cards');
+  cards.innerHTML = picks.map(t => `
+    <div class="yml-card" onclick="_ymlPlay(${t.id})">
+      ${t.coverArt ? `<img src="${t.coverArt}" alt="">` : '<div class="yml-cover-ph">♪</div>'}
+      <div class="yml-card-info">
+        <div class="yml-card-title">${t.title}</div>
+        <div class="yml-card-artist">${t.artist}</div>
+      </div>
+      <button class="yml-play-btn">▶ Play</button>
+    </div>`).join('');
+
+  tray.classList.add('visible');
+
+  // Countdown bar — 6 seconds
+  const bar = tray.querySelector('.yml-countdown-bar');
+  const start = performance.now();
+  const dur   = 6000;
+  function tick(now) {
+    const pct = Math.max(0, 1 - (now - start) / dur);
+    bar.style.width = (pct * 100) + '%';
+    if (pct > 0) _ymlCountdownRaf = requestAnimationFrame(tick);
+    else _ymlExpire();
+  }
+  _ymlCountdownRaf = requestAnimationFrame(tick);
+
+  return true;
+}
+
+function _ymlPlay(id) {
+  _ymlDismiss();
+  const idx = getPlaylist().findIndex(t => t.id === id);
+  if (idx !== -1) playAtIndex(idx);
+}
+
+function _ymlExpire() {
+  _ymlDismiss();
+  playAtIndex(_ymlNextIdx);
+}
+
+function _ymlDismiss() {
+  if (_ymlCountdownRaf) { cancelAnimationFrame(_ymlCountdownRaf); _ymlCountdownRaf = null; }
+  const tray = document.getElementById('yml-tray');
+  if (tray) tray.classList.remove('visible');
+}
+
+// Update recent ids on each new track start
+const _origPlayAtIndex = playAtIndex;
+// Hook history tracking — handled in _historyTimeUpdate
+
+// =====================================================================
+// FEATURE 5: PLAY HISTORY
+// =====================================================================
+const HISTORY_KEY = 'vault_history';
+const HISTORY_CAP = 500;
+let _historyRecordedAt = -1;
+let _historyCompletedId = -1;
+
+function _getHistory() {
+  try {
+    const s = localStorage.getItem(HISTORY_KEY);
+    return s ? JSON.parse(s) : { plays: [], totalTime: 0 };
+  } catch { return { plays: [], totalTime: 0 }; }
+}
+
+function _saveHistory(h) {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); } catch {}
+}
+
+function _historyTimeUpdate() {
+  if (!audio.duration || audio.duration < 5) return;
+  const pl = getPlaylist();
+  const t  = pl[currentTrackIdx];
+  if (!t) return;
+  const ct = audio.currentTime;
+  const dur = audio.duration;
+
+  // Record play after 30 seconds
+  if (ct >= 30 && _historyRecordedAt !== t.id) {
+    _historyRecordedAt = t.id;
+    const h = _getHistory();
+    h.plays.unshift({
+      trackId:   t.id,
+      title:     t.title,
+      artist:    t.artist,
+      cover:     t.coverArt || '',
+      playedAt:  Date.now(),
+      duration:  Math.round(dur),
+      completed: false,
+    });
+    if (h.plays.length > HISTORY_CAP) h.plays = h.plays.slice(0, HISTORY_CAP);
+    h.totalTime = (h.totalTime || 0) + 30;
+    _saveHistory(h);
+  }
+
+  // Mark completed if past 80%
+  if (ct / dur >= 0.8 && _historyCompletedId !== t.id) {
+    _historyCompletedId = t.id;
+    const h = _getHistory();
+    const entry = h.plays.find(p => p.trackId === t.id && !p.completed);
+    if (entry) {
+      entry.completed = true;
+      h.totalTime = (h.totalTime || 0) + Math.max(0, Math.round(dur) - 30);
+      _saveHistory(h);
+    }
+  }
+}
+
+// Reset per-track flags when a new track starts
+audio.addEventListener('loadstart', () => {
+  _historyRecordedAt = -1;
+  _historyCompletedId = -1;
+  _ymlRecentIds.push(String(getPlaylist()[currentTrackIdx]?.id || ''));
+  if (_ymlRecentIds.length > HISTORY_MAX_RECENT) _ymlRecentIds.shift();
+});
+
+// ── History page rendering ─────────────────────────────────────────────────────
+function renderHistoryPage() {
+  const ov = document.getElementById('history-overlay');
+  if (!ov) return;
+  const h = _getHistory();
+  const plays = h.plays || [];
+
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  const totalSec  = h.totalTime || 0;
+  const totalHr   = Math.floor(totalSec / 3600);
+  const totalMin  = Math.floor((totalSec % 3600) / 60);
+  const timeStr   = totalHr ? `${totalHr}h ${totalMin}m` : `${totalMin}m`;
+  const uniqueIds = new Set(plays.map(p => p.trackId)).size;
+
+  // Most played artist
+  const artistTime = {};
+  plays.forEach(p => { artistTime[p.artist] = (artistTime[p.artist]||0) + (p.duration||0); });
+  const topArtist = Object.entries(artistTime).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
+  const topArtistColor = topArtist ? getArtistColor(topArtist) : 'var(--text-primary)';
+
+  // Streak
+  const days = new Set(plays.map(p => new Date(p.playedAt).toDateString()));
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    if (days.has(d.toDateString())) streak++;
+    else if (i > 0) break;
+  }
+
+  // Top tracks this week / all time
+  const now = Date.now();
+  const weekAgo = now - 7*24*3600*1000;
+  const weekPlays = plays.filter(p => p.playedAt >= weekAgo);
+
+  function topTracks(pool, n) {
+    const cnt = {};
+    pool.forEach(p => { cnt[p.trackId] = (cnt[p.trackId]||0) + 1; });
+    return Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([id,ct]) => {
+      const e = pool.find(p => String(p.trackId) === id);
+      return { ...(e||{}), count: ct };
+    });
+  }
+
+  function topArtists(pool, n) {
+    const cnt = {};
+    pool.forEach(p => { cnt[p.artist] = (cnt[p.artist]||0) + (p.duration||180); });
+    return Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([a,s]) => ({ artist: a, seconds: s }));
+  }
+
+  const topT  = topTracks(plays, 5);
+  const topTW = topTracks(weekPlays, 5);
+  const topA  = topArtists(plays, 5);
+  const topAW = topArtists(weekPlays, 5);
+
+  const maxTCount = Math.max(1, ...(topT.map(t=>t.count)));
+  const maxTWCount = Math.max(1, ...(topTW.map(t=>t.count)));
+  const maxASec = Math.max(1, ...(topA.map(a=>a.seconds)));
+  const maxASWec = Math.max(1, ...(topAW.map(a=>a.seconds)));
+
+  function fmtSec(s) { const m=Math.floor(s/60),h=Math.floor(m/60); return h?`${h}h ${m%60}m`:`${m}m`; }
+
+  function trackRow(e, max, i) {
+    return `<div class="hist-rank-row">
+      <span class="hist-rank-num">${i+1}</span>
+      ${e.cover?`<img src="${e.cover}" alt="" class="hist-rank-cover">`:'<div class="hist-rank-cover hist-no-cover">♪</div>'}
+      <div class="hist-rank-info"><div>${e.title||'—'}</div><div style="opacity:.6;font-size:10px">${e.artist||''}</div></div>
+      <div class="hist-bar-wrap"><div class="hist-bar" style="width:${Math.round((e.count/max)*100)}%"></div></div>
+      <span class="hist-rank-cnt">${e.count}</span>
+    </div>`;
+  }
+
+  function artistRow(e, max, i) {
+    const col = getArtistColor(e.artist);
+    return `<div class="hist-rank-row">
+      <span class="hist-rank-num">${i+1}</span>
+      <div class="hist-rank-cover" style="background:${col};display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${e.artist.slice(0,2).toUpperCase()}</div>
+      <div class="hist-rank-info"><div style="color:${col}">${e.artist}</div></div>
+      <div class="hist-bar-wrap"><div class="hist-bar" style="width:${Math.round((e.seconds/max)*100)}%;background:${col}"></div></div>
+      <span class="hist-rank-cnt">${fmtSec(e.seconds)}</span>
+    </div>`;
+  }
+
+  // Recent plays (last 50)
+  const recent = plays.slice(0, 50);
+
+  function timeAgo(ts) {
+    const s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.floor(s/60)}m ago`;
+    if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+    return `${Math.floor(s/86400)}d ago`;
+  }
+
+  ov.innerHTML = `
+    <div class="history-header">
+      <div class="history-title">◷ PLAY HISTORY</div>
+      <button class="sort-btn" onclick="setView('tracks')">✕ Close</button>
+    </div>
+
+    <div class="hist-stats-row">
+      <div class="hist-stat">
+        <div class="hist-stat-val">${timeStr}</div>
+        <div class="hist-stat-label">Total Listening</div>
+      </div>
+      <div class="hist-stat">
+        <div class="hist-stat-val">${uniqueIds}</div>
+        <div class="hist-stat-label">Unique Tracks</div>
+      </div>
+      <div class="hist-stat">
+        <div class="hist-stat-val" style="color:${topArtistColor}">${topArtist||'—'}</div>
+        <div class="hist-stat-label">Top Artist</div>
+      </div>
+      <div class="hist-stat">
+        <div class="hist-stat-val">${streak}</div>
+        <div class="hist-stat-label">Day Streak</div>
+      </div>
+    </div>
+
+    <div class="hist-section">
+      <div class="hist-section-header">
+        <span>TOP TRACKS</span>
+        <div class="hist-toggle">
+          <button class="sort-btn active" id="tt-alltime">All Time</button>
+          <button class="sort-btn" id="tt-week">This Week</button>
+        </div>
+      </div>
+      <div id="hist-top-tracks">
+        ${topT.length ? topT.map((e,i)=>trackRow(e,maxTCount,i)).join('') : '<div style="opacity:.4;font-size:11px;padding:12px">No plays yet</div>'}
+      </div>
+    </div>
+
+    <div class="hist-section">
+      <div class="hist-section-header">
+        <span>TOP ARTISTS</span>
+        <div class="hist-toggle">
+          <button class="sort-btn active" id="ta-alltime">All Time</button>
+          <button class="sort-btn" id="ta-week">This Week</button>
+        </div>
+      </div>
+      <div id="hist-top-artists">
+        ${topA.length ? topA.map((e,i)=>artistRow(e,maxASec,i)).join('') : '<div style="opacity:.4;font-size:11px;padding:12px">No plays yet</div>'}
+      </div>
+    </div>
+
+    <div class="hist-section">
+      <div class="hist-section-header"><span>RECENT PLAYS</span></div>
+      <div class="hist-recent-list">
+        ${recent.length ? recent.map(p => `
+          <div class="hist-recent-row" onclick="_histPlayTrack(${p.trackId})">
+            ${p.cover?`<img src="${p.cover}" alt="" class="hist-recent-cover">`:'<div class="hist-recent-cover hist-no-cover">♪</div>'}
+            <div class="hist-recent-info">
+              <div>${p.title||'—'}</div>
+              <div style="opacity:.6;font-size:10px">${p.artist||''}</div>
+            </div>
+            <div class="hist-recent-time">${timeAgo(p.playedAt)}</div>
+            ${p.completed?'<span class="hist-completed" title="Completed">✓</span>':''}
+          </div>`).join('') : '<div style="opacity:.4;font-size:11px;padding:12px">No plays yet</div>'}
+      </div>
+    </div>
+
+    <div class="hist-section">
+      <div class="hist-section-header"><span>14-DAY CHART</span></div>
+      <canvas id="hist-chart" height="80" style="width:100%;display:block"></canvas>
+    </div>
+
+    ${isAdmin ? `<div class="hist-admin-row">
+      <button class="btn" onclick="_histExport()">↓ Export JSON</button>
+      <button class="btn" style="color:#e57373" onclick="_histClear()">✕ Clear History</button>
+    </div>` : ''}
+  `;
+
+  // Wire toggles
+  const ttAll = ov.querySelector('#tt-alltime'), ttWk = ov.querySelector('#tt-week');
+  const taAll = ov.querySelector('#ta-alltime'), taWk = ov.querySelector('#ta-week');
+  const ttEl  = ov.querySelector('#hist-top-tracks');
+  const taEl  = ov.querySelector('#hist-top-artists');
+
+  if (ttAll) ttAll.addEventListener('click', () => {
+    ttAll.classList.add('active'); ttWk.classList.remove('active');
+    ttEl.innerHTML = topT.length ? topT.map((e,i)=>trackRow(e,maxTCount,i)).join('') : '<div style="opacity:.4;font-size:11px;padding:12px">No plays yet</div>';
+  });
+  if (ttWk) ttWk.addEventListener('click', () => {
+    ttWk.classList.add('active'); ttAll.classList.remove('active');
+    ttEl.innerHTML = topTW.length ? topTW.map((e,i)=>trackRow(e,maxTWCount,i)).join('') : '<div style="opacity:.4;font-size:11px;padding:12px">No plays this week</div>';
+  });
+  if (taAll) taAll.addEventListener('click', () => {
+    taAll.classList.add('active'); taWk.classList.remove('active');
+    taEl.innerHTML = topA.length ? topA.map((e,i)=>artistRow(e,maxASec,i)).join('') : '<div style="opacity:.4;font-size:11px;padding:12px">No plays yet</div>';
+  });
+  if (taWk) taWk.addEventListener('click', () => {
+    taWk.classList.add('active'); taAll.classList.remove('active');
+    taEl.innerHTML = topAW.length ? topAW.map((e,i)=>artistRow(e,maxASWec,i)).join('') : '<div style="opacity:.4;font-size:11px;padding:12px">No plays this week</div>';
+  });
+
+  // Draw 14-day bar chart
+  requestAnimationFrame(() => _drawHistChart(plays));
+}
+
+function _drawHistChart(plays) {
+  const canvas = document.getElementById('hist-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const days = 14;
+  const now = new Date();
+
+  // Build per-day counts and dominant artist color
+  const buckets = Array.from({length: days}, (_, i) => {
+    const d = new Date(now); d.setDate(d.getDate() - (days-1-i));
+    const ds = d.toDateString();
+    const dayPlays = plays.filter(p => new Date(p.playedAt).toDateString() === ds);
+    const artistCnt = {};
+    dayPlays.forEach(p => { artistCnt[p.artist] = (artistCnt[p.artist]||0)+1; });
+    const top = Object.entries(artistCnt).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
+    return { count: dayPlays.length, color: top ? getArtistColor(top) : 'rgba(255,255,255,0.18)', label: d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) };
+  });
+
+  const maxCount = Math.max(1, ...buckets.map(b=>b.count));
+  const barW = (W / days) * 0.7;
+  const gap   = (W / days) * 0.3;
+
+  ctx.clearRect(0, 0, W, H);
+  buckets.forEach((b, i) => {
+    const x = i * (barW + gap);
+    const h = b.count > 0 ? Math.max(4, (b.count / maxCount) * (H - 20)) : 2;
+    const y = H - h - 16;
+    ctx.fillStyle = b.color;
+    ctx.globalAlpha = b.count > 0 ? 0.85 : 0.18;
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, h, 2);
+    ctx.fill();
+    if (i % 2 === 0) {
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = '#888';
+      ctx.font = `${9 * devicePixelRatio / devicePixelRatio}px IBM Plex Mono,monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText(b.label.split(' ')[1], x + barW/2, H - 2);
+    }
+  });
+}
+
+function _histPlayTrack(id) {
+  const idx = tracks.findIndex(t => t.id === id);
+  if (idx !== -1) { setView('tracks'); setTimeout(() => playAtIndex(idx), 100); }
+}
+
+function _histExport() {
+  const h = _getHistory();
+  const blob = new Blob([JSON.stringify(h, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vault-history.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function _histClear() {
+  if (!confirm('Clear all play history? This cannot be undone.')) return;
+  _saveHistory({ plays: [], totalTime: 0 });
+  showToast('HISTORY CLEARED', 'success');
+  renderHistoryPage();
 }

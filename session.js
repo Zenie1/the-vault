@@ -65,6 +65,81 @@ let typingOff      = null;  // onValue unsubscribe for other party typing
 let typingTimer    = null;  // debounce handle for own typing state
 const MAX_MSG_LEN  = 280;
 
+// ── Reactions state ───────────────────────────────────────────────────────────
+let reactionsOff      = null;
+let reactionTimestamps = [];
+const REACTION_EMOJIS  = ['🔥','💀','🎯','💯','😭','👑','🤯','💸'];
+
+// ── Inject reaction CSS (keyframes only — structure CSS is in index.html) ─────
+(function injectReactionStyles() {
+  const s = document.createElement('style');
+  s.textContent = `
+    @keyframes reactionFloat {
+      0%   { transform:translateY(0) translateX(var(--rxn-dx,0px)) rotate(var(--rxn-r,0deg)); opacity:1; }
+      70%  { opacity:1; }
+      100% { transform:translateY(-220px) translateX(calc(var(--rxn-dx,0px)*2)) rotate(calc(var(--rxn-r,0deg)+15deg)); opacity:0; }
+    }
+    .reaction-float {
+      position:fixed;
+      font-size:30px;
+      pointer-events:none;
+      z-index:9999;
+      animation:reactionFloat 2.5s ease-out forwards;
+    }
+    @keyframes rxnTap {
+      0%   { transform:scale(1); }
+      35%  { transform:scale(0.8); }
+      70%  { transform:scale(1.2); }
+      100% { transform:scale(1); }
+    }
+    .rxn-btn.tap-anim { animation:rxnTap 0.25s ease; }
+    #reaction-bar {
+      display:none;
+      flex-wrap:wrap;
+      gap:4px;
+      padding:8px 12px 4px;
+      border-top:1px solid rgba(255,255,255,0.06);
+    }
+    .rxn-btn {
+      min-width:44px;
+      min-height:44px;
+      background:none;
+      border:none;
+      font-size:22px;
+      cursor:pointer;
+      border-radius:8px;
+      flex:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transition:background 0.1s;
+    }
+    .rxn-btn:hover { background:rgba(255,255,255,0.08); }
+    .rxn-btn.on-cooldown { opacity:0.35; pointer-events:none; }
+  `;
+  document.head.appendChild(s);
+})();
+
+// ── Inject reaction bar HTML above chat input ────────────────────────────────
+(function injectReactionBar() {
+  // Wait for DOM to be ready
+  function inject() {
+    const inputArea = document.querySelector('.chat-input-area');
+    if (!inputArea || document.getElementById('reaction-bar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'reaction-bar';
+    bar.innerHTML = REACTION_EMOJIS.map(e =>
+      `<button class="rxn-btn" data-emoji="${e}" title="${e}">${e}</button>`
+    ).join('');
+    inputArea.parentNode.insertBefore(bar, inputArea);
+    bar.querySelectorAll('.rxn-btn').forEach(btn => {
+      btn.addEventListener('click', () => sendReaction(btn.dataset.emoji, btn));
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject);
+  else inject();
+})();
+
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => setTimeout(boot, 650));
 
@@ -487,6 +562,11 @@ function startChat(role) {
   const otherRole    = role === 'host' ? 'guest' : 'host';
   const otherTypingR = ref(db, 'sessions/' + roomCode + '/typing/' + otherRole);
   typingOff = onValue(otherTypingR, snap => onTypingChange(snap.val(), otherRole));
+
+  // Start reactions
+  startReactions();
+  const bar = document.getElementById('reaction-bar');
+  if (bar) bar.style.display = 'flex';
 }
 
 /**
@@ -502,6 +582,11 @@ function stopChat() {
   if (roomCode && sessionRole) {
     set(ref(db, 'sessions/' + roomCode + '/typing/' + sessionRole), false).catch(() => {});
   }
+
+  // Stop reactions
+  stopReactions();
+  const bar = document.getElementById('reaction-bar');
+  if (bar) bar.style.display = 'none';
 
   // Hide UI
   closeChat();
@@ -674,4 +759,67 @@ function fmtTime(ts) {
   const ampm = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
   return h + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// REACTIONS
+// ══════════════════════════════════════════════════════════════════════════════
+
+function startReactions() {
+  if (!roomCode) return;
+  const reactRef = ref(db, 'sessions/' + roomCode + '/reactions');
+  reactionsOff = onChildAdded(reactRef, snap => {
+    const r = snap.val();
+    if (!r) return;
+    animateReaction(r.emoji, r.x);
+    // Delete from Firebase after 5s so it stays ephemeral
+    setTimeout(() => { remove(snap.ref).catch(() => {}); }, 5000);
+  });
+}
+
+function stopReactions() {
+  if (reactionsOff) { reactionsOff(); reactionsOff = null; }
+  reactionTimestamps = [];
+}
+
+function sendReaction(emoji, btnEl) {
+  if (!isActive || !roomCode || !sessionRole) return;
+  const now = Date.now();
+  reactionTimestamps = reactionTimestamps.filter(t => now - t < 5000);
+  if (reactionTimestamps.length >= 3) {
+    // Cooldown — briefly dim the button
+    if (btnEl) {
+      btnEl.classList.add('on-cooldown');
+      setTimeout(() => btnEl.classList.remove('on-cooldown'), 1200);
+    }
+    return;
+  }
+  reactionTimestamps.push(now);
+
+  // Tap animation
+  if (btnEl) {
+    btnEl.classList.remove('tap-anim');
+    void btnEl.offsetWidth; // reflow to restart animation
+    btnEl.classList.add('tap-anim');
+    setTimeout(() => btnEl.classList.remove('tap-anim'), 260);
+  }
+
+  push(ref(db, 'sessions/' + roomCode + '/reactions'), {
+    uid      : sessionRole,
+    emoji,
+    timestamp: now,
+    x        : Math.random(),
+  }).catch(() => {});
+}
+
+function animateReaction(emoji, x) {
+  const el = document.createElement('div');
+  el.className = 'reaction-float';
+  el.textContent = emoji;
+  const pct  = ((x ?? Math.random()) * 70 + 10);   // 10–80% of viewport width
+  const dx   = (Math.random() - 0.5) * 40;          // ±20px horizontal drift
+  const rot  = (Math.random() - 0.5) * 30;          // ±15deg rotation
+  el.style.cssText = `left:${pct}%;bottom:168px;--rxn-dx:${dx}px;--rxn-r:${rot}deg`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
 }

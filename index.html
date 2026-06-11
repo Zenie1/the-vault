@@ -3189,6 +3189,170 @@ body.session-guest #player-bar {
   z-index: 1;
 }
 
+/* ── Full overlay (projects, history) ── */
+.full-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: var(--bg, #0a0a0a);
+  overflow-y: auto;
+  display: none;
+  flex-direction: column;
+  padding: 24px 24px 120px;
+}
+.full-overlay.open { display: flex; }
+.overlay-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.overlay-title {
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+/* ── Projects grid ── */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+.proj-card {
+  background: var(--surface, #111);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.15s;
+}
+.proj-card:hover { transform: translateY(-2px); }
+.proj-card-cover, .proj-card-cover-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  background: var(--surface2, #1a1a1a);
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted, #555);
+}
+.proj-card img.proj-card-cover { display: block; }
+.proj-card-info { padding: 10px 12px; }
+.proj-card-title { font-size: 12px; font-weight: 700; color: var(--text-primary, #eee); letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proj-card-artist { font-size: 10px; color: var(--muted, #888); font-family: var(--font-mono); margin-top: 2px; }
+.proj-card-meta { font-size: 9px; color: var(--muted2, #666); font-family: var(--font-mono); margin-top: 4px; letter-spacing: 0.5px; }
+.proj-card-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+.proj-card:hover .proj-card-actions { opacity: 1; }
+.proj-card-actions button { background: rgba(0,0,0,0.7); border: none; color: #fff; font-size: 11px; padding: 4px 6px; border-radius: 4px; cursor: pointer; }
+
+/* ── Project detail ── */
+.proj-detail-header { display: flex; gap: 24px; padding: 24px; align-items: flex-start; flex-wrap: wrap; }
+.proj-detail-cover, .proj-detail-cover-placeholder { width: 160px; height: 160px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: var(--surface2, #1a1a1a); display: flex; align-items: center; justify-content: center; font-size: 48px; color: var(--muted); }
+.proj-detail-info { flex: 1; min-width: 200px; }
+.proj-detail-title { font-size: 22px; font-weight: 800; letter-spacing: 1px; color: var(--text-primary, #eee); }
+.proj-detail-artist { font-size: 13px; color: var(--artist-primary, #888); margin-top: 4px; font-family: var(--font-mono); }
+.proj-detail-date { font-size: 10px; color: var(--muted); font-family: var(--font-mono); margin-top: 4px; letter-spacing: 1px; }
+.proj-detail-desc { font-size: 11px; color: var(--muted, #888); margin-top: 8px; line-height: 1.5; max-width: 400px; }
+.proj-detail-btns { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.proj-tracklist { padding: 0 24px 24px; }
+.proj-track-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
+.proj-track-row:hover { background: rgba(255,255,255,0.03); }
+.proj-track-num { width: 24px; text-align: right; font-family: var(--font-mono); font-size: 10px; color: var(--muted); flex-shrink: 0; }
+.proj-track-title { flex: 1; font-size: 12px; font-weight: 600; color: var(--text-primary, #eee); }
+.proj-track-artist { font-size: 10px; color: var(--muted); font-family: var(--font-mono); }
+.proj-track-dur { font-size: 10px; color: var(--muted); font-family: var(--font-mono); margin-left: auto; }
+
+/* ── Track project badge ── */
+.track-project-badge {
+  display: inline-block;
+  background: rgba(255,255,255,0.1);
+  color: var(--artist-primary, #888);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  border: none;
+  cursor: pointer;
+  margin-left: 4px;
+  vertical-align: middle;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.track-project-badge:hover { background: rgba(255,255,255,0.2); }
+
+/* ── PM track checklist ── */
+.pm-track-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 11px; color: var(--text, #eee); cursor: pointer; font-family: var(--font-mono); letter-spacing: 0.3px; }
+.pm-track-item input { accent-color: var(--accent2, #ff3c3c); }
+
+/* ── History overlay ── */
+.history-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.history-title { font-family: var(--font-mono); font-size: 13px; letter-spacing: 2px; text-transform: uppercase; flex: 1; }
+.hist-stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 28px; }
+.hist-stat { background: var(--surface, #111); border-radius: 8px; padding: 14px 16px; }
+.hist-stat-val { font-size: 20px; font-weight: 800; color: var(--text-primary, #eee); letter-spacing: -0.5px; }
+.hist-stat-label { font-family: var(--font-mono); font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
+.hist-section { margin-bottom: 28px; }
+.hist-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+.hist-toggle { display: flex; gap: 6px; }
+.hist-rank-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.hist-rank-num { width: 18px; text-align: right; font-family: var(--font-mono); font-size: 10px; color: var(--muted); flex-shrink: 0; }
+.hist-rank-cover { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.hist-no-cover { background: var(--surface2, #1a1a1a); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; }
+.hist-rank-info { flex: 1; min-width: 0; font-size: 11px; color: var(--text-primary, #eee); overflow: hidden; }
+.hist-bar-wrap { width: 80px; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; flex-shrink: 0; overflow: hidden; }
+.hist-bar { height: 100%; background: var(--accent2, #ff3c3c); border-radius: 2px; }
+.hist-rank-cnt { font-family: var(--font-mono); font-size: 10px; color: var(--muted); flex-shrink: 0; width: 36px; text-align: right; }
+.hist-recent-list { display: flex; flex-direction: column; gap: 2px; max-height: 340px; overflow-y: auto; }
+.hist-recent-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
+.hist-recent-row:hover { background: rgba(255,255,255,0.03); }
+.hist-recent-cover { width: 36px; height: 36px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+.hist-recent-info { flex: 1; min-width: 0; font-size: 11px; color: var(--text-primary, #eee); overflow: hidden; }
+.hist-recent-time { font-family: var(--font-mono); font-size: 9px; color: var(--muted); flex-shrink: 0; }
+.hist-completed { font-size: 10px; color: #4caf50; margin-left: 4px; }
+.hist-admin-row { display: flex; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border, #222); }
+
+/* ── You Might Like tray ── */
+#yml-tray {
+  position: fixed;
+  bottom: 160px;
+  left: 50%;
+  transform: translateX(-50%) translateY(120%);
+  z-index: 850;
+  background: rgba(12,12,12,0.96);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 14px 16px 10px;
+  width: min(460px, calc(100vw - 32px));
+  transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+#yml-tray.visible { transform: translateX(-50%) translateY(0); }
+.yml-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.yml-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+.yml-close-btn { background: none; border: none; color: var(--muted); font-family: var(--font-mono); font-size: 10px; cursor: pointer; letter-spacing: 1px; }
+.yml-close-btn:hover { color: var(--text-primary, #eee); }
+.yml-cards { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.yml-card { display: flex; align-items: center; gap: 10px; background: var(--surface, #111); border-radius: 8px; padding: 8px 10px; cursor: pointer; min-width: 0; flex: 1; flex-basis: 140px; max-width: 200px; }
+.yml-card:hover { background: var(--surface2, #1a1a1a); }
+.yml-card img, .yml-cover-ph { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; flex-shrink: 0; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; }
+.yml-card-info { flex: 1; min-width: 0; }
+.yml-card-title { font-size: 10px; font-weight: 600; color: var(--text-primary, #eee); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yml-card-artist { font-size: 9px; color: var(--muted); font-family: var(--font-mono); }
+.yml-play-btn { background: none; border: 1px solid rgba(255,255,255,0.15); color: var(--text-primary); font-family: var(--font-mono); font-size: 9px; padding: 4px 7px; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
+.yml-play-btn:hover { background: rgba(255,255,255,0.1); }
+.yml-countdown-wrap { height: 2px; background: rgba(255,255,255,0.08); border-radius: 1px; margin-top: 10px; overflow: hidden; }
+.yml-countdown-bar { height: 100%; width: 100%; background: var(--accent2, #ff3c3c); border-radius: 1px; transition: none; }
+
 /* ── Cache modal ── */
 #cache-modal .modal { max-width: 480px; }
 .cache-info {
@@ -4251,6 +4415,75 @@ body.session-guest #player-bar {
       <div class="viz-dot" data-mode="4" data-label="TUNNEL"></div>
       <div class="viz-dot" data-mode="5" data-label="AURORA"></div>
     </div>
+  </div>
+</div>
+
+<!-- ── PROJECTS OVERLAY ─────────────────────────────────────────────────────── -->
+<div id="projects-overlay" class="full-overlay">
+  <div class="overlay-header">
+    <span class="overlay-title">⊞ PROJECTS</span>
+    <button class="sort-btn" onclick="setView('tracks')">✕ Close</button>
+    <button class="btn primary" id="create-proj-btn" style="display:none" onclick="openProjectModal()">+ New Project</button>
+  </div>
+  <div class="projects-grid"></div>
+</div>
+
+<!-- ── PROJECT DETAIL OVERLAY ──────────────────────────────────────────────── -->
+<div id="project-detail-overlay" class="full-overlay"></div>
+
+<!-- ── PROJECT ADMIN MODAL ─────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="project-modal">
+  <div class="modal" style="max-width:520px">
+    <button class="modal-close" onclick="closeModal('project-modal')">×</button>
+    <h2>PROJECT</h2>
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" id="pm-title" placeholder="e.g. Whole Lotta Red Era">
+    </div>
+    <div class="form-group">
+      <label>Artist</label>
+      <input type="text" id="pm-artist" placeholder="e.g. Playboi Carti">
+    </div>
+    <div class="form-group">
+      <label>Cover Art URL</label>
+      <div class="cover-search-row">
+        <input type="url" id="pm-cover" placeholder="https://... or search →">
+        <button class="cover-art-btn" type="button" onclick="_pmFindCover()">🔍 Find Art</button>
+      </div>
+      <div id="pm-cover-results" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
+    </div>
+    <div class="form-group">
+      <label>Release Date</label>
+      <input type="text" id="pm-release" placeholder="e.g. 2020-12-25">
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="pm-desc" rows="2" placeholder="Optional notes about this project..." style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:10px 12px;outline:none;resize:vertical;letter-spacing:0.5px;line-height:1.6"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Tracks</label>
+      <input type="text" placeholder="Search tracks…" oninput="_pmSearch(this.value)" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:8px 12px;outline:none;margin-bottom:6px;letter-spacing:0.5px">
+      <div id="pm-track-list" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:2px"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" onclick="saveProject()">SAVE PROJECT</button>
+      <button class="btn" onclick="closeModal('project-modal')">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── HISTORY OVERLAY ──────────────────────────────────────────────────────── -->
+<div id="history-overlay" class="full-overlay"></div>
+
+<!-- ── YOU MIGHT LIKE TRAY ─────────────────────────────────────────────────── -->
+<div id="yml-tray">
+  <div class="yml-header">
+    <span class="yml-label">YOU MIGHT LIKE</span>
+    <button class="yml-close-btn" onclick="_ymlDismiss()">✕ Skip</button>
+  </div>
+  <div class="yml-cards"></div>
+  <div class="yml-countdown-wrap">
+    <div class="yml-countdown-bar"></div>
   </div>
 </div>
 
