@@ -5830,6 +5830,7 @@ function _showYML(nextIdx) {
   if (!tray) return false;
 
   const cards = tray.querySelector('.yml-cards');
+  if (!cards) return false;
   cards.innerHTML = picks.map(t => `
     <div class="yml-card" onclick="_ymlPlay(${t.id})">
       ${t.coverArt ? `<img src="${t.coverArt}" alt="">` : '<div class="yml-cover-ph">♪</div>'}
@@ -5871,7 +5872,14 @@ function _ymlExpire() {
 function _ymlDismiss() {
   if (_ymlCountdownRaf) { cancelAnimationFrame(_ymlCountdownRaf); _ymlCountdownRaf = null; }
   const tray = document.getElementById('yml-tray');
-  if (tray) tray.classList.remove('visible');
+  if (!tray) return;
+  tray.classList.remove('visible');
+  // Clear cards so stale content never flashes on the next open
+  const cards = tray.querySelector('.yml-cards');
+  if (cards) cards.innerHTML = '';
+  // Reset bar width for next show
+  const bar = tray.querySelector('.yml-countdown-bar');
+  if (bar) bar.style.width = '100%';
 }
 
 // Update recent ids on each new track start

@@ -3326,7 +3326,7 @@ body.session-guest #player-bar {
   position: fixed;
   bottom: 160px;
   left: 50%;
-  transform: translateX(-50%) translateY(120%);
+  transform: translateX(-50%) translateY(calc(100% + 200px));
   z-index: 850;
   background: rgba(12,12,12,0.96);
   backdrop-filter: blur(16px);
@@ -3334,9 +3334,13 @@ body.session-guest #player-bar {
   border-radius: 14px;
   padding: 14px 16px 10px;
   width: min(460px, calc(100vw - 32px));
-  transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+  pointer-events: none;
 }
-#yml-tray.visible { transform: translateX(-50%) translateY(0); }
+#yml-tray.visible {
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
 .yml-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .yml-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
 .yml-close-btn { background: none; border: none; color: var(--muted); font-family: var(--font-mono); font-size: 10px; cursor: pointer; letter-spacing: 1px; }
