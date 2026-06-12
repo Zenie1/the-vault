@@ -489,8 +489,9 @@ function resetAdminInactivityTimer() {
 // ===== STATE =====
 let tracks = [], activeFilter = 'all', searchQuery = '', sortMode = 'default';
 let projects = [];
-let activeView = 'tracks'; // 'tracks' | 'projects' | 'project-detail'
+let activeView = 'tracks'; // 'tracks' | 'projects' | 'project-detail' | 'history' | 'artist'
 let activeProjectId = null;
+let activeArtistName = null;
 const PROJECTS_KEY = 'vault-projects-v1';
 let currentTrackIdx = -1, isPlaying = false;
 let uploadedFile = null, uploadedDataUrl = null, activeTab = 'link';
@@ -730,7 +731,7 @@ function renderTracks() {
         <div class="track-card-top">
           ${coverSrc ? `<img class="track-cover loaded" src="${coverSrc}" alt="cover" loading="lazy">` : `<img class="track-cover" src="" data-fetch-cover="${t.id}" alt="cover">`}
           <div class="track-card-meta">
-            <div class="track-artist">${t.artist}${sourceBadge}${fireBadge}${projBadge}</div>
+            <div class="track-artist"><span class="artist-link" onclick="event.stopPropagation();openArtistPage('${t.artist.replace(/'/g,"\\'")}')">${t.artist}</span>${sourceBadge}${fireBadge}${projBadge}</div>
             <div class="track-title">${t.title}</div>
           </div>
         </div>
@@ -914,6 +915,7 @@ function playAtIndex(idx) {
   audio.src = t.url;
   audio.load();
   audio.volume = parseFloat(document.getElementById('volume-slider').value);
+  _decodePCM(t.url); // async PCM fingerprint — non-blocking
 
   const playPromise = audio.play();
   if (playPromise !== undefined) {
@@ -932,7 +934,10 @@ function playAtIndex(idx) {
   _updateMediaSession();
   const color = getArtistPalette(t.artist).primary;
   document.getElementById('player-title').textContent = t.title;
-  document.getElementById('player-artist').textContent = t.artist.toUpperCase();
+  const _paEl = document.getElementById('player-artist');
+  _paEl.textContent = t.artist.toUpperCase();
+  _paEl.classList.add('artist-link');
+  _paEl.onclick = (e) => { e.stopPropagation(); openArtistPage(t.artist); };
   const ppBtn = document.getElementById('play-pause-btn');
   ppBtn.innerHTML = '⏸';
   ppBtn.classList.add('is-playing');
@@ -1233,6 +1238,10 @@ function drawWaveform() {
     smoothedBars = new Array(BAR_COUNT).fill(8);
   }
 
+  // Use static PCM fingerprint when not playing and data is cached
+  const _pcmDisplay = !isPlaying ? _getPCMBars(BAR_COUNT) : null;
+  const activeBars  = _pcmDisplay || smoothedBars;
+
   if (waveformStyle === 'line') {
     // ── WhatsApp-style smooth line waveform ──
     const midY = H / 2;
@@ -1255,7 +1264,7 @@ function drawWaveform() {
       waveCtx.beginPath();
       for (let i = 0; i < BAR_COUNT; i++) {
         const x = (i / (BAR_COUNT - 1)) * W;
-        const amp = (smoothedBars[i] / 255) * (H * 0.44);
+        const amp = (activeBars[i] / 255) * (H * 0.44);
         const y = midY - Math.max(2, amp);
         if (i === 0) waveCtx.moveTo(x, y);
         else waveCtx.lineTo(x, y);
@@ -1263,7 +1272,7 @@ function drawWaveform() {
       // Lower line (mirror, drawn back)
       for (let i = BAR_COUNT - 1; i >= 0; i--) {
         const x = (i / (BAR_COUNT - 1)) * W;
-        const amp = (smoothedBars[i] / 255) * (H * 0.44);
+        const amp = (activeBars[i] / 255) * (H * 0.44);
         const y = midY + Math.max(2, amp);
         waveCtx.lineTo(x, y);
       }
@@ -1285,7 +1294,7 @@ function drawWaveform() {
       waveCtx.beginPath();
       for (let i = 0; i < BAR_COUNT; i++) {
         const x = (i / (BAR_COUNT - 1)) * W;
-        const amp = (smoothedBars[i] / 255) * (H * 0.44);
+        const amp = (activeBars[i] / 255) * (H * 0.44);
         const y = midY - Math.max(2, amp);
         if (i === 0) waveCtx.moveTo(x, y);
         else waveCtx.lineTo(x, y);
@@ -1298,7 +1307,7 @@ function drawWaveform() {
       waveCtx.beginPath();
       for (let i = 0; i < BAR_COUNT; i++) {
         const x = (i / (BAR_COUNT - 1)) * W;
-        const amp = (smoothedBars[i] / 255) * (H * 0.44);
+        const amp = (activeBars[i] / 255) * (H * 0.44);
         const y = midY + Math.max(2, amp);
         if (i === 0) waveCtx.moveTo(x, y);
         else waveCtx.lineTo(x, y);
@@ -1331,7 +1340,7 @@ function drawWaveform() {
 
     for (let i = 0; i < BAR_COUNT; i++) {
       const barProgress = i / BAR_COUNT;
-      const rawH = (smoothedBars[i] / 255) * H;
+      const rawH = (activeBars[i] / 255) * H;
       const barH = Math.max(3, rawH);
       const x = i * (barW + gap);
       const y = (H - barH) / 2;
@@ -1389,6 +1398,58 @@ function stopWaveform() {
   // Drive bars to a low flat resting state
   const flatTarget = 6;
   smoothedBars = smoothedBars.map(() => flatTarget);
+}
+
+// ── PCM amplitude waveform (static fingerprint) ───────────────────────────────
+const _pcmCache = new Map();
+let _pcmLoadingUrl = null;
+
+async function _decodePCM(url) {
+  if (!url || _pcmCache.has(url) || _pcmLoadingUrl === url) return;
+  _pcmLoadingUrl = url;
+  try {
+    setupAudioContext();
+    const resp = await fetch(url, { mode: 'cors' });
+    const buf  = await resp.arrayBuffer();
+    const decoded = await audioCtx.decodeAudioData(buf);
+    const isMobile = window.innerWidth < 768;
+    const BAR_COUNT = isMobile ? 120 : 200;
+    const channels  = decoded.numberOfChannels;
+    const totalLen  = decoded.length;
+    const chunkSize = Math.floor(totalLen / BAR_COUNT);
+    const result    = new Float32Array(BAR_COUNT);
+    for (let i = 0; i < BAR_COUNT; i++) {
+      let rms = 0;
+      for (let c = 0; c < channels; c++) {
+        const data  = decoded.getChannelData(c);
+        const start = i * chunkSize;
+        const end   = Math.min(start + chunkSize, totalLen);
+        let sum = 0;
+        for (let j = start; j < end; j++) sum += data[j] * data[j];
+        rms += Math.sqrt(sum / (end - start));
+      }
+      result[i] = rms / channels;
+    }
+    const maxVal = Math.max(...result, 0.0001);
+    for (let i = 0; i < BAR_COUNT; i++) result[i] /= maxVal;
+    _pcmCache.set(url, result);
+  } catch (e) {
+    // CORS or decode failure — live FFT bars will be used as fallback
+  } finally {
+    if (_pcmLoadingUrl === url) _pcmLoadingUrl = null;
+  }
+}
+
+function _getPCMBars(count) {
+  if (!audio.src) return null;
+  const data = _pcmCache.get(audio.src);
+  if (!data) return null;
+  const result = new Float32Array(count);
+  const srcLen = data.length;
+  for (let i = 0; i < count; i++) {
+    result[i] = data[Math.floor((i / count) * srcLen)] * 255;
+  }
+  return result;
 }
 
 // ===== SUBWOOFER BASS ANIMATION =====
@@ -4838,7 +4899,10 @@ function _updatePlayerUI(t, idx) {
   _updateMediaSession();
   const color = getArtistPalette(t.artist).primary;
   document.getElementById('player-title').textContent = t.title;
-  document.getElementById('player-artist').textContent = t.artist.toUpperCase();
+  const _paEl2 = document.getElementById('player-artist');
+  _paEl2.textContent = t.artist.toUpperCase();
+  _paEl2.classList.add('artist-link');
+  _paEl2.onclick = (e) => { e.stopPropagation(); openArtistPage(t.artist); };
   const ppBtn = document.getElementById('play-pause-btn');
   ppBtn.innerHTML = '⏸';
   ppBtn.classList.add('is-playing');
@@ -5297,8 +5361,12 @@ function _updateMediaSession() {
       title:   t.title,
       artist:  t.artist,
       album:   'The Vault',
-      artwork: t.cover
-        ? [{ src: t.cover, sizes: '512x512', type: 'image/jpeg' }]
+      artwork: t.coverArt
+        ? [
+            { src: t.coverArt, sizes: '96x96',   type: 'image/jpeg' },
+            { src: t.coverArt, sizes: '256x256', type: 'image/jpeg' },
+            { src: t.coverArt, sizes: '512x512', type: 'image/jpeg' },
+          ]
         : [],
     });
   } catch (e) {}
@@ -5533,6 +5601,7 @@ function setView(v) {
   const projectsOv   = document.getElementById('projects-overlay');
   const historyOv    = document.getElementById('history-overlay');
   const projDetailOv = document.getElementById('project-detail-overlay');
+  const artistOv     = document.getElementById('artist-overlay');
 
   // Show/hide main track grid
   const showTracks = v === 'tracks';
@@ -5545,6 +5614,7 @@ function setView(v) {
   if (projectsOv)   projectsOv.classList.toggle('open', v === 'projects');
   if (projDetailOv) projDetailOv.classList.toggle('open', v === 'project-detail');
   if (historyOv)    historyOv.classList.toggle('open', v === 'history');
+  if (artistOv)     artistOv.classList.toggle('open', v === 'artist');
 
   // Update PROJECTS/HISTORY button active states
   const pb = document.getElementById('projects-view-btn');
@@ -5552,9 +5622,10 @@ function setView(v) {
   if (pb) pb.classList.toggle('active', v === 'projects' || v === 'project-detail');
   if (hb) hb.classList.toggle('active', v === 'history');
 
-  if (v === 'projects')      renderProjectsGrid();
+  if (v === 'projects')       renderProjectsGrid();
   if (v === 'project-detail') renderProjectDetail(activeProjectId);
-  if (v === 'history')       renderHistoryPage();
+  if (v === 'history')        renderHistoryPage();
+  if (v === 'artist')         renderArtistPage(activeArtistName);
   if (v === 'tracks') { renderTracks(); }
 }
 
@@ -6217,4 +6288,257 @@ function _histClear() {
   _saveHistory({ plays: [], totalTime: 0 });
   showToast('HISTORY CLEARED', 'success');
   renderHistoryPage();
+}
+
+// =====================================================================
+// FEATURE: ARTIST PAGE
+// =====================================================================
+
+function openArtistPage(artist) {
+  if (!artist) return;
+  activeArtistName = artist;
+  history.pushState({ view: 'artist', artist }, '', '#artist/' + artist.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+  setView('artist');
+}
+
+function closeArtistPage() {
+  if (window.location.hash.startsWith('#artist/')) {
+    history.back();
+  } else {
+    activeArtistName = null;
+    setView('tracks');
+  }
+}
+
+window.addEventListener('popstate', (e) => {
+  if (activeView === 'artist' && (!e.state || e.state.view !== 'artist')) {
+    activeArtistName = null;
+    setView('tracks');
+  }
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && activeView === 'artist') closeArtistPage();
+});
+
+function _getArtistVizConfig(artist) {
+  const key = (artist || '').toLowerCase();
+  for (const [k, v] of Object.entries(artistPalettes)) {
+    if ((key.includes(k) || k.includes(key)) && v.visualizer) return v.visualizer;
+  }
+  return null;
+}
+
+function _renderAPDiscGrid(sortedTracks, counts) {
+  if (!sortedTracks.length) return '<div style="opacity:.4;font-size:11px;padding:12px 0">No tracks</div>';
+  return sortedTracks.map((t) => {
+    const plays = counts[t.id] || 0;
+    return `
+      <div class="ap-disc-item" onclick="closeArtistPage();setTimeout(()=>{const idx=getPlaylist().findIndex(x=>x.id===${t.id});if(idx!==-1)playAtIndex(idx);},150)">
+        ${t.coverArt ? `<img class="ap-disc-cover" src="${t.coverArt}" alt="">` : `<div class="ap-disc-cover-placeholder">♪</div>`}
+        ${plays > 0 ? `<div class="ap-disc-plays-badge">${plays}</div>` : ''}
+        <div class="ap-disc-info">
+          <div class="ap-disc-title">${t.title}</div>
+          <div class="ap-disc-plays">${plays > 0 ? plays + ' play' + (plays !== 1 ? 's' : '') : 'unplayed'}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function _renderAPDiscList(sortedTracks, counts) {
+  if (!sortedTracks.length) return '<div style="opacity:.4;font-size:11px;padding:12px 0">No tracks</div>';
+  return sortedTracks.map((t, i) => {
+    const plays = counts[t.id] || 0;
+    return `
+      <div class="ap-disc-row" onclick="closeArtistPage();setTimeout(()=>{const idx=getPlaylist().findIndex(x=>x.id===${t.id});if(idx!==-1)playAtIndex(idx);},150)">
+        <div class="ap-disc-row-num">${i + 1}</div>
+        ${t.coverArt
+          ? `<img class="ap-disc-row-cover" src="${t.coverArt}" alt="">`
+          : `<div class="ap-disc-row-cover" style="display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.2);border-radius:4px;background:rgba(255,255,255,0.06)">♪</div>`}
+        <div class="ap-disc-row-info">
+          <div class="ap-disc-row-title">${t.title}</div>
+          <div class="ap-disc-row-plays">${plays > 0 ? plays + ' play' + (plays !== 1 ? 's' : '') : 'unplayed'}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function apSetDiscView(mode) {
+  const disc    = document.getElementById('ap-discography');
+  const gridBtn = document.getElementById('ap-grid-btn');
+  const listBtn = document.getElementById('ap-list-btn');
+  if (!disc || !activeArtistName) return;
+  const artistTracks = tracks.filter(t => t.artist.toLowerCase() === activeArtistName.toLowerCase());
+  const counts  = getPlayCounts();
+  const sorted  = [...artistTracks].sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0));
+  if (mode === 'grid') {
+    disc.className = 'ap-disc-grid';
+    disc.innerHTML = _renderAPDiscGrid(sorted, counts);
+    gridBtn?.classList.add('active');
+    listBtn?.classList.remove('active');
+  } else {
+    disc.className = 'ap-disc-list';
+    disc.innerHTML = _renderAPDiscList(sorted, counts);
+    listBtn?.classList.add('active');
+    gridBtn?.classList.remove('active');
+  }
+}
+
+function openArtistViz(artist) {
+  closeArtistPage();
+  setTimeout(() => {
+    applyArtistPalette(artist);
+    applyVizArtistConfig(artist);
+    if (typeof openVisualizer === 'function') openVisualizer();
+  }, 200);
+}
+
+function _drawAPHistChart(plays, primaryColor) {
+  const canvas = document.getElementById('ap-hist-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width  = canvas.offsetWidth  * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const days = 14, now = new Date();
+  const buckets = Array.from({ length: days }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - (days - 1 - i));
+    const ds = d.toDateString();
+    return {
+      count: plays.filter(p => new Date(p.playedAt).toDateString() === ds).length,
+      label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    };
+  });
+  const maxCount = Math.max(1, ...buckets.map(b => b.count));
+  const barW = (W / days) * 0.7, gap = (W / days) * 0.3;
+  ctx.clearRect(0, 0, W, H);
+  buckets.forEach((b, i) => {
+    const x = i * (barW + gap);
+    const h = b.count > 0 ? Math.max(4, (b.count / maxCount) * (H - 20)) : 2;
+    const y = H - h - 16;
+    ctx.fillStyle = primaryColor;
+    ctx.globalAlpha = b.count > 0 ? 0.85 : 0.18;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, barW, h, 2);
+    else ctx.rect(x, y, barW, h);
+    ctx.fill();
+    if (i % 2 === 0) {
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = '#888';
+      ctx.font = '9px IBM Plex Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(b.label.split(' ')[1], x + barW / 2, H - 2);
+    }
+  });
+  ctx.globalAlpha = 1;
+}
+
+function renderArtistPage(artist) {
+  const ov = document.getElementById('artist-overlay');
+  if (!ov || !artist) return;
+
+  const pal          = getArtistPalette(artist);
+  const artistTracks = tracks.filter(t => t.artist.toLowerCase() === artist.toLowerCase());
+  const counts       = getPlayCounts();
+  const hist         = _getHistory();
+  const artistPlays  = hist.plays.filter(p => p.artist && p.artist.toLowerCase() === artist.toLowerCase());
+
+  // Stats
+  const totalPlays = artistPlays.length;
+  const totalSec   = artistPlays.reduce((acc, p) => acc + (p.duration || 0), 0);
+  const hh = Math.floor(totalSec / 3600), mm = Math.floor((totalSec % 3600) / 60);
+  const listenStr  = hh > 0 ? `${hh}h ${mm}m` : mm > 0 ? `${mm}m` : '0m';
+
+  const sortedByPlays = [...artistTracks].sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0));
+  const topTrack   = sortedByPlays[0];
+  const topName    = topTrack ? topTrack.title : '—';
+
+  // Avatar initials
+  const words    = artist.trim().split(/\s+/);
+  const initials = words.length >= 2
+    ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
+    : artist.slice(0, 2).toUpperCase();
+
+  // Projects that include this artist's tracks
+  const artistProjects = projects.filter(p =>
+    (p.tracks || []).some(tid => artistTracks.some(t => t.id === tid))
+  );
+
+  // Viz config
+  const vizCfg = _getArtistVizConfig(artist);
+  const vizMode = vizCfg ? (vizCfg.mode || 'bars').toUpperCase() : 'BARS';
+
+  ov.innerHTML = `
+    <div class="ap-container">
+      <div class="ap-header" style="background:linear-gradient(135deg,${pal.gradient[0]}cc 0%,${pal.gradient[1]}88 55%,#080808 100%)">
+        <button class="ap-close-btn" onclick="closeArtistPage()">✕</button>
+        <div class="ap-header-left">
+          <h1 class="ap-name">${artist.toUpperCase()}</h1>
+          <div class="ap-meta">${artistTracks.length} track${artistTracks.length !== 1 ? 's' : ''} &middot; ${listenStr} played &middot; Top: ${topName}</div>
+        </div>
+        <div class="ap-avatar" style="background:${pal.primary};box-shadow:0 0 0 3px ${pal.glow},0 4px 20px ${hexToRgba(pal.glow, 0.35)}">${initials}</div>
+      </div>
+
+      <div class="ap-stats" style="--ap-primary:${pal.primary};--ap-secondary:${pal.secondary}">
+        <div class="ap-stat"><div class="ap-stat-val">${artistTracks.length}</div><div class="ap-stat-label">Tracks</div></div>
+        <div class="ap-stat"><div class="ap-stat-val">${totalPlays}</div><div class="ap-stat-label">Plays</div></div>
+        <div class="ap-stat"><div class="ap-stat-val">${listenStr}</div><div class="ap-stat-label">Listened</div></div>
+        <div class="ap-stat" title="${topName}"><div class="ap-stat-val" style="font-size:11px;line-height:1.2">${topName.length > 14 ? topName.slice(0, 13) + '…' : topName}</div><div class="ap-stat-label">Top Track</div></div>
+      </div>
+
+      ${artistProjects.length ? `
+      <div class="ap-section">
+        <div class="ap-section-title">PROJECTS</div>
+        <div class="ap-projects-row">
+          ${artistProjects.map(p => `
+            <div class="ap-project-card" onclick="closeArtistPage();setTimeout(()=>openProjectDetail('${p.id}'),150)">
+              <div class="ap-project-name">${p.title}</div>
+              <div class="ap-project-count">${(p.tracks || []).length} tracks</div>
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <div class="ap-section">
+        <div class="ap-section-header">
+          <span class="ap-section-title" style="margin-bottom:0">DISCOGRAPHY</span>
+          <div class="ap-view-toggle" style="--ap-primary:${pal.primary}">
+            <button class="ap-view-btn active" id="ap-grid-btn" onclick="apSetDiscView('grid')">⊞</button>
+            <button class="ap-view-btn" id="ap-list-btn" onclick="apSetDiscView('list')">≡</button>
+          </div>
+        </div>
+        <div id="ap-discography" class="ap-disc-grid" style="margin-top:12px">
+          ${_renderAPDiscGrid(sortedByPlays, counts)}
+        </div>
+      </div>
+
+      <div class="ap-section">
+        <div class="ap-section-title">LAST 14 DAYS</div>
+        <canvas id="ap-hist-canvas" height="80" style="width:100%;display:block;margin-top:4px"></canvas>
+      </div>
+
+      <div class="ap-section">
+        <div class="ap-section-title">VISUALIZER</div>
+        <div class="ap-viz-row">
+          <div class="ap-viz-info">
+            <div class="ap-viz-mode" style="color:${pal.text}">${vizMode}</div>
+            <div class="ap-viz-pills">
+              <span class="ap-viz-pill" style="background:${hexToRgba(pal.primary, 0.15)};color:${pal.text}">themed</span>
+              ${vizCfg && vizCfg.intensity ? `<span class="ap-viz-pill">intensity ${vizCfg.intensity}</span>` : ''}
+            </div>
+          </div>
+          <button class="btn" onclick="openArtistViz('${artist.replace(/'/g, "\\'")}')">⊞ Open Viz</button>
+        </div>
+      </div>
+
+      ${isAdmin ? `
+      <div class="ap-admin-row">
+        <button class="btn" onclick="closeArtistPage();setTimeout(()=>openEditModal(${topTrack ? topTrack.id : -1}),150)">✎ Edit Top Track</button>
+        <button class="btn" onclick="closeArtistPage()">⊞ All Tracks</button>
+      </div>` : ''}
+    </div>
+  `;
+
+  requestAnimationFrame(() => _drawAPHistChart(artistPlays, pal.primary));
 }

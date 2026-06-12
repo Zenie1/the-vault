@@ -3408,6 +3408,219 @@ body.session-guest #player-bar {
 }
 .cache-track-name { color: var(--text-primary, #eee); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cache-track-sz { color: var(--text-muted, #888); margin-left: 10px; flex-shrink: 0; }
+
+/* ── Artist Page ── */
+#artist-overlay { padding: 0; background: #080808; }
+.ap-container { max-width: 680px; margin: 0 auto; padding-bottom: 40px; }
+.ap-header {
+  position: relative;
+  padding: 56px 24px 28px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ap-close-btn {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 50%;
+  width: 34px; height: 34px;
+  color: #fff; font-size: 15px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+  z-index: 2;
+}
+.ap-close-btn:hover { background: rgba(255,255,255,0.12); }
+.ap-header-left { flex: 1; min-width: 0; }
+.ap-name {
+  font-size: clamp(20px,5vw,34px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.6);
+  margin: 0 0 6px 0;
+  line-height: 1.1;
+}
+.ap-meta {
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.ap-avatar {
+  width: 68px; height: 68px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 700;
+  color: #000; flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: -1px;
+}
+.ap-stats {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 8px;
+  padding: 12px 24px;
+}
+.ap-stat {
+  background: var(--ap-secondary, #111);
+  border-radius: 8px;
+  padding: 11px 6px;
+  text-align: center;
+}
+.ap-stat-val {
+  font-size: 17px; font-weight: 700;
+  color: var(--ap-primary, #fff);
+  line-height: 1; margin-bottom: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ap-stat-label {
+  font-size: 8px; letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.ap-section { padding: 12px 24px 6px; }
+.ap-section-header {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.ap-section-title {
+  font-size: 9px; letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.38);
+  text-transform: uppercase; font-weight: 600;
+  margin-bottom: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.ap-view-toggle { display: flex; gap: 4px; }
+.ap-view-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  color: rgba(255,255,255,0.38);
+  width: 27px; height: 27px;
+  cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s;
+}
+.ap-view-btn.active {
+  background: var(--ap-primary, #fff);
+  color: #000;
+  border-color: var(--ap-primary, #fff);
+}
+.ap-disc-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 8px;
+}
+.ap-disc-item {
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px; overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.14s;
+  position: relative;
+}
+.ap-disc-item:hover { transform: scale(1.02); }
+.ap-disc-cover {
+  width: 100%; aspect-ratio: 1;
+  object-fit: cover; display: block;
+  background: rgba(255,255,255,0.06);
+}
+.ap-disc-cover-placeholder {
+  width: 100%; aspect-ratio: 1;
+  background: rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: rgba(255,255,255,0.18);
+}
+.ap-disc-info { padding: 6px 8px 8px; }
+.ap-disc-title {
+  font-size: 11px; font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+.ap-disc-plays { font-size: 9px; color: rgba(255,255,255,0.32); }
+.ap-disc-plays-badge {
+  position: absolute; top: 5px; right: 5px;
+  background: rgba(0,0,0,0.65);
+  border-radius: 4px; padding: 2px 5px;
+  font-size: 9px; color: rgba(255,255,255,0.6);
+  font-family: 'IBM Plex Mono', monospace;
+}
+.ap-disc-list { display: flex; flex-direction: column; gap: 3px; }
+.ap-disc-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 8px; border-radius: 6px;
+  cursor: pointer; transition: background 0.12s;
+}
+.ap-disc-row:hover { background: rgba(255,255,255,0.05); }
+.ap-disc-row-num {
+  font-size: 10px; color: rgba(255,255,255,0.22);
+  width: 16px; text-align: right; flex-shrink: 0;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.ap-disc-row-cover {
+  width: 36px; height: 36px; border-radius: 4px;
+  object-fit: cover; flex-shrink: 0;
+  background: rgba(255,255,255,0.06);
+}
+.ap-disc-row-info { flex: 1; min-width: 0; }
+.ap-disc-row-title {
+  font-size: 12px; font-weight: 500;
+  color: rgba(255,255,255,0.88);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ap-disc-row-plays { font-size: 10px; color: rgba(255,255,255,0.32); }
+.ap-projects-row {
+  display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px;
+}
+.ap-project-card {
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px; padding: 12px 16px;
+  cursor: pointer; flex-shrink: 0; min-width: 110px;
+  text-align: center; transition: background 0.14s;
+}
+.ap-project-card:hover { background: rgba(255,255,255,0.09); }
+.ap-project-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); margin-bottom: 3px; }
+.ap-project-count { font-size: 10px; color: rgba(255,255,255,0.32); }
+.ap-viz-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px; padding: 12px 16px; gap: 12px;
+}
+.ap-viz-info { display: flex; flex-direction: column; gap: 5px; }
+.ap-viz-mode {
+  font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.ap-viz-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+.ap-viz-pill {
+  font-size: 9px; letter-spacing: 0.06em;
+  padding: 3px 7px; border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.ap-admin-row {
+  display: flex; gap: 8px;
+  padding: 10px 24px 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  margin-top: 8px;
+}
+/* Clickable artist names */
+.artist-link {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.artist-link:hover { opacity: 0.65; text-decoration: underline; text-underline-offset: 2px; }
+#player-artist.artist-link { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -4478,6 +4691,9 @@ body.session-guest #player-bar {
 
 <!-- ── HISTORY OVERLAY ──────────────────────────────────────────────────────── -->
 <div id="history-overlay" class="full-overlay"></div>
+
+<!-- ── ARTIST PAGE OVERLAY ─────────────────────────────────────────────────── -->
+<div id="artist-overlay" class="full-overlay"></div>
 
 <!-- ── YOU MIGHT LIKE TRAY ─────────────────────────────────────────────────── -->
 <div id="yml-tray">
