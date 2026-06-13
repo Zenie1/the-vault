@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://*.firebaseio.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src * blob:; connect-src https://api.github.com https://raw.githubusercontent.com https://res.cloudinary.com https://api.anthropic.com https://corsproxy.io https://api.allorigins.win https://api.lyrics.ovh https://lrclib.net https://itunes.apple.com https://images.weserv.nl https://*.workers.dev https://fal.run https://queue.fal.run https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com; frame-src 'none'; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://*.firebaseio.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src * blob:; connect-src https://api.github.com https://raw.githubusercontent.com https://res.cloudinary.com https://api.anthropic.com https://corsproxy.io https://api.allorigins.win https://api.lyrics.ovh https://lrclib.net https://itunes.apple.com https://images.weserv.nl https://*.workers.dev https://fal.run https://queue.fal.run https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com https://ws.audioscrobbler.com https://musicbrainz.org; frame-src 'none'; object-src 'none'; base-uri 'self';">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 <meta name="theme-color" content="#0a0408">
@@ -3621,6 +3621,158 @@ body.session-guest #player-bar {
 }
 .artist-link:hover { opacity: 0.65; text-decoration: underline; text-underline-offset: 2px; }
 #player-artist.artist-link { cursor: pointer; }
+
+/* ── Artist Page v2 — overlay animation ── */
+#artist-overlay {
+  display: flex !important;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 280ms ease-out, transform 280ms ease-out, visibility 0s linear 280ms;
+  padding: 0; background: #080808; overflow-y: auto;
+}
+#artist-overlay.open {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 280ms ease-out, transform 280ms ease-out, visibility 0s linear 0s;
+}
+
+/* ── Artist Page v2 — content animations ── */
+@keyframes apHeaderIn  { from { opacity:0; } to { opacity:1; } }
+@keyframes apStatIn    { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes apAvatarIn  { from { opacity:0; transform:scale(0.82); } to { opacity:1; transform:scale(1); } }
+@keyframes apSkelPulse { 0%,100% { opacity:0.35; } 50% { opacity:0.6; } }
+
+.ap-header-anim { animation: apHeaderIn 400ms ease-out both; }
+.ap-avatar-anim { animation: apAvatarIn 280ms ease-out both; }
+.ap-stat-anim   { animation: apStatIn 240ms ease-out both; animation-delay: var(--stagger, 0ms); }
+
+/* Larger avatar for photo */
+.ap-avatar-lg { width: 90px; height: 90px; font-size: 28px; }
+
+/* Header meta rows */
+.ap-tags-row    { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; min-height: 0; }
+.ap-origin-row, .ap-listeners-row {
+  font-size: 10px; color: rgba(255,255,255,0.5);
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.04em; margin-top: 3px;
+}
+.ap-genre-pill {
+  font-size: 9px; letter-spacing: 0.06em; padding: 3px 8px;
+  border-radius: 10px; text-transform: uppercase;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Bio */
+.ap-bio-skel {
+  height: 58px; border-radius: 6px; margin: 8px 24px;
+  background: rgba(255,255,255,0.05);
+}
+.ap-bio-text {
+  font-size: 12px; line-height: 1.65; color: rgba(255,255,255,0.7);
+  margin-top: 6px; max-width: 580px;
+}
+.ap-bio-more {
+  background: none; border: none; color: var(--ap-primary, #fff);
+  font-size: 11px; cursor: pointer; padding: 4px 0; margin-top: 4px;
+  font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.06em;
+  opacity: 0.75; display: block;
+}
+.ap-bio-more:hover { opacity: 1; }
+
+/* Skeleton placeholders */
+.ap-skel-pulse  { animation: apSkelPulse 1.5s ease-in-out infinite; }
+.ap-skel-row    { height: 44px; border-radius: 6px; background: rgba(255,255,255,0.06); margin-bottom: 4px; }
+.ap-skel-album  { width: 80px; height: 80px; border-radius: 6px; background: rgba(255,255,255,0.06); flex-shrink: 0; }
+.ap-skel-pill   { width: 100px; height: 36px; border-radius: 20px; background: rgba(255,255,255,0.06); }
+.ap-skel-list   { display: flex; flex-direction: column; gap: 4px; }
+.ap-skel-grid   { display: flex; gap: 8px; flex-wrap: wrap; }
+.ap-skel-row-wrap { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+
+/* Sort + view controls */
+.ap-sort-sel {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px; color: rgba(255,255,255,0.5);
+  font-size: 10px; padding: 4px 8px; cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.04em;
+}
+.ap-sort-sel:focus { outline: none; border-color: var(--ap-primary, #fff); }
+.ap-disc-controls { display: flex; align-items: center; gap: 8px; }
+
+/* Last.fm top tracks */
+.ap-lfm-list { display: flex; flex-direction: column; gap: 2px; }
+.ap-lfm-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 8px; border-radius: 6px; transition: background 0.12s;
+}
+.ap-lfm-row:hover { background: rgba(255,255,255,0.05); }
+.ap-lfm-rank {
+  font-size: 10px; color: rgba(255,255,255,0.25); width: 16px;
+  text-align: right; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace;
+}
+.ap-lfm-info { flex: 1; min-width: 0; }
+.ap-lfm-name {
+  font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.85);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ap-lfm-plays { font-size: 10px; color: rgba(255,255,255,0.35); }
+.ap-vault-btn {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px; color: rgba(255,255,255,0.45);
+  font-size: 9px; padding: 4px 8px; cursor: pointer;
+  letter-spacing: 0.04em; white-space: nowrap; flex-shrink: 0;
+  font-family: 'IBM Plex Mono', monospace; transition: all 0.12s;
+}
+.ap-vault-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+/* Discography albums */
+.ap-albums-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+.ap-album {
+  cursor: pointer; border-radius: 6px; overflow: hidden;
+  transition: transform 0.14s;
+}
+.ap-album:hover { transform: scale(1.03); }
+.ap-album-img {
+  width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
+  background: rgba(255,255,255,0.06);
+}
+.ap-album-ph {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; color: rgba(255,255,255,0.18);
+}
+.ap-album-name {
+  font-size: 10px; padding: 5px 4px 6px; color: rgba(255,255,255,0.6);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Similar artists */
+.ap-similar-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.ap-similar-pill {
+  display: flex; align-items: center; gap: 7px;
+  background: rgba(255,255,255,0.05); border-radius: 20px;
+  padding: 5px 12px 5px 5px; cursor: pointer; transition: background 0.12s;
+}
+.ap-similar-pill:hover { background: rgba(255,255,255,0.1); }
+.ap-similar-av {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: #000; overflow: hidden;
+}
+.ap-similar-name { font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.8); }
+.ap-similar-dot  { font-size: 8px; margin-left: 2px; }
+
+/* Empty state */
+.ap-empty {
+  font-size: 11px; color: rgba(255,255,255,0.3); padding: 12px 0;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+@media (max-width: 480px) {
+  .ap-albums-grid { grid-template-columns: repeat(3,1fr); }
+  .ap-avatar-lg   { width: 68px; height: 68px; font-size: 20px; }
+}
 </style>
 </head>
 <body>
@@ -4744,6 +4896,7 @@ body.session-guest #player-bar {
 <audio id="audio-xfade" crossorigin="anonymous"></audio>
 
 <script src="vault.js" defer></script>
+<script src="artist-page.js" defer></script>
 <script src="swipe.js" defer></script>
 
 <!-- Live session — ES module; firebase-config.js + session.js import v12 SDK directly -->

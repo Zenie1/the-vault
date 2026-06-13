@@ -803,14 +803,19 @@ function renderFilters() {
   fb.innerHTML = `<button class="filter-btn ${activeFilter==='all'?'active':''}" data-filter="all">ALL</button>`;
   getArtists().forEach(a => {
     const b = document.createElement('button');
-    b.className = 'filter-btn' + (activeFilter===a?' active':'');
+    b.className = 'filter-btn artist-link' + (activeFilter===a?' active':'');
     b.dataset.filter = a;
+    b.dataset.artist = a;
     b.textContent = a.toUpperCase().slice(0,14);
     b.style.color = getArtistColor(a);
     fb.appendChild(b);
   });
   fb.querySelectorAll('.filter-btn').forEach(b => {
     b.addEventListener('click', () => {
+      if (b.dataset.filter !== 'all' && typeof openArtistPage === 'function') {
+        openArtistPage(b.dataset.filter);
+        return;
+      }
       activeFilter = b.dataset.filter;
       fb.querySelectorAll('.filter-btn').forEach(x => x.classList.toggle('active', x.dataset.filter===activeFilter));
       if (activeFilter !== 'all') { setArtistBG(activeFilter); showArtistHeader(activeFilter); }
