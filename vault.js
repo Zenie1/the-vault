@@ -6616,6 +6616,8 @@ function openArtistPage(artist) {
     window.ytPlayer._resetBtn(window.ytPlayer._activeBtnId);
     window.ytPlayer._activeBtnId = null;
   }
+  var overlay = document.getElementById('artist-overlay');
+  if (overlay) overlay.scrollTop = 0;
 }
 
 function closeArtistPage() {

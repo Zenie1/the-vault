@@ -524,6 +524,8 @@
       this.ctx         = this.canvas.getContext('2d');
       this.artistColor = color || '#ff3c3c';
       this.isRunning   = true;
+      var bar = document.getElementById('yt-player-bar');
+      if (bar) bar.style.setProperty('--artist-primary', this.artistColor);
       this._draw();
     },
 
