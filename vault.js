@@ -6619,11 +6619,6 @@ function openArtistPage(artist) {
 }
 
 function closeArtistPage() {
-  if (window.ytPlayer) window.ytPlayer.stop();
-  if (window.ytPlayer) {
-    window.ytPlayer._resetBtn(window.ytPlayer._activeBtnId);
-    window.ytPlayer._activeBtnId = null;
-  }
   var ytBar = document.getElementById('yt-player-bar');
   if (ytBar) ytBar.classList.remove('ap-hidden');
   if (window.location.hash.startsWith('#artist/')) {

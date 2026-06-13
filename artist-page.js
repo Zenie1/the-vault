@@ -432,6 +432,7 @@
 
     if (info) {
       var imgUrl = bestImg(info.image);
+      console.log('[ArtistPage] artist image URL:', imgUrl);
       if (imgUrl) {
         var av = document.getElementById('ap-avatar');
         if (av) {
