@@ -643,6 +643,7 @@
       var bar       = document.getElementById('yt-player-bar');
       var nameEl    = document.getElementById('yt-track-name');
       var playerBar = document.getElementById('player-bar');
+      console.log('[YT] show() called — bar element:', bar, '| playerBar:', playerBar);
       if (nameEl)    nameEl.textContent = artist + ' · ' + trackName;
       if (bar)       bar.classList.add('active');
       if (playerBar) playerBar.classList.add('yt-active');
