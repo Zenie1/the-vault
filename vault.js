@@ -1072,7 +1072,7 @@ function playAtIndex(idx) {
   audio.volume = parseFloat(document.getElementById('volume-slider').value);
   _decodePCM(t.url); // async PCM fingerprint — non-blocking
 
-  if (window.scPlayer) window.scPlayer.stop();
+  if (window.ytPlayer) window.ytPlayer.stop();
   const playPromise = audio.play();
   if (playPromise !== undefined) {
     playPromise.catch(err => {
@@ -1151,7 +1151,7 @@ document.getElementById('play-pause-btn').addEventListener('click', () => {
     stopWaveform();
     hideCanvas();
   } else {
-    if (window.scPlayer) window.scPlayer.stop();
+    if (window.ytPlayer) window.ytPlayer.stop();
     audio.play(); isPlaying = true;
     ppBtn.innerHTML = '⏸'; ppBtn.classList.add('is-playing');
     document.getElementById('player-vinyl').classList.add('spinning');
@@ -6613,7 +6613,7 @@ function openArtistPage(artist) {
 }
 
 function closeArtistPage() {
-  if (window.scPlayer) window.scPlayer.stop();
+  if (window.ytPlayer) window.ytPlayer.stop();
   if (window.location.hash.startsWith('#artist/')) {
     history.back();
   } else {

@@ -342,7 +342,7 @@
       html += '<div class="ap-section"><div class="ap-section-title">POPULAR · LAST.FM</div>' +
         '<div class="ap-lfm-list">' +
         topTracks.map(function(t, i) {
-          var btnId   = 'ap-sc-btn-' + i;
+          var btnId   = 'ap-yt-btn-' + i;
           var inVault = isTrackInVault(artist, t.name);
           var btn;
           if (inVault) {
@@ -354,10 +354,10 @@
                 'if(inp){inp.value=n;inp.dispatchEvent(new Event(\'input\'));}' +
               '}.bind(this),150)">▶ Play</button>';
           } else {
-            // Not in vault — stream via SoundCloud widget
-            btn = '<button class="ap-vault-btn ap-sc-btn" id="' + btnId + '"' +
+            // Not in vault — stream via YouTube
+            btn = '<button class="ap-vault-btn ap-yt-btn" id="' + btnId + '"' +
               ' data-artist="' + esc(artist) + '" data-track="' + esc(t.name) + '"' +
-              ' onclick="window._apScPlay(this)">♫ Stream</button>';
+              ' onclick="window._apYtPlay(this)">♫ Stream</button>';
           }
           return '<div class="ap-lfm-row">' +
             '<div class="ap-lfm-rank">'+(i+1)+'</div>' +
@@ -508,206 +508,188 @@
     }
   }
 
-  // ── SoundCloud Player ─────────────────────────────────────────────────────
+  // ── YouTube Player ────────────────────────────────────────────────────────
 
-  var scPlayer = {
-    widget:        null,
+  var ytPlayer = {
+    player:        null,
     isReady:       false,
+    currentArtist: null,
     currentTrack:  null,
     _activeBtnId:  null,
 
-    _bindEvents: function () {
-      var self = this;
-      var w    = this.widget;
-      w.bind(window.SC.Widget.Events.READY, function () {
-        self.isReady = true;
-        console.log('[SC] Widget ready');
-      });
-      w.bind(window.SC.Widget.Events.PLAY, function () {
-        console.log('[SC] Playing');
-        try {
-          if (typeof audio !== 'undefined' && !audio.paused) {
-            audio.pause();
-            var ppBtn = document.getElementById('play-pause-btn');
-            if (ppBtn) { ppBtn.innerHTML = '▶'; ppBtn.classList.remove('is-playing'); }
-            try { isPlaying = false; } catch(e2) {}
-          }
-        } catch(e) {}
-        self._onPlay();
-      });
-      w.bind(window.SC.Widget.Events.FINISH, function () {
-        console.log('[SC] Finished');
-        self._onStop();
-      });
-      w.bind(window.SC.Widget.Events.ERROR, function () {
-        console.warn('[SC] Error loading track');
-        if (typeof showToast === 'function') showToast('TRACK NOT AVAILABLE ON SOUNDCLOUD', 'error');
-        self._onStop();
-      });
-    },
-
     init: function () {
       var self = this;
-      function tryBind() {
-        if (!window.SC) { setTimeout(tryBind, 600); return; }
-        var iframe = document.getElementById('sc-widget');
-        if (!iframe) return;
-        try {
-          self.widget = window.SC.Widget(iframe);
-        } catch(e) {
-          console.warn('[SC] Widget init error:', e.message);
-          return;
-        }
-        self._bindEvents();
+
+      window.onYouTubeIframeAPIReady = function () {
+        self.player = new YT.Player('yt-player', {
+          height: '90',
+          width:  '160',
+          playerVars: {
+            autoplay:       0,
+            controls:       1,
+            modestbranding: 1,
+            rel:            0,
+            fs:             0,
+          },
+          events: {
+            onReady: function () {
+              self.isReady = true;
+              console.log('[YT] Player ready');
+            },
+            onStateChange: function (e) {
+              if (e.data === YT.PlayerState.PLAYING) {
+                console.log('[YT] Playing');
+                var btn = self._activeBtnId ? document.getElementById(self._activeBtnId) : null;
+                if (btn) { btn.textContent = '■ Stop'; btn.disabled = false; btn.classList.add('yt-streaming'); }
+                // Pause vault audio
+                try {
+                  if (typeof audio !== 'undefined' && !audio.paused) {
+                    audio.pause();
+                    var ppBtn = document.getElementById('play-pause-btn');
+                    if (ppBtn) { ppBtn.innerHTML = '▶'; ppBtn.classList.remove('is-playing'); }
+                    try { isPlaying = false; } catch(e2) {}
+                  }
+                } catch(e) {}
+              } else if (e.data === YT.PlayerState.ENDED) {
+                console.log('[YT] Ended');
+                self._onStop();
+              }
+            },
+            onError: function (e) {
+              console.warn('[YT] Player error:', e.data);
+              if (typeof showToast === 'function') showToast('TRACK UNAVAILABLE ON YOUTUBE', 'error');
+              self._onStop();
+            },
+          },
+        });
+      };
+
+      // If API script was already cached and executed before this ran
+      if (window.YT && window.YT.Player) {
+        window.onYouTubeIframeAPIReady();
       }
-      tryBind();
+
+      var closeBtn = document.getElementById('yt-close-btn');
+      if (closeBtn) closeBtn.addEventListener('click', function () { self.stop(); });
     },
 
     play: function (artist, trackName, btnId) {
       var self = this;
 
+      if (!this.isReady) {
+        if (typeof showToast === 'function') showToast('YOUTUBE PLAYER NOT READY — TRY AGAIN', 'info');
+        return;
+      }
+
       if (this._activeBtnId && this._activeBtnId !== btnId) {
         this._resetBtn(this._activeBtnId);
       }
 
-      var query     = artist + ' ' + trackName;
-      var widgetUrl = 'https://w.soundcloud.com/player/?url=' +
-        encodeURIComponent('https://soundcloud.com/search/sounds?q=' + encodeURIComponent(query)) +
-        '&auto_play=true&hide_related=true&show_comments=false' +
-        '&show_user=false&show_reposts=false&visual=false';
-
-      this.currentTrack = { artist: artist, trackName: trackName };
-      this._activeBtnId = btnId;
-      this.isReady      = false;
+      this.currentArtist = artist;
+      this.currentTrack  = trackName;
+      this._activeBtnId  = btnId;
 
       var btn = btnId ? document.getElementById(btnId) : null;
-      if (btn) { btn.textContent = '● Loading…'; btn.disabled = true; }
+      if (btn) { btn.textContent = '⏳ Loading…'; btn.disabled = true; }
 
-      var iframe = document.getElementById('sc-widget');
-      if (!iframe) { this._resetBtn(btnId); return; }
-
-      // 3s fallback — reset button if iframe never loads or SC never fires READY
-      var loadTimer = setTimeout(function () {
-        console.warn('[SC] 3s timeout — iframe never loaded or SC unavailable');
-        iframe.onload = null;
-        if (typeof showToast === 'function') showToast('SOUNDCLOUD UNAVAILABLE — TRY AGAIN', 'error');
-        self._onStop();
-      }, 3000);
-
-      // widget.load() only accepts direct track/playlist URLs, not search URLs.
-      // Reloading iframe.src is the correct way to use search with the Widget API.
-      console.log('[SC] 1. Setting iframe src:', widgetUrl);
-      iframe.onload = null; // clear any previous handler
-      iframe.src    = widgetUrl;
-
-      iframe.onload = function () {
-        clearTimeout(loadTimer);
-        console.log('[SC] 2. iframe.onload fired');
-
-        if (!window.SC) {
-          console.warn('[SC] window.SC not available after iframe load');
-          if (typeof showToast === 'function') showToast('SOUNDCLOUD UNAVAILABLE — TRY AGAIN', 'error');
+      this.searchYouTube(artist, trackName).then(function (videoId) {
+        if (!videoId) {
+          if (typeof showToast === 'function')
+            showToast('"' + trackName + '" NOT FOUND ON YOUTUBE', 'error');
           self._onStop();
           return;
         }
+        console.log('[YT] Loading video:', videoId);
+        self.player.loadVideoById(videoId);
+        self.show(artist, trackName);
+      });
+    },
 
-        try {
-          self.widget = window.SC.Widget(iframe);
-          console.log('[SC] 3. SC.Widget created');
-        } catch(e) {
-          console.warn('[SC] Re-init error:', e.message);
-          self._onStop();
-          return;
+    searchYouTube: async function (artist, trackName) {
+      var query = encodeURIComponent(artist + ' ' + trackName + ' official audio');
+      var timeout = 5000;
+
+      try {
+        var r = await fetch(
+          'https://inv.nadeko.net/api/v1/search?q=' + query + '&type=video&page=1',
+          { signal: AbortSignal.timeout(timeout) }
+        );
+        if (r.ok) {
+          var d = await r.json();
+          if (d && d.length > 0) {
+            console.log('[YT] Found via inv.nadeko.net:', d[0].videoId);
+            return d[0].videoId;
+          }
         }
+      } catch(e) { console.warn('[YT] inv.nadeko.net failed:', e.message); }
 
-        self._bindEvents();
+      try {
+        var r2 = await fetch(
+          'https://invidious.privacydev.net/api/v1/search?q=' + query + '&type=video',
+          { signal: AbortSignal.timeout(timeout) }
+        );
+        if (r2.ok) {
+          var d2 = await r2.json();
+          if (d2 && d2.length > 0) {
+            console.log('[YT] Found via invidious.privacydev.net:', d2[0].videoId);
+            return d2[0].videoId;
+          }
+        }
+      } catch(e) { console.warn('[YT] invidious.privacydev.net failed:', e.message); }
 
-        // Extra moment after iframe loads for the widget internals to settle
-        setTimeout(function () {
-          if (!self.widget) return;
-          self.widget.bind(window.SC.Widget.Events.READY, function () {
-            console.log('[SC] 4. READY event fired (post-load bind)');
-            self.isReady = true;
-            console.log('[SC] 5. Calling play()');
-            try { self.widget.play(); } catch(e) { console.warn('[SC] play() error:', e.message); }
-          });
-        }, 100);
-      };
+      console.warn('[YT] All search attempts failed for:', artist, trackName);
+      return null;
+    },
+
+    show: function (artist, trackName) {
+      var bar       = document.getElementById('yt-player-bar');
+      var nameEl    = document.getElementById('yt-track-name');
+      var playerBar = document.getElementById('player-bar');
+      if (nameEl)    nameEl.textContent = artist + ' · ' + trackName;
+      if (bar)       bar.classList.add('active');
+      if (playerBar) playerBar.classList.add('yt-active');
+    },
+
+    hide: function () {
+      var bar       = document.getElementById('yt-player-bar');
+      var playerBar = document.getElementById('player-bar');
+      if (bar)       bar.classList.remove('active');
+      if (playerBar) playerBar.classList.remove('yt-active');
     },
 
     stop: function () {
-      if (this.widget && this.isReady) {
-        try { this.widget.pause(); } catch(e) {}
+      if (this.player && this.isReady) {
+        try { this.player.stopVideo(); } catch(e) {}
       }
       this._onStop();
     },
 
-    _onPlay: function () {
-      var btn = this._activeBtnId ? document.getElementById(this._activeBtnId) : null;
-      if (btn) { btn.textContent = '■ Stop'; btn.disabled = false; btn.classList.add('sc-streaming'); }
-      scMiniBar.show(this.currentTrack);
-    },
-
     _onStop: function () {
       this._resetBtn(this._activeBtnId);
-      this._activeBtnId = null;
-      this.currentTrack = null;
-      scMiniBar.hide();
+      this._activeBtnId  = null;
+      this.currentArtist = null;
+      this.currentTrack  = null;
+      this.hide();
     },
 
     _resetBtn: function (btnId) {
       var btn = btnId ? document.getElementById(btnId) : null;
-      if (btn) { btn.textContent = '♫ Stream'; btn.disabled = false; btn.classList.remove('sc-streaming'); }
+      if (btn) { btn.textContent = '♫ Stream'; btn.disabled = false; btn.classList.remove('yt-streaming'); }
     },
   };
 
-  // ── Mini now-playing bar ──────────────────────────────────────────────────
+  // Expose ytPlayer globally (vault.js calls window.ytPlayer.stop() on play)
+  window.ytPlayer = ytPlayer;
 
-  var scMiniBar = {
-    el: null,
-
-    init: function () {
-      var bar = document.createElement('div');
-      bar.id  = 'sc-mini-bar';
-      bar.innerHTML =
-        '<span class="sc-mini-icon">♫</span>' +
-        '<span class="sc-mini-label">STREAMING</span>' +
-        '<span id="sc-mini-info" class="sc-mini-info"></span>' +
-        '<button id="sc-mini-stop" class="sc-mini-stop" onclick="window.scPlayer.stop()">■</button>';
-      document.body.appendChild(bar);
-      this.el = bar;
-    },
-
-    show: function (trackInfo) {
-      if (!this.el) return;
-      var info = document.getElementById('sc-mini-info');
-      if (info && trackInfo) info.textContent = trackInfo.artist + ' · ' + trackInfo.trackName;
-      this.el.classList.add('active');
-      var pb = document.getElementById('player-bar');
-      if (pb) pb.classList.add('sc-active');
-    },
-
-    hide: function () {
-      if (!this.el) return;
-      this.el.classList.remove('active');
-      var pb = document.getElementById('player-bar');
-      if (pb) pb.classList.remove('sc-active');
-    },
-  };
-
-  // Expose scPlayer globally (vault.js calls window.scPlayer.stop() on play)
-  window.scPlayer = scPlayer;
-
-  // Helper called by SC stream buttons' onclick
-  window._apScPlay = function (btn) {
+  // Helper called by YT stream buttons' onclick
+  window._apYtPlay = function (btn) {
     var artist    = btn.dataset.artist;
     var trackName = btn.dataset.track;
     var btnId     = btn.id;
-    // Toggle stop if already streaming this track
-    if (scPlayer._activeBtnId === btnId && btn.classList.contains('sc-streaming')) {
-      scPlayer.stop();
+    if (btn.classList.contains('yt-streaming')) {
+      ytPlayer.stop();
     } else {
-      scPlayer.play(artist, trackName, btnId);
+      ytPlayer.play(artist, trackName, btnId);
     }
   };
 
@@ -819,8 +801,7 @@
   // ── Initialise on load ────────────────────────────────────────────────────
 
   function initAll() {
-    scMiniBar.init();
-    scPlayer.init();
+    ytPlayer.init();
   }
 
   if (document.readyState === 'complete') {
@@ -829,5 +810,5 @@
     window.addEventListener('load', initAll);
   }
 
-  console.log('[ArtistPage] v2.4 loaded — SC: iframe.onload + 3s fallback + verbose logging');
+  console.log('[ArtistPage] v3.0 loaded — YouTube IFrame API integration');
 }());

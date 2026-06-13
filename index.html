@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://*.firebaseio.com https://w.soundcloud.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src * blob:; connect-src https://api.github.com https://raw.githubusercontent.com https://res.cloudinary.com https://api.anthropic.com https://corsproxy.io https://api.allorigins.win https://api.lyrics.ovh https://lrclib.net https://itunes.apple.com https://images.weserv.nl https://*.workers.dev https://fal.run https://queue.fal.run https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com https://ws.audioscrobbler.com https://musicbrainz.org https://soundcloud.com https://api.soundcloud.com https://w.soundcloud.com; frame-src https://w.soundcloud.com; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://*.firebaseio.com https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src * blob:; connect-src https://api.github.com https://raw.githubusercontent.com https://res.cloudinary.com https://api.anthropic.com https://corsproxy.io https://api.allorigins.win https://api.lyrics.ovh https://lrclib.net https://itunes.apple.com https://images.weserv.nl https://*.workers.dev https://fal.run https://queue.fal.run https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com https://ws.audioscrobbler.com https://musicbrainz.org https://inv.nadeko.net https://invidious.privacydev.net; frame-src https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self';">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 <meta name="theme-color" content="#0a0408">
@@ -3775,44 +3775,75 @@ body.session-guest #player-bar {
   .ap-avatar-lg   { width: 68px; height: 68px; font-size: 20px; }
 }
 
-/* SoundCloud mini now-playing bar */
-#sc-mini-bar {
+/* YouTube player bar */
+#yt-player-bar {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: 28px;
-  background: var(--artist-secondary, #1a0a00);
-  color: var(--artist-text, rgba(255,255,255,0.7));
+  height: 120px;
+  background: var(--artist-secondary, #111);
   display: flex;
   align-items: center;
-  padding: 0 14px;
-  gap: 8px;
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  gap: 12px;
+  padding: 0 16px;
   z-index: 99;
   transform: translateY(100%);
-  transition: transform 200ms ease-in;
-  pointer-events: none;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  transition: transform 240ms cubic-bezier(0.16,1,0.3,1);
+  border-top: 1px solid rgba(255,255,255,0.08);
 }
-#sc-mini-bar.active {
+#yt-player-bar.active {
   transform: translateY(0);
-  transition: transform 280ms ease-out;
-  pointer-events: auto;
 }
-.sc-mini-icon  { color: var(--artist-primary, #ff3c3c); font-size: 12px; flex-shrink: 0; }
-.sc-mini-label { opacity: 0.45; font-size: 9px; flex-shrink: 0; }
-.sc-mini-info  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.8; }
-.sc-mini-stop  {
-  background: none; border: none; cursor: pointer; padding: 0 4px;
-  color: var(--artist-primary, #ff3c3c); font-size: 13px; flex-shrink: 0; line-height: 1;
+#yt-player-container {
+  width: 160px; height: 90px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #000;
 }
-#player-bar.sc-active {
-  bottom: 28px;
-  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), background 0.6s ease, bottom 200ms ease;
+#yt-player { width: 100%; height: 100%; }
+#yt-player-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
-.ap-sc-btn.sc-streaming { opacity: 0.9; }
+#yt-track-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--artist-primary, #ff3c3c);
+  text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+}
+#yt-track-name {
+  font-size: 13px;
+  color: rgba(255,255,255,0.9);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'DM Mono', monospace;
+}
+#yt-close-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.8);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  align-self: center;
+  flex-shrink: 0;
+  border-radius: 2px;
+  transition: border-color 0.2s, color 0.2s;
+}
+#yt-close-btn:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+#player-bar.yt-active {
+  bottom: 120px;
+  transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), background 0.6s ease, bottom 240ms cubic-bezier(0.16,1,0.3,1);
+}
+.ap-yt-btn.yt-streaming { opacity: 0.9; }
 </style>
 </head>
 <body>
@@ -4932,12 +4963,20 @@ body.session-guest #player-bar {
   </div>
 </div>
 
-<!-- SoundCloud Widget (hidden) + Widget API -->
-<iframe id="sc-widget" allow="autoplay"
-  src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/49931161&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false"
-  style="position:fixed;left:-9999px;width:0;height:0;visibility:hidden"
-  aria-hidden="true" tabindex="-1"></iframe>
-<script src="https://w.soundcloud.com/player/api.js"></script>
+<!-- YouTube player bar (slides up from bottom when streaming) -->
+<div id="yt-player-bar">
+  <div id="yt-player-container">
+    <div id="yt-player"></div>
+  </div>
+  <div id="yt-player-info">
+    <span id="yt-track-label">▶ STREAMING</span>
+    <span id="yt-track-name"></span>
+  </div>
+  <button id="yt-close-btn">■ Stop</button>
+</div>
+
+<!-- YouTube IFrame API -->
+<script src="https://www.youtube.com/iframe_api"></script>
 
 <audio id="audio-player" crossorigin="anonymous"></audio>
 <audio id="audio-xfade" crossorigin="anonymous"></audio>
