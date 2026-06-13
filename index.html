@@ -3763,10 +3763,11 @@ body.session-guest #player-bar {
 .ap-similar-name { font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.8); }
 .ap-similar-dot  { font-size: 8px; margin-left: 2px; }
 
-/* Empty state */
-.ap-empty {
-  font-size: 11px; color: rgba(255,255,255,0.3); padding: 12px 0;
-  font-family: 'IBM Plex Mono', monospace;
+/* Empty / unavailable states */
+.ap-empty, .ap-unavailable {
+  font-size: 10px; color: rgba(255,255,255,0.25); padding: 8px 0;
+  font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 @media (max-width: 480px) {
