@@ -706,11 +706,9 @@
     show: function (artist, trackName) {
       var bar    = document.getElementById('yt-player-bar');
       var nameEl = document.getElementById('yt-track-name');
-      console.log('[YT] show() — bar element:', bar);
       if (nameEl) nameEl.textContent = artist + ' · ' + trackName;
       if (bar)    bar.classList.add('active');
-      console.log('[YT] bar classes after add:', bar && bar.className);
-      console.log('[YT] bar computed transform:', bar ? getComputedStyle(bar).transform : 'no bar');
+      console.log('[YT] show() — bar:', bar, 'bottom:', bar ? getComputedStyle(bar).bottom : 'no bar');
       var pal   = window.getArtistPalette ? window.getArtistPalette(artist) : null;
       var color = (pal && pal.primary) || '#ff3c3c';
       ytViz.start(color);

@@ -6612,10 +6612,18 @@ function openArtistPage(artist) {
   setView('artist');
   var ytBar = document.getElementById('yt-player-bar');
   if (ytBar) ytBar.classList.add('ap-hidden');
+  if (window.ytPlayer) {
+    window.ytPlayer._resetBtn(window.ytPlayer._activeBtnId);
+    window.ytPlayer._activeBtnId = null;
+  }
 }
 
 function closeArtistPage() {
   if (window.ytPlayer) window.ytPlayer.stop();
+  if (window.ytPlayer) {
+    window.ytPlayer._resetBtn(window.ytPlayer._activeBtnId);
+    window.ytPlayer._activeBtnId = null;
+  }
   var ytBar = document.getElementById('yt-player-bar');
   if (ytBar) ytBar.classList.remove('ap-hidden');
   if (window.location.hash.startsWith('#artist/')) {
