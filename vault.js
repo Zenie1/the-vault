@@ -1035,7 +1035,44 @@ function handlePlay(id) {
   renderTracks();
 }
 
-function playAtIndex(idx) {
+async function vaultTakeover() {
+  if (!window.ytPlayer || !window.ytPlayer._activeBtnId) return;
+  var ytBar      = document.getElementById('yt-player-bar');
+  var playerBar  = document.getElementById('player-bar');
+  if (!ytBar || !ytBar.classList.contains('active')) return;
+  try {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      window.ytPlayer.stop();
+      return;
+    }
+    playerBar.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+    playerBar.style.transform  = 'translateY(10px)';
+    playerBar.style.opacity    = '0.5';
+    ytBar.style.transition     = 'transform 0.4s cubic-bezier(0.4,0,1,1), opacity 0.3s ease';
+    ytBar.style.transform      = 'translateY(100%)';
+    ytBar.style.opacity        = '0';
+    await new Promise(function(r) { setTimeout(r, 300); });
+    window.ytPlayer.stop();
+    ytBar.style.display    = 'none';
+    ytBar.style.transform  = '';
+    ytBar.style.opacity    = '';
+    ytBar.style.transition = '';
+    ytBar.classList.remove('active');
+    playerBar.style.transform = 'translateY(-6px)';
+    playerBar.style.opacity   = '1';
+    await new Promise(function(r) { setTimeout(r, 150); });
+    playerBar.style.transform = 'translateY(0)';
+    await new Promise(function(r) { setTimeout(r, 200); });
+    playerBar.style.transition = '';
+    playerBar.style.transform  = '';
+    playerBar.style.opacity    = '';
+  } catch(e) {
+    if (window.ytPlayer) window.ytPlayer.stop();
+    if (playerBar) { playerBar.style.transition = ''; playerBar.style.transform = ''; playerBar.style.opacity = ''; }
+  }
+}
+
+async function playAtIndex(idx) {
   const playlist = getPlaylist();
   if (idx < 0 || idx >= playlist.length) return;
   const t = playlist[idx];
@@ -1072,7 +1109,7 @@ function playAtIndex(idx) {
   audio.volume = parseFloat(document.getElementById('volume-slider').value);
   _decodePCM(t.url); // async PCM fingerprint — non-blocking
 
-  if (window.ytPlayer) window.ytPlayer.stop();
+  await vaultTakeover();
   const playPromise = audio.play();
   if (playPromise !== undefined) {
     playPromise.catch(err => {
@@ -1140,7 +1177,7 @@ function playAtIndex(idx) {
   setTimeout(() => schedulePreload(playlist, idx), 800);
 }
 
-document.getElementById('play-pause-btn').addEventListener('click', () => {
+document.getElementById('play-pause-btn').addEventListener('click', async () => {
   if (!audio.src) return;
   _cancelSleepFade();
   const ppBtn = document.getElementById('play-pause-btn');
@@ -1151,7 +1188,7 @@ document.getElementById('play-pause-btn').addEventListener('click', () => {
     stopWaveform();
     hideCanvas();
   } else {
-    if (window.ytPlayer) window.ytPlayer.stop();
+    await vaultTakeover();
     audio.play(); isPlaying = true;
     ppBtn.innerHTML = '⏸'; ppBtn.classList.add('is-playing');
     document.getElementById('player-vinyl').classList.add('spinning');

@@ -575,6 +575,50 @@
     },
   };
 
+  // ── YouTube Takeover Animation ────────────────────────────────────────────
+
+  async function ytTakeover(artist, trackName) {
+    var ytBar     = document.getElementById('yt-player-bar');
+    var playerBar = document.getElementById('player-bar');
+    var nameEl    = document.getElementById('yt-track-name');
+    if (!ytBar) return;
+    var pal   = window.getArtistPalette ? window.getArtistPalette(artist) : null;
+    var color = (pal && pal.primary) || '#ff3c3c';
+    if (nameEl) nameEl.textContent = artist + ' · ' + trackName;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      ytBar.classList.add('active');
+      ytViz.start(color);
+      return;
+    }
+    try {
+      ytBar.style.display    = 'flex';
+      ytBar.style.transform  = 'translateY(100%)';
+      ytBar.style.opacity    = '0';
+      ytBar.style.transition = 'none';
+      await new Promise(function(r) { setTimeout(r, 20); });
+      ytBar.style.transition = 'transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.25s ease';
+      ytBar.style.transform  = 'translateY(0)';
+      ytBar.style.opacity    = '1';
+      if (playerBar) {
+        playerBar.style.transition = 'transform 0.35s cubic-bezier(0.16,1,0.3,1)';
+        playerBar.style.transform  = 'translateY(-4px)';
+      }
+      await new Promise(function(r) { setTimeout(r, 200); });
+      if (playerBar) playerBar.style.transform = 'translateY(0)';
+      await new Promise(function(r) { setTimeout(r, 150); });
+      ytBar.style.transition = '';
+      ytBar.style.transform  = '';
+      ytBar.style.opacity    = '';
+      ytBar.style.display    = '';
+      ytBar.classList.add('active');
+      if (playerBar) { playerBar.style.transition = ''; playerBar.style.transform = ''; }
+      ytViz.start(color);
+    } catch(e) {
+      ytBar.classList.add('active');
+      ytViz.start(color);
+    }
+  }
+
   // ── YouTube Player ────────────────────────────────────────────────────────
 
   var ytPlayer = {
@@ -707,14 +751,11 @@
     },
 
     show: function (artist, trackName) {
-      var bar    = document.getElementById('yt-player-bar');
-      var nameEl = document.getElementById('yt-track-name');
-      if (nameEl) nameEl.textContent = artist + ' · ' + trackName;
-      if (bar)    bar.classList.add('active');
-      console.log('[YT] show() — bar:', bar, 'bottom:', bar ? getComputedStyle(bar).bottom : 'no bar');
-      var pal   = window.getArtistPalette ? window.getArtistPalette(artist) : null;
-      var color = (pal && pal.primary) || '#ff3c3c';
-      ytViz.start(color);
+      ytTakeover(artist, trackName).catch(function() {
+        var bar = document.getElementById('yt-player-bar');
+        if (bar) bar.classList.add('active');
+        ytViz.start('#ff3c3c');
+      });
     },
 
     hide: function () {
