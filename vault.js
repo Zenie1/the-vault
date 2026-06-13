@@ -5,7 +5,6 @@
 // ===== CONFIG =====
 // Admin auth — password is SHA-256 hashed and stored in Firebase at vault-config/adminHash.
 // No plaintext password lives in this file.
-// One-time setup: run setupAdminHash('yourpassword') from the browser console, then remove it.
 
 async function hashPassword(password) {
   const encoder = new TextEncoder();
@@ -26,27 +25,11 @@ async function checkPassword(input) {
     if (!db || !dbRef || !dbGet) { console.warn('[Vault] Firebase not ready for auth'); return false; }
     const snapshot = await dbGet(dbRef(db, 'vault-config/adminHash'));
     const storedHash = snapshot.val();
-    if (!storedHash) { console.warn('[Vault] No adminHash in Firebase — run setupAdminHash() from console'); return false; }
+    if (!storedHash) { console.warn('[Vault] No adminHash found in Firebase'); return false; }
     return inputHash === storedHash;
   } catch(e) {
     console.warn('[Vault] checkPassword error:', e.message);
     return false;
-  }
-}
-
-// ONE-TIME SETUP — run from browser console: setupAdminHash('yourpassword')
-// After running: remove this function and set firebase-rules adminHash .write back to false.
-async function setupAdminHash(plainTextPassword) {
-  try {
-    const hash  = await hashPassword(plainTextPassword);
-    const db    = window._vaultDb;
-    const dbRef = window._vaultDbRef;
-    const dbSet = window._vaultDbSet;
-    if (!db || !dbRef || !dbSet) { console.error('[Vault] Firebase not ready'); return; }
-    await dbSet(dbRef(db, 'vault-config/adminHash'), hash);
-    console.log('[Vault] Admin hash stored successfully. Remove this function from vault.js.');
-  } catch(e) {
-    console.error('[Vault] setupAdminHash failed:', e.message);
   }
 }
 
