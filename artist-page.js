@@ -606,38 +606,55 @@
     },
 
     searchYouTube: async function (artist, trackName) {
-      var query = encodeURIComponent(artist + ' ' + trackName + ' official audio');
-      var timeout = 5000;
+      var query   = encodeURIComponent(artist + ' ' + trackName + ' official audio');
+      var timeout = 8000;
 
+      // Try direct Invidious instances in order
+      var instances = [
+        'https://inv.nadeko.net',
+        'https://invidious.privacydev.net',
+        'https://yt.cdaut.de',
+        'https://invidious.nerdvpn.de',
+        'https://invidious.io.lol',
+      ];
+
+      for (var i = 0; i < instances.length; i++) {
+        try {
+          var url = instances[i] + '/api/v1/search?q=' + query + '&type=video&page=1';
+          console.log('[YT] Trying:', instances[i]);
+          var r = await fetch(url, { signal: AbortSignal.timeout(timeout) });
+          if (r.ok) {
+            var d = await r.json();
+            if (Array.isArray(d) && d.length > 0 && d[0].videoId) {
+              console.log('[YT] Found via', instances[i], ':', d[0].videoId);
+              return d[0].videoId;
+            }
+          }
+        } catch(e) {
+          console.warn('[YT]', instances[i], 'failed:', e.message);
+        }
+      }
+
+      // Try corsproxy.io wrapping the primary instance
       try {
-        var r = await fetch(
-          'https://inv.nadeko.net/api/v1/search?q=' + query + '&type=video&page=1',
-          { signal: AbortSignal.timeout(timeout) }
+        var proxied = 'https://corsproxy.io/?' + encodeURIComponent(
+          'https://inv.nadeko.net/api/v1/search?q=' + query + '&type=video&page=1'
         );
-        if (r.ok) {
-          var d = await r.json();
-          if (d && d.length > 0) {
-            console.log('[YT] Found via inv.nadeko.net:', d[0].videoId);
-            return d[0].videoId;
+        console.log('[YT] Trying corsproxy fallback');
+        var r3 = await fetch(proxied, { signal: AbortSignal.timeout(timeout) });
+        if (r3.ok) {
+          var d3 = await r3.json();
+          if (Array.isArray(d3) && d3.length > 0 && d3[0].videoId) {
+            console.log('[YT] Found via corsproxy:', d3[0].videoId);
+            return d3[0].videoId;
           }
         }
-      } catch(e) { console.warn('[YT] inv.nadeko.net failed:', e.message); }
+      } catch(e) { console.warn('[YT] corsproxy fallback failed:', e.message); }
 
-      try {
-        var r2 = await fetch(
-          'https://invidious.privacydev.net/api/v1/search?q=' + query + '&type=video',
-          { signal: AbortSignal.timeout(timeout) }
-        );
-        if (r2.ok) {
-          var d2 = await r2.json();
-          if (d2 && d2.length > 0) {
-            console.log('[YT] Found via invidious.privacydev.net:', d2[0].videoId);
-            return d2[0].videoId;
-          }
-        }
-      } catch(e) { console.warn('[YT] invidious.privacydev.net failed:', e.message); }
-
-      console.warn('[YT] All search attempts failed for:', artist, trackName);
+      // Last resort — open YouTube search in new tab
+      console.warn('[YT] All instances failed — opening YouTube search');
+      window.open('https://www.youtube.com/results?search_query=' + query, '_blank');
+      if (typeof showToast === 'function') showToast('OPENING YOUTUBE SEARCH — STREAMS UNAVAILABLE', 'info');
       return null;
     },
 
