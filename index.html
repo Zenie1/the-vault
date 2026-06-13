@@ -3641,6 +3641,7 @@ body.session-guest #player-bar {
       <button class="btn purple" id="gdrive-btn" style="display:none">⬡ Import Drive</button>
       <button class="btn" id="gh-settings-btn" style="display:none" title="GitHub Settings">⚙ GitHub</button>
       <button class="btn" id="cache-btn" style="display:none" title="Audio Cache">⊙ Cache</button>
+      <button class="btn" id="change-pw-btn" style="display:none" title="Change Admin Password">⚿ Password</button>
     </div>
   </header>
 
@@ -4452,6 +4453,10 @@ body.session-guest #player-bar {
       <button class="btn" id="gh-import-btn">↑ Import tracks.json</button>
       <input type="file" id="gh-import-input" accept=".json" style="display:none">
     </div>
+    <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">SPLIT FILE MIGRATION — separates projects.json from tracks.json</div>
+      <button class="btn" id="migrate-split-btn" onclick="migrateToSplitFiles()">⊞ Migrate to Split Files</button>
+    </div>
   </div>
 </div>
 
@@ -4473,6 +4478,34 @@ body.session-guest #player-bar {
       <button class="btn primary" id="cache-all-btn">⬇ Cache All Tracks</button>
       <button class="btn" id="cache-clear-btn" style="color:#e57373">✕ Clear Audio Cache</button>
       <button class="btn" onclick="closeModal('cache-modal')">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL (admin only) -->
+<div class="modal-overlay" id="change-pw-modal">
+  <div class="modal" style="max-width:380px">
+    <button class="modal-close" id="change-pw-close">×</button>
+    <div class="login-header">
+      <span class="lock-icon">⚿</span>
+      <h2>CHANGE PASSWORD</h2>
+    </div>
+    <div class="form-group">
+      <label>Current Password</label>
+      <input type="password" id="cp-current" placeholder="Current password" autocomplete="current-password">
+    </div>
+    <div class="form-group">
+      <label>New Password</label>
+      <input type="password" id="cp-new" placeholder="New password" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label>Confirm New Password</label>
+      <input type="password" id="cp-confirm" placeholder="Confirm new password" autocomplete="new-password">
+    </div>
+    <div id="cp-error" style="font-family:var(--font-mono);font-size:10px;color:var(--accent3);letter-spacing:1px;margin-top:-8px;margin-bottom:8px;display:none"></div>
+    <div class="modal-actions">
+      <button class="btn primary" id="change-pw-submit">UPDATE PASSWORD</button>
+      <button class="btn" id="change-pw-cancel">CANCEL</button>
     </div>
   </div>
 </div>

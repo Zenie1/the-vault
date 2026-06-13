@@ -3,6 +3,18 @@
     ".read":  false,
     ".write": false,
 
+    // Admin config — adminHash is the SHA-256 hash of the admin password.
+    // .read: true — the browser must fetch the hash to compare against user input.
+    //   A SHA-256 hash is a one-way function; reading the hash does not reveal the password.
+    // .write: "auth != null" — any authenticated (anonymous) session may write.
+    //   The app enforces "verify current password first" before allowing a change.
+    "vault-config": {
+      "adminHash": {
+        ".read":  true,
+        ".write": "auth != null"
+      }
+    },
+
     "sessions": {
       "$roomCode": {
 

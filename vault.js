@@ -3,11 +3,68 @@
 // Loaded by index.html via <script src="vault.js" defer>
 // =============================================================
 // ===== CONFIG =====
-// Admin password — change this to whatever you want
-const ADMIN_PASSWORD = 'vault2024';
+// Admin auth — password is SHA-256 hashed and stored in Firebase at vault-config/adminHash.
+// No plaintext password lives in this file.
+// One-time setup: run setupAdminHash('yourpassword') from the browser console, then remove it.
 
-async function checkPassword(pw) {
-  return pw === ADMIN_PASSWORD;
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Verify input against the SHA-256 hash stored in Firebase.
+// Falls back to false (safe deny) if Firebase is unavailable.
+async function checkPassword(input) {
+  try {
+    const inputHash = await hashPassword(input);
+    const db    = window._vaultDb;
+    const dbRef = window._vaultDbRef;
+    const dbGet = window._vaultDbGet;
+    if (!db || !dbRef || !dbGet) { console.warn('[Vault] Firebase not ready for auth'); return false; }
+    const snapshot = await dbGet(dbRef(db, 'vault-config/adminHash'));
+    const storedHash = snapshot.val();
+    if (!storedHash) { console.warn('[Vault] No adminHash in Firebase — run setupAdminHash() from console'); return false; }
+    return inputHash === storedHash;
+  } catch(e) {
+    console.warn('[Vault] checkPassword error:', e.message);
+    return false;
+  }
+}
+
+// ONE-TIME SETUP — run from browser console: setupAdminHash('yourpassword')
+// After running: remove this function and set firebase-rules adminHash .write back to false.
+async function setupAdminHash(plainTextPassword) {
+  try {
+    const hash  = await hashPassword(plainTextPassword);
+    const db    = window._vaultDb;
+    const dbRef = window._vaultDbRef;
+    const dbSet = window._vaultDbSet;
+    if (!db || !dbRef || !dbSet) { console.error('[Vault] Firebase not ready'); return; }
+    await dbSet(dbRef(db, 'vault-config/adminHash'), hash);
+    console.log('[Vault] Admin hash stored successfully. Remove this function from vault.js.');
+  } catch(e) {
+    console.error('[Vault] setupAdminHash failed:', e.message);
+  }
+}
+
+async function changeAdminPassword(currentPw, newPw) {
+  const ok = await checkPassword(currentPw);
+  if (!ok) return false;
+  try {
+    const newHash = await hashPassword(newPw);
+    const db    = window._vaultDb;
+    const dbRef = window._vaultDbRef;
+    const dbSet = window._vaultDbSet;
+    if (!db || !dbRef || !dbSet) return false;
+    await dbSet(dbRef(db, 'vault-config/adminHash'), newHash);
+    return true;
+  } catch(e) {
+    console.warn('[Vault] changeAdminPassword error:', e.message);
+    return false;
+  }
 }
 
 // ===== GITHUB CONFIG =====
@@ -176,8 +233,9 @@ function applyArtistPalette(artist) {
 }
 
 // ===== STORAGE — GitHub API + localStorage fallback =====
-let ghFileSha = null;     // tracks the SHA of tracks.json for updates
-let ghArtistsSha = null;  // tracks the SHA of artists.json for updates
+let ghFileSha = null;      // tracks the SHA of tracks.json for updates
+let ghArtistsSha = null;   // tracks the SHA of artists.json for updates
+let ghProjectsSha = null;  // tracks the SHA of projects.json for updates
 
 async function loadTracks() {
   // Always try GitHub first if configured
@@ -262,9 +320,7 @@ function _extractProjects(decoded) {
 }
 
 async function saveProjects(p) {
-  projects = p;
-  localStorage.setItem(PROJECTS_KEY, JSON.stringify(p));
-  await saveTracks(tracks); // re-save tracks so GitHub file includes updated projects
+  await saveProjectsFile(p);
 }
 
 async function saveTracks(t) {
@@ -277,8 +333,8 @@ async function saveTracks(t) {
     return track;
   });
 
-  // Always save full version (with data URLs) to localStorage (new {tracks,projects} shape)
-  try { localStorage.setItem('vault-tracks-v2', JSON.stringify({ tracks: t, projects })); } catch(e) {}
+  // Save flat tracks array to localStorage (projects are now in projects.json / PROJECTS_KEY)
+  try { localStorage.setItem('vault-tracks-v2', JSON.stringify(t)); } catch(e) {}
 
   if (!ghConfigured()) {
     showToast('SAVED LOCALLY — SET UP GITHUB TO PERSIST', 'error');
@@ -289,7 +345,8 @@ async function saveTracks(t) {
   let content;
   try {
     // Use TextEncoder for safe base64 encoding (handles all Unicode)
-    const json = JSON.stringify({ tracks: forGithub, projects }, null, 2);
+    // tracks.json is now a lean flat array — projects live in projects.json
+    const json = JSON.stringify(forGithub, null, 2);
     const bytes = new TextEncoder().encode(json);
     const binStr = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
     content = btoa(binStr);
@@ -422,6 +479,98 @@ async function saveArtists(data) {
   }
 }
 
+// ===== PROJECTS.JSON — split storage =====
+async function loadProjects() {
+  if (ghConfigured()) {
+    try {
+      const c = getGHConfig();
+      const res = await fetch(
+        `https://api.github.com/repos/${c.owner}/${c.repo}/contents/projects.json?ref=${c.branch}&t=${Date.now()}`,
+        { headers: { 'Authorization': `token ${c.token}`, 'Accept': 'application/vnd.github.v3+json' } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        ghProjectsSha = data.sha;
+        const decoded = JSON.parse(atob(data.content.replace(/\n/g,'')));
+        const projArr = decoded.projects || (Array.isArray(decoded) ? decoded : []);
+        localStorage.setItem(PROJECTS_KEY, JSON.stringify(projArr));
+        return projArr;
+      }
+      if (res.status === 404) { ghProjectsSha = null; return getLocalProjects(); }
+    } catch(e) { /* suppressed */ }
+  } else {
+    const pub = getPublicRepo();
+    if (pub) {
+      try {
+        const res = await fetch(`https://raw.githubusercontent.com/${pub.owner}/${pub.repo}/${pub.branch}/projects.json?t=${Date.now()}`);
+        if (res.ok) {
+          const decoded = await res.json();
+          const projArr = decoded.projects || [];
+          localStorage.setItem(PROJECTS_KEY, JSON.stringify(projArr));
+          return projArr;
+        }
+      } catch(e) { /* suppressed */ }
+    }
+  }
+  return getLocalProjects();
+}
+
+async function saveProjectsFile(p) {
+  projects = p;
+  localStorage.setItem(PROJECTS_KEY, JSON.stringify(p));
+
+  if (!ghConfigured()) {
+    showToast('PROJECTS SAVED LOCALLY — SET UP GITHUB TO PERSIST', 'error');
+    return;
+  }
+
+  const c = getGHConfig();
+  let content;
+  try {
+    const json = JSON.stringify({ projects: p }, null, 2);
+    const bytes = new TextEncoder().encode(json);
+    content = btoa(Array.from(bytes).map(b => String.fromCharCode(b)).join(''));
+  } catch(e) { showToast('ENCODING ERROR', 'error'); return; }
+
+  const body = {
+    message: `vault: update projects.json [${new Date().toISOString().split('T')[0]}]`,
+    content,
+    branch: c.branch,
+  };
+  if (ghProjectsSha) body.sha = ghProjectsSha;
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${c.owner}/${c.repo}/contents/projects.json`,
+      {
+        method: 'PUT',
+        headers: { 'Authorization': `token ${c.token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }
+    );
+    if (res.ok) {
+      const d = await res.json();
+      ghProjectsSha = d.content.sha;
+      showToast('PROJECTS SAVED TO GITHUB ✓', 'success');
+    } else {
+      const err = await res.json();
+      showToast(`PROJECTS SAVE FAILED: ${(err.message||'').slice(0,40).toUpperCase()}`, 'error');
+    }
+  } catch(e) {
+    showToast('NETWORK ERROR — PROJECTS SAVED LOCALLY ONLY', 'error');
+  }
+}
+
+// One-time migration: writes current projects to projects.json and trims tracks.json
+async function migrateToSplitFiles() {
+  showToast('MIGRATING…', '');
+  await saveProjectsFile(projects);
+  await saveTracks(tracks);
+  const btn = document.getElementById('migrate-split-btn');
+  if (btn) { btn.textContent = '✓ Migrated'; btn.disabled = true; }
+  showToast('MIGRATION COMPLETE — tracks.json & projects.json are now split ✓', 'success');
+}
+
 // ===== ADMIN =====
 let isAdmin = false;
 function setAdmin(val) {
@@ -438,6 +587,7 @@ function setAdmin(val) {
     gdriveBtn.style.display = 'flex';
     document.getElementById('gh-settings-btn').style.display = 'flex';
     document.getElementById('cache-btn').style.display = 'flex';
+    document.getElementById('change-pw-btn').style.display = 'flex';
     loginBtn.textContent = '⚿ Logout';
     document.body.classList.add('admin-mode');
     const cpb = document.getElementById('create-proj-btn');
@@ -449,6 +599,7 @@ function setAdmin(val) {
     gdriveBtn.style.display = 'none';
     document.getElementById('gh-settings-btn').style.display = 'none';
     document.getElementById('cache-btn').style.display = 'none';
+    document.getElementById('change-pw-btn').style.display = 'none';
     loginBtn.textContent = '⚿ Admin';
     document.body.classList.remove('admin-mode');
     const cpb = document.getElementById('create-proj-btn');
@@ -2123,6 +2274,56 @@ async function doLogin() {
 
 document.getElementById('login-cancel-btn').addEventListener('click', () => { closeModal('login-modal'); document.getElementById('login-error').style.display='none'; });
 document.getElementById('login-close').addEventListener('click', () => { closeModal('login-modal'); document.getElementById('login-error').style.display='none'; });
+
+// ===== CHANGE PASSWORD =====
+document.getElementById('change-pw-btn').addEventListener('click', () => openModal('change-pw-modal'));
+document.getElementById('change-pw-close').addEventListener('click', () => closeModal('change-pw-modal'));
+document.getElementById('change-pw-cancel').addEventListener('click', () => closeModal('change-pw-modal'));
+document.getElementById('change-pw-submit').addEventListener('click', doChangePassword);
+
+async function doChangePassword() {
+  const currentEl  = document.getElementById('cp-current');
+  const newEl      = document.getElementById('cp-new');
+  const confirmEl  = document.getElementById('cp-confirm');
+  const errEl      = document.getElementById('cp-error');
+
+  const currentPw = currentEl.value;
+  const newPw     = newEl.value;
+  const confirmPw = confirmEl.value;
+
+  errEl.style.display = 'none';
+
+  if (!newPw || newPw.length < 6) {
+    errEl.textContent = 'NEW PASSWORD MUST BE AT LEAST 6 CHARACTERS';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (newPw !== confirmPw) {
+    errEl.textContent = 'PASSWORDS DO NOT MATCH';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('change-pw-submit');
+  btn.textContent = 'UPDATING…';
+  btn.disabled = true;
+
+  const ok = await changeAdminPassword(currentPw, newPw);
+
+  btn.textContent = 'UPDATE PASSWORD';
+  btn.disabled = false;
+  currentEl.value = '';
+  newEl.value = '';
+  confirmEl.value = '';
+
+  if (ok) {
+    closeModal('change-pw-modal');
+    showToast('PASSWORD UPDATED ✓', 'success');
+  } else {
+    errEl.textContent = 'INCORRECT CURRENT PASSWORD';
+    errEl.style.display = 'block';
+  }
+}
 
 // ===== ADD TRACK MODAL =====
 document.getElementById('add-btn').addEventListener('click', () => { if(isAdmin) openModal('modal'); });
@@ -3938,6 +4139,13 @@ loadArtists().then(loaded => {
     renderTracks(); // re-render so cards pick up freshly loaded palettes
   }
 });
+// projects.json fail → log warning, use local cache, app continues
+loadProjects().then(loaded => {
+  if (loaded && loaded.length > 0) {
+    projects = loaded;
+    renderTracks(); // update project badges on cards
+  }
+}).catch(e => console.warn('[Vault] projects.json load failed — using local cache', e));
 
 // ===== SORT BUTTONS =====
 document.querySelectorAll('.sort-btn').forEach(btn => {
@@ -5505,6 +5713,7 @@ audio.addEventListener('seeked', _updatePositionState);
       if (audio.duration) audio.currentTime = Math.min(audio.duration, audio.currentTime + (d.seekOffset || 10));
       _updatePositionState();
     });
+    setH('stop', () => { audio.pause(); audio.currentTime = 0; });
   } catch (e) {}
 })();
 

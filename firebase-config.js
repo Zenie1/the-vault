@@ -19,3 +19,12 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const db  = getDatabase(app);
+
+// Expose Firebase db + helpers to window so vault.js (non-module defer script) can use them.
+// vault.js only calls these functions on user interaction (login click), never at init time,
+// so the module will have finished loading by then.
+import { ref, get, set } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js';
+window._vaultDb    = db;
+window._vaultDbRef = ref;
+window._vaultDbGet = get;
+window._vaultDbSet = set;
