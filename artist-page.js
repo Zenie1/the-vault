@@ -611,7 +611,7 @@
       // Enable "YouTube Data API v3"
       // Create credentials → API key
       // Restrict to your domain: zenie1.github.io
-      var YOUTUBE_API_KEY = 'YOUTUBE_API_KEY_HERE';
+      var YOUTUBE_API_KEY = 'AIzaSyAmKmAZZyOzTEWmvat1xdKG0oCK08URcSU';
       var query = encodeURIComponent(artist + ' ' + trackName + ' official audio');
 
       try {
