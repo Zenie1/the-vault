@@ -15,21 +15,37 @@ async function hashPassword(password) {
 }
 
 // Verify input against the SHA-256 hash stored in Firebase.
-// Falls back to false (safe deny) if Firebase is unavailable.
+// Returns: true | false | 'firebase-unavailable'
 async function checkPassword(input) {
   try {
+    console.log('[Vault] Checking password…');
     const inputHash = await hashPassword(input);
+    console.log('[Vault] Input hashed, fetching stored hash from Firebase…');
+
     const db    = window._vaultDb;
     const dbRef = window._vaultDbRef;
     const dbGet = window._vaultDbGet;
-    if (!db || !dbRef || !dbGet) { console.warn('[Vault] Firebase not ready for auth'); return false; }
-    const snapshot = await dbGet(dbRef(db, 'vault-config/adminHash'));
+
+    if (!db || !dbRef || !dbGet) {
+      console.warn('[Vault] Firebase not ready — window._vaultDb:', window._vaultDb);
+      return 'firebase-unavailable';
+    }
+
+    const snapshot   = await dbGet(dbRef(db, 'vault-config/adminHash'));
     const storedHash = snapshot.val();
-    if (!storedHash) { console.warn('[Vault] No adminHash found in Firebase'); return false; }
-    return inputHash === storedHash;
+    console.log('[Vault] Stored hash present:', !!storedHash);
+
+    if (!storedHash) {
+      console.warn('[Vault] No adminHash found in Firebase — run setup-admin.html first');
+      return 'firebase-unavailable';
+    }
+
+    const result = inputHash === storedHash;
+    console.log('[Vault] Hash match result:', result);
+    return result;
   } catch(e) {
     console.warn('[Vault] checkPassword error:', e.message);
-    return false;
+    return 'firebase-unavailable';
   }
 }
 
@@ -2210,8 +2226,9 @@ document.getElementById('login-submit-btn').addEventListener('click', doLogin);
 document.getElementById('admin-password').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
 async function doLogin() {
-  const pw  = document.getElementById('admin-password').value;
-  const err = document.getElementById('login-error');
+  const pw      = document.getElementById('admin-password').value;
+  const err     = document.getElementById('login-error');
+  const submitBtn = document.getElementById('login-submit-btn');
 
   // Brute force protection
   const BF_KEY   = 'vault-bf';
@@ -2227,10 +2244,26 @@ async function doLogin() {
     return;
   }
 
-  const ok = await checkPassword(pw);
+  // Loading state — disables button and shows feedback while Firebase fetches
+  submitBtn.disabled   = true;
+  submitBtn.textContent = 'CHECKING…';
+  err.style.display    = 'none';
+
+  const result = await checkPassword(pw);
   document.getElementById('admin-password').value = '';
 
-  if (ok) {
+  // Restore button immediately after fetch completes
+  submitBtn.disabled   = false;
+  submitBtn.textContent = 'UNLOCK VAULT';
+
+  if (result === 'firebase-unavailable') {
+    err.textContent = 'UNABLE TO VERIFY — CHECK YOUR CONNECTION';
+    err.style.display = 'block';
+    document.getElementById('admin-password').focus();
+    return;
+  }
+
+  if (result === true) {
     bf = { attempts: 0, lockedUntil: 0 };
     sessionStorage.setItem(BF_KEY, JSON.stringify(bf));
     // Store a session token so isAdmin survives accidental page refresh
