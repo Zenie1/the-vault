@@ -26,7 +26,14 @@
           "trackId":    { ".validate": "newData.isString()" },
           "isPlaying":  { ".validate": "newData.isBoolean()" },
           "currentTime":{ ".validate": "newData.isNumber()" },
-          "timestamp":  { ".validate": "newData.isNumber()" }
+          "timestamp":  { ".validate": "newData.isNumber()" },
+
+          "stems": {
+            "$stem": {
+              "muted":  { ".validate": "newData.isBoolean()" },
+              "volume": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" }
+            }
+          }
         },
 
         "messages": {

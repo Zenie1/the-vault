@@ -41,6 +41,7 @@ let stateRef      = null;
 let heartbeatTimer= null;
 let titleObserver = null;
 let audioListeners= null;
+let _onStemsChanged = null; // FIX: Stems + session sync — listener ref for cleanup — The Vault conflict resolution
 let guestStateOff = null;   // unsubscribe — guest watching host state
 let guestIdOff    = null;   // unsubscribe — host watching for guest join
 let hostIdOff     = null;   // unsubscribe — guest watching for host removal
@@ -306,11 +307,14 @@ async function startSession() {
 
 function snapshot() {
   const audio = getAudio();
+  // FIX: Stems + session sync — include stem state in snapshot — The Vault conflict resolution
+  const stems = typeof window.getVaultStemState === 'function' ? window.getVaultStemState() : undefined;
   return {
     trackId    : currentTrackId(),
     isPlaying  : !!(audio && !audio.paused),
     currentTime: audio?.currentTime ?? 0,
     timestamp  : Date.now(),
+    ...(stems ? { stems } : {}),
   };
 }
 
@@ -336,6 +340,9 @@ function attachHostListeners() {
     titleObserver = new MutationObserver(() => setTimeout(pushState, 160));
     titleObserver.observe(titleEl, { childList: true, subtree: true, characterData: true });
   }
+  // FIX: Stems + session sync — listen for stem changes from vault.js — The Vault conflict resolution
+  _onStemsChanged = () => pushState();
+  document.addEventListener('vault:stems-changed', _onStemsChanged);
 }
 
 function detachHostListeners() {
@@ -348,6 +355,8 @@ function detachHostListeners() {
     audioListeners = null;
   }
   if (titleObserver) { titleObserver.disconnect(); titleObserver = null; }
+  // FIX: Stems + session sync — remove stem listener on detach — The Vault conflict resolution
+  if (_onStemsChanged) { document.removeEventListener('vault:stems-changed', _onStemsChanged); _onStemsChanged = null; }
 }
 
 function startHeartbeat() { heartbeatTimer = setInterval(pushState, 5000); }
@@ -425,6 +434,11 @@ function onGuestState(snap) {
   if (!audio) return;
   const latency    = Math.max(0, (Date.now() - s.timestamp) / 1000);
   const targetTime = s.currentTime + (s.isPlaying ? latency : 0);
+  // FIX: Stems + session sync — apply stem state received from host — The Vault conflict resolution
+  if (s.stems && typeof window.applyGuestStemState === 'function') {
+    window.applyGuestStemState(s.stems);
+  }
+
   if (s.trackId && String(s.trackId) !== String(lastApplied)) {
     lastApplied = String(s.trackId);
     applyTrackChange(s.trackId, targetTime, s.isPlaying);
@@ -469,8 +483,20 @@ function syncPlayPause(audio, shouldPlay) {
   }
 }
 
-function lockControls()   { document.body.classList.add('session-guest'); }
-function unlockControls() { document.body.classList.remove('session-guest'); }
+function lockControls() {
+  document.body.classList.add('session-guest');
+  // FIX: Stems + session sync — disable stem controls for guest — The Vault conflict resolution
+  if (typeof setStemChannelDisabled === 'function') {
+    ['vocals','drums','bass','other','keys'].forEach(k => setStemChannelDisabled(k, true));
+  }
+}
+function unlockControls() {
+  document.body.classList.remove('session-guest');
+  // FIX: Stems + session sync — restore stem controls for host — The Vault conflict resolution
+  if (typeof setStemChannelDisabled === 'function') {
+    ['vocals','drums','bass','other','keys'].forEach(k => setStemChannelDisabled(k, false));
+  }
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SESSION — END / RESET

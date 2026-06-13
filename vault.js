@@ -1060,6 +1060,7 @@ let analyser, sourceNode, audioCtx, freqData, waveAnimFrame;
 let smoothedBars = [];
 
 let waveformMuteGain = null; // controls speaker output independently of analyser
+let _waveLastDrawTime = -1; // FIX: Waveform vs scrubber — throttle PCM-mode redraws — The Vault conflict resolution
 
 // ── Crossfade nodes ──────────────────────────────────────────────────────────
 let gainMain = null, gainXfade = null;
@@ -1079,6 +1080,7 @@ let gaplessTriggered = false;  // prevents double-trigger per track
 
 // ── Pitch shift ──────────────────────────────────────────────────────────────
 let pitchNode = null;
+let pitchNodeXfade = null; // FIX: Pitch shift vs crossfade conflict — separate pitch node for xfade path — The Vault conflict resolution
 let pitchSemitones = 0;
 let pitchWorkletReady = false;
 
@@ -1241,6 +1243,16 @@ function drawWaveform() {
   // Use static PCM fingerprint when not playing and data is cached
   const _pcmDisplay = !isPlaying ? _getPCMBars(BAR_COUNT) : null;
   const activeBars  = _pcmDisplay || smoothedBars;
+
+  // FIX: Waveform vs scrubber conflict — throttle redraws in PCM static mode — The Vault conflict resolution
+  if (_pcmDisplay && !isScrubbing) {
+    const _ct = audio.currentTime;
+    if (Math.abs(_ct - _waveLastDrawTime) < 0.1) {
+      waveAnimFrame = requestAnimationFrame(drawWaveform);
+      return;
+    }
+    _waveLastDrawTime = _ct;
+  }
 
   if (waveformStyle === 'line') {
     // ── WhatsApp-style smooth line waveform ──
@@ -1643,7 +1655,8 @@ audio.addEventListener('timeupdate', () => {
 
   // ── T-10s: pre-buffer the next track into audioXfade so the crossfade
   //    starts instantly with no network wait. Only for tracks > 15s.
-  if (gaplessEnabled && !isXfading && !gaplessTriggered && !isLooping && audio.duration > 15) {
+  // FIX: Sleep timer vs gapless conflict — skip preload during sleep fade — The Vault conflict resolution
+  if (gaplessEnabled && !isXfading && !gaplessTriggered && !isLooping && !_sleepFading && audio.duration > 15) {
     const _remaining = audio.duration - audio.currentTime;
     const _triggerAt = Math.max(0.5, xfadeDuration) + 0.25;
     if (_remaining > _triggerAt && _remaining <= 10) {
@@ -1659,7 +1672,8 @@ audio.addEventListener('timeupdate', () => {
   // ── Gapless playback ─────────────────────────────────────────────
   // When the track is within (xfadeDuration + 0.5s) of ending, start
   // the crossfade automatically so the next track begins seamlessly.
-  if (gaplessEnabled && !isXfading && !gaplessTriggered && !isLooping) {
+  // FIX: Sleep timer vs gapless conflict — skip crossfade trigger during sleep fade — The Vault conflict resolution
+  if (gaplessEnabled && !isXfading && !gaplessTriggered && !isLooping && !_sleepFading) {
     const remaining = audio.duration - audio.currentTime;
     const triggerAt  = Math.max(0.5, xfadeDuration) + 0.25;
     if (remaining > 0 && remaining <= triggerAt) {
@@ -3240,6 +3254,7 @@ const stemChannels = {};
 STEM_KEYS.forEach(k => { stemChannels[k] = { source:null, gain:null, analyser:null, buf:null, muted:false, faderVal:1 }; });
 
 let stemVuFrame = null;
+let _stemPushDebounce = null; // FIX: Stems + session sync — debounce timer for volume changes — The Vault conflict resolution
 
 // ── Panel open / close ────────────────────────────────────────────
 function openStemPanel() {
@@ -3425,6 +3440,11 @@ STEM_KEYS.forEach(k => {
     if (ch.gain && !ch.muted && stemAudioCtx) {
       ch.gain.gain.setTargetAtTime(val, stemAudioCtx.currentTime, 0.02);
     }
+    // FIX: Stems + session sync — debounced push on volume change — The Vault conflict resolution
+    clearTimeout(_stemPushDebounce);
+    _stemPushDebounce = setTimeout(() => {
+      document.dispatchEvent(new CustomEvent('vault:stems-changed'));
+    }, 150);
   });
 });
 
@@ -3443,6 +3463,8 @@ STEM_KEYS.forEach(k => {
         stemAudioCtx.currentTime, 0.02
       );
     }
+    // FIX: Stems + session sync — push mute state immediately — The Vault conflict resolution
+    document.dispatchEvent(new CustomEvent('vault:stems-changed'));
   });
 });
 
@@ -3485,6 +3507,35 @@ function setStemChannelDisabled(key, disabled) {
   if (mute)  { mute.disabled  = disabled; mute.style.opacity  = opacity; }
   if (label) { label.style.opacity = disabled ? '0.35' : ''; }
 }
+
+// FIX: Stems + session sync — expose stem state for session.js — The Vault conflict resolution
+window.getVaultStemState = function() {
+  if (!stemOpen) return null;
+  const state = {};
+  STEM_KEYS.forEach(k => {
+    const ch = stemChannels[k];
+    state[k] = { muted: !!ch.muted, volume: ch.faderVal };
+  });
+  return state;
+};
+
+window.applyGuestStemState = function(stemsObj) {
+  if (!stemOpen || !stemAudioCtx) return; // silently ignore if stems not loaded
+  STEM_KEYS.forEach(k => {
+    const incoming = stemsObj[k];
+    if (!incoming) return;
+    const ch = stemChannels[k];
+    ch.muted    = !!incoming.muted;
+    if (typeof incoming.volume === 'number') ch.faderVal = incoming.volume;
+    if (ch.gain && stemAudioCtx) {
+      ch.gain.gain.setTargetAtTime(ch.muted ? 0 : ch.faderVal, stemAudioCtx.currentTime, 0.02);
+    }
+    const btn   = document.getElementById(`stem-mute-${k}`);
+    if (btn)   { btn.classList.toggle('muted', ch.muted); btn.textContent = ch.muted ? 'MUTED' : 'MUTE'; }
+    const fader = document.getElementById(`stem-fader-${k}`);
+    if (fader) fader.value = ch.faderVal;
+  });
+};
 
 // ── Tear down all stems and reset state ──────────────────────────
 function teardownStems() {
@@ -3924,6 +3975,14 @@ function _startSleepFade(fadeDuration) {
   fadeDuration = fadeDuration || 20000;
   if (_sleepFading) return;
   _sleepFading     = true;
+  // FIX: Sleep timer vs gapless conflict — cancel buffered preload immediately — The Vault conflict resolution
+  if (audioXfade && audioXfade.src) {
+    audioXfade.pause();
+    audioXfade.src = '';
+    try { audioXfade.load(); } catch (_) {}
+  }
+  isXfading       = false;
+  gaplessTriggered = false;
   _sleepFadePreVol = audio.volume;
   const startVol  = audio.volume;
   const startTime = performance.now();
@@ -4789,6 +4848,8 @@ function applyVizArtistConfig(artist) {
  * - Falls back to direct playAtIndex() when xfadeDuration=0 or no context
  */
 function crossfadeTo(idx) {
+  // FIX: Sleep timer vs gapless conflict — safety net: don't crossfade during sleep fade — The Vault conflict resolution
+  if (_sleepFading) return;
   const playlist = getPlaylist();
   if (idx < 0 || idx >= playlist.length) return;
   const t = playlist[idx];
@@ -4834,6 +4895,11 @@ function crossfadeTo(idx) {
     audioXfade.currentTime = 0; // rewind to start for the xfade
   }
   audioXfade.volume = 1;
+  // FIX: Pitch shift vs crossfade conflict — apply current pitch to xfade node before fade-in — The Vault conflict resolution
+  if (pitchNodeXfade && pitchWorkletReady) {
+    const _pitchRatio = Math.pow(2, pitchSemitones / 12);
+    pitchNodeXfade.port.postMessage({ ratio: _pitchRatio });
+  }
   const xp = audioXfade.play();
   if (xp) xp.catch(() => {});
 
@@ -5176,11 +5242,22 @@ async function _initPitchWorklet() {
     });
     pitchNode.port.postMessage({ ratio: 1.0 });
 
-    // Re-wire: gainMain → pitchNode → eqBass
-    //          gainXfade → eqBass (no pitch for xfade element — acceptable)
+    // Re-wire: gainMain  → pitchNode      → eqBass
     gainMain.disconnect(eqBass);
     gainMain.connect(pitchNode);
     pitchNode.connect(eqBass);
+
+    // FIX: Pitch shift vs crossfade conflict — wire xfade path through its own pitch node — The Vault conflict resolution
+    pitchNodeXfade = new AudioWorkletNode(audioCtx, 'pitch-shifter', {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+    });
+    pitchNodeXfade.port.postMessage({ ratio: 1.0 });
+    // Re-wire: gainXfade → pitchNodeXfade → eqBass
+    gainXfade.disconnect(eqBass);
+    gainXfade.connect(pitchNodeXfade);
+    pitchNodeXfade.connect(eqBass);
 
     pitchWorkletReady = true;
     console.log('[Vault] Pitch worklet ready');
@@ -5216,6 +5293,8 @@ async function setPitchSemitones(st) {
   if (pitchNode) {
     const ratio = Math.pow(2, pitchSemitones / 12);
     pitchNode.port.postMessage({ ratio });
+    // FIX: Pitch shift vs crossfade conflict — keep xfade node in sync — The Vault conflict resolution
+    if (pitchNodeXfade) pitchNodeXfade.port.postMessage({ ratio });
   }
 }
 
