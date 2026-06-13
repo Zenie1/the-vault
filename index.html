@@ -3801,6 +3801,13 @@ body.session-guest #player-bar {
   background: #000;
 }
 #yt-player { width: 100%; height: 100%; }
+#yt-viz-canvas {
+  flex: 1;
+  height: 90px;
+  opacity: 0.85;
+  align-self: center;
+  min-width: 0;
+}
 #yt-player-info {
   flex: 1;
   display: flex;
@@ -4970,6 +4977,7 @@ body.session-guest #player-bar {
   <div id="yt-player-container">
     <div id="yt-player"></div>
   </div>
+  <canvas id="yt-viz-canvas" width="400" height="90"></canvas>
   <div id="yt-player-info">
     <span id="yt-track-label">▶ STREAMING</span>
     <span id="yt-track-name"></span>

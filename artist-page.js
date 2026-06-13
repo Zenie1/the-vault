@@ -508,6 +508,70 @@
     }
   }
 
+  // ── YouTube Visualizer ───────────────────────────────────────────────────
+
+  var ytViz = {
+    canvas:      null,
+    ctx:         null,
+    frame:       null,
+    isRunning:   false,
+    artistColor: '#ff3c3c',
+
+    start: function (color) {
+      this.canvas = document.getElementById('yt-viz-canvas');
+      if (!this.canvas) return;
+      this.ctx         = this.canvas.getContext('2d');
+      this.artistColor = color || '#ff3c3c';
+      this.isRunning   = true;
+      this._draw();
+    },
+
+    stop: function () {
+      this.isRunning = false;
+      if (this.frame) { cancelAnimationFrame(this.frame); this.frame = null; }
+      if (this.ctx && this.canvas) this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    },
+
+    _draw: function () {
+      if (!this.isRunning) return;
+      var self  = this;
+      var W     = this.canvas.width;
+      var H     = this.canvas.height;
+      var ctx   = this.ctx;
+      var t     = performance.now() * 0.001;
+      var color = this.artistColor;
+      var BAR_COUNT = 48;
+      var barW  = (W / BAR_COUNT) - 1;
+
+      ctx.clearRect(0, 0, W, H);
+
+      for (var i = 0; i < BAR_COUNT; i++) {
+        var freq = i / BAR_COUNT;
+        var bass = Math.sin(t * 2.1 + i * 0.3) * 0.5 + 0.5;
+        var mid  = Math.sin(t * 3.7 + i * 0.5) * 0.4 + 0.4;
+        var high = Math.sin(t * 5.3 + i * 0.8) * 0.3 + 0.3;
+
+        var val = freq < 0.3
+          ? bass * 0.8 + mid * 0.2
+          : freq < 0.7
+            ? mid * 0.6 + high * 0.4
+            : high;
+
+        var barH = Math.max(2, val * H * 0.85);
+        var x    = i * (barW + 1);
+        var y    = H - barH;
+
+        var grad = ctx.createLinearGradient(x, y, x, H);
+        grad.addColorStop(0, color + 'cc');
+        grad.addColorStop(1, color + '44');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, y, barW, barH);
+      }
+
+      this.frame = requestAnimationFrame(function () { self._draw(); });
+    },
+  };
+
   // ── YouTube Player ────────────────────────────────────────────────────────
 
   var ytPlayer = {
@@ -643,10 +707,12 @@
       var bar       = document.getElementById('yt-player-bar');
       var nameEl    = document.getElementById('yt-track-name');
       var playerBar = document.getElementById('player-bar');
-      console.log('[YT] show() called — bar element:', bar, '| playerBar:', playerBar);
       if (nameEl)    nameEl.textContent = artist + ' · ' + trackName;
       if (bar)       bar.classList.add('active');
       if (playerBar) playerBar.classList.add('yt-active');
+      var pal   = window.getArtistPalette ? window.getArtistPalette(artist) : null;
+      var color = (pal && pal.primary) || '#ff3c3c';
+      ytViz.start(color);
     },
 
     hide: function () {
@@ -654,6 +720,7 @@
       var playerBar = document.getElementById('player-bar');
       if (bar)       bar.classList.remove('active');
       if (playerBar) playerBar.classList.remove('yt-active');
+      ytViz.stop();
     },
 
     stop: function () {
@@ -668,6 +735,7 @@
       this._activeBtnId  = null;
       this.currentArtist = null;
       this.currentTrack  = null;
+      ytViz.stop();
       this.hide();
     },
 
