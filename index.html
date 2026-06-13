@@ -367,7 +367,7 @@ header {
     rgba(10,4,8,0.97);
   border-top: 1px solid var(--border2);
   padding: 0;
-  z-index: 100;
+  z-index: 9001;
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
   transform: translateY(100%);
@@ -3630,6 +3630,7 @@ body.session-guest #player-bar {
   transform: translateY(40px);
   transition: opacity 280ms ease-out, transform 280ms ease-out, visibility 0s linear 280ms;
   padding: 0; background: #080808; overflow-y: auto;
+  z-index: 9000;
 }
 #artist-overlay.open {
   visibility: visible;

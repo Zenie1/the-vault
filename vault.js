@@ -5914,8 +5914,8 @@ function setView(v) {
   const projDetailOv = document.getElementById('project-detail-overlay');
   const artistOv     = document.getElementById('artist-overlay');
 
-  // Show/hide main track grid
-  const showTracks = v === 'tracks';
+  // Show/hide main track grid — keep visible for 'artist' since it's a fixed overlay
+  const showTracks = v === 'tracks' || v === 'artist';
   if (tracksGrid)   tracksGrid.style.display  = showTracks ? '' : 'none';
   if (filterBtns)   filterBtns.style.display  = showTracks ? '' : 'none';
   if (sectionLabel) sectionLabel.style.display = showTracks ? '' : 'none';
@@ -6629,10 +6629,9 @@ function closeArtistPage() {
   }
 }
 
-window.addEventListener('popstate', (e) => {
-  if (activeView === 'artist' && (!e.state || e.state.view !== 'artist')) {
-    activeArtistName = null;
-    setView('tracks');
+window.addEventListener('popstate', function() {
+  if (!location.hash.startsWith('#artist/')) {
+    closeArtistPage();
   }
 });
 
