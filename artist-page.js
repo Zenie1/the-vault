@@ -516,6 +516,36 @@
     currentTrack:  null,
     _activeBtnId:  null,
 
+    _bindEvents: function () {
+      var self = this;
+      var w    = this.widget;
+      w.bind(window.SC.Widget.Events.READY, function () {
+        self.isReady = true;
+        console.log('[SC] Widget ready');
+      });
+      w.bind(window.SC.Widget.Events.PLAY, function () {
+        console.log('[SC] Playing');
+        try {
+          if (typeof audio !== 'undefined' && !audio.paused) {
+            audio.pause();
+            var ppBtn = document.getElementById('play-pause-btn');
+            if (ppBtn) { ppBtn.innerHTML = '▶'; ppBtn.classList.remove('is-playing'); }
+            try { isPlaying = false; } catch(e2) {}
+          }
+        } catch(e) {}
+        self._onPlay();
+      });
+      w.bind(window.SC.Widget.Events.FINISH, function () {
+        console.log('[SC] Finished');
+        self._onStop();
+      });
+      w.bind(window.SC.Widget.Events.ERROR, function () {
+        console.warn('[SC] Error loading track');
+        if (typeof showToast === 'function') showToast('TRACK NOT AVAILABLE ON SOUNDCLOUD', 'error');
+        self._onStop();
+      });
+    },
+
     init: function () {
       var self = this;
       function tryBind() {
@@ -528,64 +558,51 @@
           console.warn('[SC] Widget init error:', e.message);
           return;
         }
-        self.widget.bind(window.SC.Widget.Events.READY, function () {
-          self.isReady = true;
-          console.log('[SC] Widget ready');
-        });
-        self.widget.bind(window.SC.Widget.Events.PLAY, function () {
-          console.log('[SC] Playing');
-          // Pause vault audio when SC starts
-          try {
-            if (typeof audio !== 'undefined' && !audio.paused) {
-              audio.pause();
-              var ppBtn = document.getElementById('play-pause-btn');
-              if (ppBtn) { ppBtn.innerHTML = '▶'; ppBtn.classList.remove('is-playing'); }
-              try { isPlaying = false; } catch(e2) {}
-            }
-          } catch(e) {}
-          self._onPlay();
-        });
-        self.widget.bind(window.SC.Widget.Events.FINISH, function () {
-          console.log('[SC] Finished');
-          self._onStop();
-        });
-        self.widget.bind(window.SC.Widget.Events.ERROR, function () {
-          console.warn('[SC] Error loading track');
-          if (typeof showToast === 'function') showToast('TRACK NOT AVAILABLE ON SOUNDCLOUD', 'error');
-          self._onStop();
-        });
+        self._bindEvents();
       }
       tryBind();
     },
 
     play: function (artist, trackName, btnId) {
-      if (!this.isReady) {
-        if (typeof showToast === 'function') showToast('SOUNDCLOUD PLAYER NOT READY — TRY AGAIN', 'info');
-        return;
-      }
-      // Stop current track if different button is being pressed
+      var self = this;
+
       if (this._activeBtnId && this._activeBtnId !== btnId) {
         this._resetBtn(this._activeBtnId);
       }
 
-      var query     = encodeURIComponent(artist + ' ' + trackName);
-      var searchUrl = 'https://soundcloud.com/search/sounds?q=' + query;
-      console.log('[SC] Loading:', searchUrl);
+      var query     = artist + ' ' + trackName;
+      var widgetUrl = 'https://w.soundcloud.com/player/?url=' +
+        encodeURIComponent('https://soundcloud.com/search/sounds?q=' + encodeURIComponent(query)) +
+        '&auto_play=true&hide_related=true&show_comments=false' +
+        '&show_user=false&show_reposts=false&visual=false';
+      console.log('[SC] Reloading iframe src:', widgetUrl);
 
-      this.currentTrack  = { artist: artist, trackName: trackName };
-      this._activeBtnId  = btnId;
+      this.currentTrack = { artist: artist, trackName: trackName };
+      this._activeBtnId = btnId;
+      this.isReady      = false;
 
       var btn = btnId ? document.getElementById(btnId) : null;
       if (btn) { btn.textContent = '● Loading…'; btn.disabled = true; }
 
-      this.widget.load(searchUrl, {
-        auto_play:     true,
-        show_comments: false,
-        visual:        false,
-        hide_related:  true,
-        show_user:     false,
-        show_reposts:  false,
-      });
+      var iframe = document.getElementById('sc-widget');
+      if (!iframe) { this._resetBtn(btnId); return; }
+
+      // widget.load() only accepts direct track/playlist URLs, not search URLs.
+      // Reloading iframe.src is the correct way to use search with the Widget API.
+      iframe.src = widgetUrl;
+
+      // Re-attach widget after the iframe starts loading
+      setTimeout(function () {
+        if (!window.SC) { self._onStop(); return; }
+        try {
+          self.widget = window.SC.Widget(iframe);
+        } catch(e) {
+          console.warn('[SC] Re-init error:', e.message);
+          self._onStop();
+          return;
+        }
+        self._bindEvents();
+      }, 150);
     },
 
     stop: function () {
@@ -782,5 +799,5 @@
     window.addEventListener('load', initAll);
   }
 
-  console.log('[ArtistPage] v2.2 loaded — Last.fm + MusicBrainz + SoundCloud Widget');
+  console.log('[ArtistPage] v2.3 loaded — Last.fm + MusicBrainz + SoundCloud Widget (iframe-reload fix)');
 }());
