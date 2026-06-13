@@ -6610,10 +6610,14 @@ function openArtistPage(artist) {
   activeArtistName = artist;
   history.pushState({ view: 'artist', artist }, '', '#artist/' + artist.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
   setView('artist');
+  var ytBar = document.getElementById('yt-player-bar');
+  if (ytBar) ytBar.classList.add('ap-hidden');
 }
 
 function closeArtistPage() {
   if (window.ytPlayer) window.ytPlayer.stop();
+  var ytBar = document.getElementById('yt-player-bar');
+  if (ytBar) ytBar.classList.remove('ap-hidden');
   if (window.location.hash.startsWith('#artist/')) {
     history.back();
   } else {
