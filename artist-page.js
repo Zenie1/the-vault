@@ -1,9 +1,9 @@
-// artist-page.js — Enhanced Artist Page with Last.fm + MusicBrainz integration
+// artist-page.js — Enhanced Artist Page with Last.fm + MusicBrainz + SoundCloud Widget
 // Loaded by index.html AFTER vault.js; overrides window.renderArtistPage + window.apSetDiscView
 //
 // KEY: vault.js uses `let` for tracks, activeArtistName, isAdmin, activeFilter.
 // `let` top-level variables are NOT properties of window in browsers.
-// Access them as bare identifiers (which traverse the global lexical scope) — NOT window.*.
+// Access them as bare identifiers (global lexical scope) — NOT window.*.
 
 (function () {
   'use strict';
@@ -77,7 +77,6 @@
 
     console.log('[ArtistPage] Last.fm →', method, '|', artist);
 
-    // Direct fetch first
     try {
       var r = await fetchWithTimeout(url, {});
       if (r.ok) {
@@ -91,7 +90,6 @@
       console.warn('[ArtistPage] Last.fm direct failed (' + reason + '), trying proxy:', method);
     }
 
-    // CORS proxy fallback
     try {
       var proxyUrl = CORSPROXY + encodeURIComponent(url);
       var r2 = await fetchWithTimeout(proxyUrl, {});
@@ -157,23 +155,20 @@
     var data = {
       mainstream: true,
       allFailed:  allFailed,
-      info:       (info && info.artist)                                                     || null,
-      topTracks:  (toptracks && toptracks.toptracks && toptracks.toptracks.track)          || [],
-      topAlbums:  (topalbums && topalbums.topalbums && topalbums.topalbums.album)          || [],
-      similar:    (similar && similar.similarartists && similar.similarartists.artist)     || [],
-      mb:         mb || null,
+      info:      (info && info.artist)                                                   || null,
+      topTracks: (toptracks && toptracks.toptracks && toptracks.toptracks.track)        || [],
+      topAlbums: (topalbums && topalbums.topalbums && topalbums.topalbums.album)        || [],
+      similar:   (similar && similar.similarartists && similar.similarartists.artist)   || [],
+      mb:        mb || null,
     };
     try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
     return data;
   }
 
   // ── Vault data helpers ────────────────────────────────────────────────────
-  // IMPORTANT: vault.js uses `let tracks`, `let activeArtistName`, etc.
-  // `let` top-level variables do NOT appear on window — access as bare identifiers.
 
   function vaultTracks(artist) {
     var needle = artist.toLowerCase().trim();
-    // `tracks` is a `let` in vault.js — accessible via global lexical scope, NOT window.tracks
     return (typeof tracks !== 'undefined' ? tracks : []).filter(function (t) {
       return t.artist.toLowerCase().trim() === needle;
     });
@@ -193,6 +188,14 @@
     if (mode === 'title') return t.slice().sort(function(a,b){ return a.title.localeCompare(b.title); });
     if (mode === 'added') return t.slice().sort(function(a,b){ return new Date(b.added) - new Date(a.added); });
     return t.slice().sort(function(a,b){ return (c[b.id]||0) - (c[a.id]||0); });
+  }
+
+  function isTrackInVault(artist, trackName) {
+    var aLow = artist.toLowerCase().trim();
+    var tLow = trackName.toLowerCase().trim();
+    return (typeof tracks !== 'undefined' ? tracks : []).some(function(t) {
+      return t.artist.toLowerCase().trim() === aLow && t.title.toLowerCase().trim() === tLow;
+    });
   }
 
   // ── Track list renderers ──────────────────────────────────────────────────
@@ -253,7 +256,6 @@
       ? (words[0][0] + words[words.length-1][0]).toUpperCase()
       : artist.slice(0,2).toUpperCase();
 
-    // `isAdmin` is a `let` in vault.js — access as bare identifier, not window.isAdmin
     var admin = (typeof isAdmin !== 'undefined' && isAdmin);
     var adminRow = admin ? (
       '<div class="ap-admin-row">' +
@@ -327,8 +329,9 @@
   }
 
   // ── API sections HTML ─────────────────────────────────────────────────────
+  // artist param needed to determine in-vault vs stream buttons on top tracks
 
-  function buildApiSections(data, pal) {
+  function buildApiSections(data, pal, artist) {
     var allTracks = (typeof tracks !== 'undefined' ? tracks : []);
     var vaultArtistNames = {};
     allTracks.forEach(function(t){ vaultArtistNames[t.artist.toLowerCase().trim()] = true; });
@@ -338,19 +341,31 @@
     if (topTracks.length) {
       html += '<div class="ap-section"><div class="ap-section-title">POPULAR · LAST.FM</div>' +
         '<div class="ap-lfm-list">' +
-        topTracks.map(function(t,i){
+        topTracks.map(function(t, i) {
+          var btnId   = 'ap-sc-btn-' + i;
+          var inVault = isTrackInVault(artist, t.name);
+          var btn;
+          if (inVault) {
+            // Track is in vault — search & play from vault
+            btn = '<button class="ap-vault-btn" data-trackname="' + esc(t.name) + '"' +
+              ' onclick="closeArtistPage();setTimeout(function(){' +
+                'var n=this.dataset.trackname,' +
+                'inp=document.getElementById(\'search-input\');' +
+                'if(inp){inp.value=n;inp.dispatchEvent(new Event(\'input\'));}' +
+              '}.bind(this),150)">▶ Play</button>';
+          } else {
+            // Not in vault — stream via SoundCloud widget
+            btn = '<button class="ap-vault-btn ap-sc-btn" id="' + btnId + '"' +
+              ' data-artist="' + esc(artist) + '" data-track="' + esc(t.name) + '"' +
+              ' onclick="window._apScPlay(this)">♫ Stream</button>';
+          }
           return '<div class="ap-lfm-row">' +
             '<div class="ap-lfm-rank">'+(i+1)+'</div>' +
             '<div class="ap-lfm-info">' +
               '<div class="ap-lfm-name">'+esc(t.name)+'</div>' +
               '<div class="ap-lfm-plays">'+fmtNum(t.playcount)+' plays</div>' +
             '</div>' +
-            '<button class="ap-vault-btn" data-trackname="'+esc(t.name)+'"' +
-              ' onclick="closeArtistPage();setTimeout(function(){' +
-                'var n=this.dataset.trackname,' +
-                'inp=document.getElementById(\'search-input\');' +
-                'if(inp){inp.value=n;inp.dispatchEvent(new Event(\'input\'));}' +
-              '}.bind(this),150)">▶ Vault</button>' +
+            btn +
           '</div>';
         }).join('') +
         '</div></div>';
@@ -399,15 +414,13 @@
     return html;
   }
 
-  // ── Page enhancement (runs after API data arrives) ────────────────────────
+  // ── Page enhancement ──────────────────────────────────────────────────────
 
   function enhancePage(artist, pal, data) {
-    // `activeArtistName` is a `let` in vault.js — bare identifier, NOT window.activeArtistName
     if (typeof activeArtistName === 'undefined' || activeArtistName !== artist) return;
 
     var info = data && data.info;
 
-    // All-fail: remove skeletons, show subtle note
     if (data.allFailed) {
       var bioSlotF = document.getElementById('ap-bio-slot');
       var apiSecF  = document.getElementById('ap-api-sections');
@@ -417,7 +430,6 @@
       return;
     }
 
-    // Artist photo
     if (info) {
       var imgUrl = bestImg(info.image);
       if (imgUrl) {
@@ -438,7 +450,6 @@
         }
       }
 
-      // Genre tags
       var tags    = ((info.tags && info.tags.tag) || []).slice(0,4);
       var tagsRow = document.getElementById('ap-tags-row');
       if (tagsRow && tags.length) {
@@ -447,13 +458,11 @@
         }).join('');
       }
 
-      // Listeners
       var listeners = parseInt((info.stats && info.stats.listeners) || '0', 10);
       var lr = document.getElementById('ap-listeners-row');
       if (lr && listeners > 0) lr.textContent = fmtNum(listeners) + ' listeners on Last.fm';
     }
 
-    // MusicBrainz origin + formed year
     var mb = data && data.mb;
     if (mb) {
       var parts  = [];
@@ -466,7 +475,6 @@
       if (or && parts.length) or.textContent = parts.join(' · ');
     }
 
-    // Bio
     var bioSlot = document.getElementById('ap-bio-slot');
     if (bioSlot) {
       var rawBio  = (info && info.bio && info.bio.summary) || '';
@@ -492,14 +500,169 @@
       }
     }
 
-    // Last.fm sections
     var apiSec = document.getElementById('ap-api-sections');
     if (apiSec) {
-      var html = buildApiSections(data, pal);
+      var html = buildApiSections(data, pal, artist);
       apiSec.innerHTML = html || '';
       if (!html) apiSec.remove();
     }
   }
+
+  // ── SoundCloud Player ─────────────────────────────────────────────────────
+
+  var scPlayer = {
+    widget:        null,
+    isReady:       false,
+    currentTrack:  null,
+    _activeBtnId:  null,
+
+    init: function () {
+      var self = this;
+      function tryBind() {
+        if (!window.SC) { setTimeout(tryBind, 600); return; }
+        var iframe = document.getElementById('sc-widget');
+        if (!iframe) return;
+        try {
+          self.widget = window.SC.Widget(iframe);
+        } catch(e) {
+          console.warn('[SC] Widget init error:', e.message);
+          return;
+        }
+        self.widget.bind(window.SC.Widget.Events.READY, function () {
+          self.isReady = true;
+          console.log('[SC] Widget ready');
+        });
+        self.widget.bind(window.SC.Widget.Events.PLAY, function () {
+          console.log('[SC] Playing');
+          // Pause vault audio when SC starts
+          try {
+            if (typeof audio !== 'undefined' && !audio.paused) {
+              audio.pause();
+              var ppBtn = document.getElementById('play-pause-btn');
+              if (ppBtn) { ppBtn.innerHTML = '▶'; ppBtn.classList.remove('is-playing'); }
+              try { isPlaying = false; } catch(e2) {}
+            }
+          } catch(e) {}
+          self._onPlay();
+        });
+        self.widget.bind(window.SC.Widget.Events.FINISH, function () {
+          console.log('[SC] Finished');
+          self._onStop();
+        });
+        self.widget.bind(window.SC.Widget.Events.ERROR, function () {
+          console.warn('[SC] Error loading track');
+          if (typeof showToast === 'function') showToast('TRACK NOT AVAILABLE ON SOUNDCLOUD', 'error');
+          self._onStop();
+        });
+      }
+      tryBind();
+    },
+
+    play: function (artist, trackName, btnId) {
+      if (!this.isReady) {
+        if (typeof showToast === 'function') showToast('SOUNDCLOUD PLAYER NOT READY — TRY AGAIN', 'info');
+        return;
+      }
+      // Stop current track if different button is being pressed
+      if (this._activeBtnId && this._activeBtnId !== btnId) {
+        this._resetBtn(this._activeBtnId);
+      }
+
+      var query     = encodeURIComponent(artist + ' ' + trackName);
+      var searchUrl = 'https://soundcloud.com/search/sounds?q=' + query;
+      console.log('[SC] Loading:', searchUrl);
+
+      this.currentTrack  = { artist: artist, trackName: trackName };
+      this._activeBtnId  = btnId;
+
+      var btn = btnId ? document.getElementById(btnId) : null;
+      if (btn) { btn.textContent = '● Loading…'; btn.disabled = true; }
+
+      this.widget.load(searchUrl, {
+        auto_play:     true,
+        show_comments: false,
+        visual:        false,
+        hide_related:  true,
+        show_user:     false,
+        show_reposts:  false,
+      });
+    },
+
+    stop: function () {
+      if (this.widget && this.isReady) {
+        try { this.widget.pause(); } catch(e) {}
+      }
+      this._onStop();
+    },
+
+    _onPlay: function () {
+      var btn = this._activeBtnId ? document.getElementById(this._activeBtnId) : null;
+      if (btn) { btn.textContent = '■ Stop'; btn.disabled = false; btn.classList.add('sc-streaming'); }
+      scMiniBar.show(this.currentTrack);
+    },
+
+    _onStop: function () {
+      this._resetBtn(this._activeBtnId);
+      this._activeBtnId = null;
+      this.currentTrack = null;
+      scMiniBar.hide();
+    },
+
+    _resetBtn: function (btnId) {
+      var btn = btnId ? document.getElementById(btnId) : null;
+      if (btn) { btn.textContent = '♫ Stream'; btn.disabled = false; btn.classList.remove('sc-streaming'); }
+    },
+  };
+
+  // ── Mini now-playing bar ──────────────────────────────────────────────────
+
+  var scMiniBar = {
+    el: null,
+
+    init: function () {
+      var bar = document.createElement('div');
+      bar.id  = 'sc-mini-bar';
+      bar.innerHTML =
+        '<span class="sc-mini-icon">♫</span>' +
+        '<span class="sc-mini-label">STREAMING</span>' +
+        '<span id="sc-mini-info" class="sc-mini-info"></span>' +
+        '<button id="sc-mini-stop" class="sc-mini-stop" onclick="window.scPlayer.stop()">■</button>';
+      document.body.appendChild(bar);
+      this.el = bar;
+    },
+
+    show: function (trackInfo) {
+      if (!this.el) return;
+      var info = document.getElementById('sc-mini-info');
+      if (info && trackInfo) info.textContent = trackInfo.artist + ' · ' + trackInfo.trackName;
+      this.el.classList.add('active');
+      var pb = document.getElementById('player-bar');
+      if (pb) pb.classList.add('sc-active');
+    },
+
+    hide: function () {
+      if (!this.el) return;
+      this.el.classList.remove('active');
+      var pb = document.getElementById('player-bar');
+      if (pb) pb.classList.remove('sc-active');
+    },
+  };
+
+  // Expose scPlayer globally (vault.js calls window.scPlayer.stop() on play)
+  window.scPlayer = scPlayer;
+
+  // Helper called by SC stream buttons' onclick
+  window._apScPlay = function (btn) {
+    var artist    = btn.dataset.artist;
+    var trackName = btn.dataset.track;
+    var btnId     = btn.id;
+    // Toggle stop if already streaming this track
+    if (scPlayer._activeBtnId === btnId && btn.classList.contains('sc-streaming')) {
+      scPlayer.stop();
+    } else {
+      scPlayer.play(artist, trackName, btnId);
+    }
+  };
 
   // ── Main override: renderArtistPage ──────────────────────────────────────
 
@@ -515,7 +678,6 @@
     var c  = playCounts();
     window._apCurrentSort = 'plays';
 
-    // Render vault data immediately — no waiting for API
     ov.innerHTML = buildSkeleton(artist, pal, at, c);
 
     if (!isMainstream(artist)) {
@@ -526,7 +688,6 @@
       return;
     }
 
-    // Kick off API fetch in background; vault data is already visible above
     fetchApiData(artist).then(function(data){
       enhancePage(artist, pal, data);
     });
@@ -538,7 +699,6 @@
     var disc    = document.getElementById('ap-discography');
     var gridBtn = document.getElementById('ap-grid-btn');
     var listBtn = document.getElementById('ap-list-btn');
-    // `activeArtistName` is a `let` in vault.js
     var curArtist = (typeof activeArtistName !== 'undefined') ? activeArtistName : null;
     if (!disc || !curArtist) return;
     var st = sortTracks(curArtist, window._apCurrentSort || 'plays');
@@ -556,8 +716,6 @@
     }
   };
 
-  // ── Sort changed ──────────────────────────────────────────────────────────
-
   window._apSortChanged = function (val) {
     window._apCurrentSort = val;
     var disc = document.getElementById('ap-discography');
@@ -569,15 +727,11 @@
     disc.innerHTML = isGrid ? renderGrid(st, c) : renderList(st, c);
   };
 
-  // ── Play All / Shuffle All ────────────────────────────────────────────────
-
   window._apPlayAll = function () {
-    // `activeArtistName` and `activeFilter` are `let` vars in vault.js
     var artist = (typeof activeArtistName !== 'undefined') ? activeArtistName : null;
     if (!artist) return;
     closeArtistPage();
     setTimeout(function() {
-      // activeFilter is a `let` in vault.js — assign directly as global
       try { activeFilter = artist; } catch(e) {}
       if (window.renderFilters) window.renderFilters();
       if (window.setView)       window.setView('tracks');
@@ -611,9 +765,22 @@
   document.addEventListener('click', function(e) {
     var link = e.target.closest('.artist-link');
     if (!link || !link.dataset.artist) return;
-    if (link.classList.contains('filter-btn')) return; // handled by vault.js
+    if (link.classList.contains('filter-btn')) return;
     openArtistPage(link.dataset.artist);
   });
 
-  console.log('[ArtistPage] v2.1 loaded — Last.fm + MusicBrainz, timeout+proxy fallback');
+  // ── Initialise on load ────────────────────────────────────────────────────
+
+  function initAll() {
+    scMiniBar.init();
+    scPlayer.init();
+  }
+
+  if (document.readyState === 'complete') {
+    initAll();
+  } else {
+    window.addEventListener('load', initAll);
+  }
+
+  console.log('[ArtistPage] v2.2 loaded — Last.fm + MusicBrainz + SoundCloud Widget');
 }());
