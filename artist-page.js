@@ -575,7 +575,6 @@
         encodeURIComponent('https://soundcloud.com/search/sounds?q=' + encodeURIComponent(query)) +
         '&auto_play=true&hide_related=true&show_comments=false' +
         '&show_user=false&show_reposts=false&visual=false';
-      console.log('[SC] Reloading iframe src:', widgetUrl);
 
       this.currentTrack = { artist: artist, trackName: trackName };
       this._activeBtnId = btnId;
@@ -587,22 +586,53 @@
       var iframe = document.getElementById('sc-widget');
       if (!iframe) { this._resetBtn(btnId); return; }
 
+      // 3s fallback — reset button if iframe never loads or SC never fires READY
+      var loadTimer = setTimeout(function () {
+        console.warn('[SC] 3s timeout — iframe never loaded or SC unavailable');
+        iframe.onload = null;
+        if (typeof showToast === 'function') showToast('SOUNDCLOUD UNAVAILABLE — TRY AGAIN', 'error');
+        self._onStop();
+      }, 3000);
+
       // widget.load() only accepts direct track/playlist URLs, not search URLs.
       // Reloading iframe.src is the correct way to use search with the Widget API.
-      iframe.src = widgetUrl;
+      console.log('[SC] 1. Setting iframe src:', widgetUrl);
+      iframe.onload = null; // clear any previous handler
+      iframe.src    = widgetUrl;
 
-      // Re-attach widget after the iframe starts loading
-      setTimeout(function () {
-        if (!window.SC) { self._onStop(); return; }
+      iframe.onload = function () {
+        clearTimeout(loadTimer);
+        console.log('[SC] 2. iframe.onload fired');
+
+        if (!window.SC) {
+          console.warn('[SC] window.SC not available after iframe load');
+          if (typeof showToast === 'function') showToast('SOUNDCLOUD UNAVAILABLE — TRY AGAIN', 'error');
+          self._onStop();
+          return;
+        }
+
         try {
           self.widget = window.SC.Widget(iframe);
+          console.log('[SC] 3. SC.Widget created');
         } catch(e) {
           console.warn('[SC] Re-init error:', e.message);
           self._onStop();
           return;
         }
+
         self._bindEvents();
-      }, 150);
+
+        // Extra moment after iframe loads for the widget internals to settle
+        setTimeout(function () {
+          if (!self.widget) return;
+          self.widget.bind(window.SC.Widget.Events.READY, function () {
+            console.log('[SC] 4. READY event fired (post-load bind)');
+            self.isReady = true;
+            console.log('[SC] 5. Calling play()');
+            try { self.widget.play(); } catch(e) { console.warn('[SC] play() error:', e.message); }
+          });
+        }, 100);
+      };
     },
 
     stop: function () {
@@ -799,5 +829,5 @@
     window.addEventListener('load', initAll);
   }
 
-  console.log('[ArtistPage] v2.3 loaded — Last.fm + MusicBrainz + SoundCloud Widget (iframe-reload fix)');
+  console.log('[ArtistPage] v2.4 loaded — SC: iframe.onload + 3s fallback + verbose logging');
 }());
