@@ -1035,44 +1035,26 @@ function handlePlay(id) {
   renderTracks();
 }
 
-async function vaultTakeover() {
-  if (!window.ytPlayer || !window.ytPlayer._activeBtnId) return;
-  var ytBar      = document.getElementById('yt-player-bar');
-  var playerBar  = document.getElementById('player-bar');
-  if (!ytBar || !ytBar.classList.contains('active')) return;
+function dismissYtBar() {
+  if (!window.ytPlayer) return;
+  var bar = document.getElementById('yt-inline-bar');
+  if (!bar || !bar.classList.contains('active')) return;
   try {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      window.ytPlayer.stop();
-      return;
+    if (window.ytPlayer.player) window.ytPlayer.player.stopVideo();
+  } catch(e) {}
+  bar.classList.remove('active');
+  setTimeout(function() {
+    if (window.ytPlayer) {
+      window.ytPlayer._resetBtn(window.ytPlayer._activeBtnId);
+      window.ytPlayer._activeBtnId  = null;
+      window.ytPlayer.currentArtist = null;
+      window.ytPlayer.currentTrack  = null;
+      if (typeof window.ytPlayer.hide === 'function') window.ytPlayer.hide();
     }
-    playerBar.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
-    playerBar.style.transform  = 'translateY(10px)';
-    playerBar.style.opacity    = '0.5';
-    ytBar.style.transition     = 'transform 0.4s cubic-bezier(0.4,0,1,1), opacity 0.3s ease';
-    ytBar.style.transform      = 'translateY(100%)';
-    ytBar.style.opacity        = '0';
-    await new Promise(function(r) { setTimeout(r, 300); });
-    window.ytPlayer.stop();
-    ytBar.style.display    = 'none';
-    ytBar.style.transform  = '';
-    ytBar.style.opacity    = '';
-    ytBar.style.transition = '';
-    ytBar.classList.remove('active');
-    playerBar.style.transform = 'translateY(-6px)';
-    playerBar.style.opacity   = '1';
-    await new Promise(function(r) { setTimeout(r, 150); });
-    playerBar.style.transform = 'translateY(0)';
-    await new Promise(function(r) { setTimeout(r, 200); });
-    playerBar.style.transition = '';
-    playerBar.style.transform  = '';
-    playerBar.style.opacity    = '';
-  } catch(e) {
-    if (window.ytPlayer) window.ytPlayer.stop();
-    if (playerBar) { playerBar.style.transition = ''; playerBar.style.transform = ''; playerBar.style.opacity = ''; }
-  }
+  }, 400);
 }
 
-async function playAtIndex(idx) {
+function playAtIndex(idx) {
   const playlist = getPlaylist();
   if (idx < 0 || idx >= playlist.length) return;
   const t = playlist[idx];
@@ -1109,7 +1091,7 @@ async function playAtIndex(idx) {
   audio.volume = parseFloat(document.getElementById('volume-slider').value);
   _decodePCM(t.url); // async PCM fingerprint — non-blocking
 
-  await vaultTakeover();
+  dismissYtBar();
   const playPromise = audio.play();
   if (playPromise !== undefined) {
     playPromise.catch(err => {
@@ -1177,7 +1159,7 @@ async function playAtIndex(idx) {
   setTimeout(() => schedulePreload(playlist, idx), 800);
 }
 
-document.getElementById('play-pause-btn').addEventListener('click', async () => {
+document.getElementById('play-pause-btn').addEventListener('click', () => {
   if (!audio.src) return;
   _cancelSleepFade();
   const ppBtn = document.getElementById('play-pause-btn');
@@ -1188,7 +1170,7 @@ document.getElementById('play-pause-btn').addEventListener('click', async () => 
     stopWaveform();
     hideCanvas();
   } else {
-    await vaultTakeover();
+    dismissYtBar();
     audio.play(); isPlaying = true;
     ppBtn.innerHTML = '⏸'; ppBtn.classList.add('is-playing');
     document.getElementById('player-vinyl').classList.add('spinning');
@@ -6647,8 +6629,6 @@ function openArtistPage(artist) {
   activeArtistName = artist;
   history.pushState({ view: 'artist', artist }, '', '#artist/' + artist.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
   setView('artist');
-  var ytBar = document.getElementById('yt-player-bar');
-  if (ytBar) ytBar.classList.add('ap-hidden');
   if (window.ytPlayer) {
     window.ytPlayer._resetBtn(window.ytPlayer._activeBtnId);
     window.ytPlayer._activeBtnId = null;
@@ -6658,8 +6638,6 @@ function openArtistPage(artist) {
 }
 
 function closeArtistPage() {
-  var ytBar = document.getElementById('yt-player-bar');
-  if (ytBar) ytBar.classList.remove('ap-hidden');
   if (window.location.hash.startsWith('#artist/')) {
     history.back();
   } else {

@@ -524,7 +524,7 @@
       this.ctx         = this.canvas.getContext('2d');
       this.artistColor = color || '#ff3c3c';
       this.isRunning   = true;
-      var bar = document.getElementById('yt-player-bar');
+      var bar = document.getElementById('yt-inline-bar');
       if (bar) bar.style.setProperty('--artist-primary', this.artistColor);
       this._draw();
     },
@@ -574,50 +574,6 @@
       this.frame = requestAnimationFrame(function () { self._draw(); });
     },
   };
-
-  // ── YouTube Takeover Animation ────────────────────────────────────────────
-
-  async function ytTakeover(artist, trackName) {
-    var ytBar     = document.getElementById('yt-player-bar');
-    var playerBar = document.getElementById('player-bar');
-    var nameEl    = document.getElementById('yt-track-name');
-    if (!ytBar) return;
-    var pal   = window.getArtistPalette ? window.getArtistPalette(artist) : null;
-    var color = (pal && pal.primary) || '#ff3c3c';
-    if (nameEl) nameEl.textContent = artist + ' · ' + trackName;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      ytBar.classList.add('active');
-      ytViz.start(color);
-      return;
-    }
-    try {
-      ytBar.style.display    = 'flex';
-      ytBar.style.transform  = 'translateY(100%)';
-      ytBar.style.opacity    = '0';
-      ytBar.style.transition = 'none';
-      await new Promise(function(r) { setTimeout(r, 20); });
-      ytBar.style.transition = 'transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.25s ease';
-      ytBar.style.transform  = 'translateY(0)';
-      ytBar.style.opacity    = '1';
-      if (playerBar) {
-        playerBar.style.transition = 'transform 0.35s cubic-bezier(0.16,1,0.3,1)';
-        playerBar.style.transform  = 'translateY(-4px)';
-      }
-      await new Promise(function(r) { setTimeout(r, 200); });
-      if (playerBar) playerBar.style.transform = 'translateY(0)';
-      await new Promise(function(r) { setTimeout(r, 150); });
-      ytBar.style.transition = '';
-      ytBar.style.transform  = '';
-      ytBar.style.opacity    = '';
-      ytBar.style.display    = '';
-      ytBar.classList.add('active');
-      if (playerBar) { playerBar.style.transition = ''; playerBar.style.transform = ''; }
-      ytViz.start(color);
-    } catch(e) {
-      ytBar.classList.add('active');
-      ytViz.start(color);
-    }
-  }
 
   // ── YouTube Player ────────────────────────────────────────────────────────
 
@@ -751,15 +707,21 @@
     },
 
     show: function (artist, trackName) {
-      ytTakeover(artist, trackName).catch(function() {
-        var bar = document.getElementById('yt-player-bar');
-        if (bar) bar.classList.add('active');
-        ytViz.start('#ff3c3c');
-      });
+      var bar    = document.getElementById('yt-inline-bar');
+      var nameEl = document.getElementById('yt-track-name');
+      if (!bar) return;
+      if (nameEl) nameEl.textContent = artist + ' · ' + trackName;
+      var pal   = window.getArtistPalette ? window.getArtistPalette(artist) : null;
+      var color = (pal && pal.primary) || '#ff3c3c';
+      bar.style.setProperty('--artist-primary', color);
+      bar.classList.add('active');
+      ytViz.start(color);
+      var closeBtn = document.getElementById('yt-close-btn');
+      if (closeBtn) closeBtn.onclick = function() { window.ytPlayer.stop(); };
     },
 
     hide: function () {
-      var bar = document.getElementById('yt-player-bar');
+      var bar = document.getElementById('yt-inline-bar');
       if (bar) bar.classList.remove('active');
       ytViz.stop();
     },

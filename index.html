@@ -3776,24 +3776,29 @@ body.session-guest #player-bar {
   .ap-avatar-lg   { width: 68px; height: 68px; font-size: 20px; }
 }
 
-/* YouTube player bar */
-#yt-player-bar {
-  display: none;
-  position: fixed;
-  bottom: 152px; left: 0; right: 0;
-  height: 80px;
-  background: rgba(8,8,8,0.97);
-  backdrop-filter: blur(12px);
+/* YouTube inline streaming bar */
+#yt-inline-bar {
+  width: 100%;
+  height: 0;
+  overflow: hidden;
+  display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
-  z-index: 10001;
-  border-top: 1px solid rgba(255,255,255,0.1);
+  gap: 12px;
+  padding: 0 16px;
+  background: rgba(12,12,12,0.98);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  transition: height 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.3s ease;
+  opacity: 0;
+  box-sizing: border-box;
 }
-#yt-player-bar.active    { display: flex; }
-#yt-player-bar.ap-hidden { display: none !important; }
+#yt-inline-bar.active {
+  height: 90px;
+  opacity: 1;
+}
 #yt-player-container {
-  width: 120px; height: 68px;
+  width: 140px;
+  height: 72px;
   flex-shrink: 0;
   border-radius: 3px;
   overflow: hidden;
@@ -3802,18 +3807,17 @@ body.session-guest #player-bar {
 #yt-player { width: 100%; height: 100%; }
 #yt-viz-canvas {
   flex: 1;
-  height: 68px;
-  opacity: 0.85;
-  align-self: center;
+  height: 72px;
   min-width: 0;
+  opacity: 0.9;
 }
 #yt-player-info {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 3px;
-  min-width: 0;
-  flex: 1;
+  gap: 4px;
+  min-width: 120px;
+  max-width: 200px;
 }
 #yt-track-label {
   font-size: 9px;
@@ -3823,23 +3827,22 @@ body.session-guest #player-bar {
   font-family: 'DM Mono', monospace;
 }
 #yt-track-name {
-  font-size: 13px;
-  color: rgba(255,255,255,0.9);
-  font-weight: 500;
+  font-size: 12px;
+  color: rgba(255,255,255,0.85);
+  font-family: 'DM Mono', monospace;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-family: 'DM Mono', monospace;
 }
 #yt-close-btn {
   flex-shrink: 0;
   align-self: center;
   background: transparent;
-  border: 1px solid rgba(255,255,255,0.2);
-  color: rgba(255,255,255,0.7);
-  padding: 5px 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.6);
+  padding: 5px 10px;
   font-family: 'DM Mono', monospace;
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 1px;
   cursor: pointer;
   border-radius: 2px;
@@ -3847,10 +3850,15 @@ body.session-guest #player-bar {
   transition: all 0.2s;
 }
 #yt-close-btn:hover {
-  border-color: rgba(255,255,255,0.5);
+  border-color: rgba(255,255,255,0.4);
   color: #fff;
 }
 .ap-yt-btn.yt-streaming { opacity: 0.9; }
+@media (max-width: 768px) {
+  #yt-viz-canvas { display: none; }
+  #yt-inline-bar.active { height: 70px; }
+  #yt-player-container { width: 110px; height: 62px; }
+}
 </style>
 </head>
 <body>
@@ -3897,6 +3905,19 @@ body.session-guest #player-bar {
   <div id="recently-played-section">
     <div class="recently-label">◷ Recently Played</div>
     <div class="recently-strip" id="recently-strip"></div>
+  </div>
+
+  <!-- YOUTUBE INLINE STREAMING BAR -->
+  <div id="yt-inline-bar">
+    <div id="yt-player-container">
+      <div id="yt-player"></div>
+    </div>
+    <canvas id="yt-viz-canvas" width="500" height="72"></canvas>
+    <div id="yt-player-info">
+      <span id="yt-track-label">▶ STREAMING</span>
+      <span id="yt-track-name"></span>
+    </div>
+    <button id="yt-close-btn">■ STOP</button>
   </div>
 
   <!-- ARTIST HEADER -->
@@ -4968,19 +4989,6 @@ body.session-guest #player-bar {
   <div class="yml-countdown-wrap">
     <div class="yml-countdown-bar"></div>
   </div>
-</div>
-
-<!-- YouTube player bar (slides up from bottom when streaming) -->
-<div id="yt-player-bar">
-  <div id="yt-player-container">
-    <div id="yt-player"></div>
-  </div>
-  <canvas id="yt-viz-canvas" width="400" height="90"></canvas>
-  <div id="yt-player-info">
-    <span id="yt-track-label">▶ STREAMING</span>
-    <span id="yt-track-name"></span>
-  </div>
-  <button id="yt-close-btn">■ Stop</button>
 </div>
 
 <!-- YouTube IFrame API -->
