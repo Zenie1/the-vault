@@ -1,1 +1,19 @@
-{ "projects": [] }
+{
+  "projects": [
+    {
+      "id": "proj-1781642280925",
+      "title": "</3^2",
+      "artist": "Destroy Lonely",
+      "cover": "https://i.pinimg.com/736x/14/98/90/149890965dcaae8fe9b0a2a5fe40eb6e.jpg",
+      "releaseDate": "2025",
+      "description": "Random tracks he dropped back in November after dropping Broken Hearts 2",
+      "trackIds": [
+        "1781641984990",
+        "1781641812832",
+        "1781641519149",
+        "1781635373002",
+        "1781635033260"
+      ]
+    }
+  ]
+}
