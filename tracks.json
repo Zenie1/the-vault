@@ -1,5 +1,19 @@
 [
   {
+    "id": 1781641812832,
+    "added": "2026-06-16",
+    "artist": "Destroy Lonely",
+    "title": "rose gold ice",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1781634793/rose_gold_ice_KLICKAUD_mzefe0.mp3",
+    "tags": [
+      "soundcloud exclusive"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F3fbe22aa8f9828bef9b89ae31bee7e37.500x500x1.jpg",
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNmM0YmVib3NhanZzZHBjbW55Y2pxazV4bmI5Y2I4NjdubXZpNXo3YiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/5EeIHLd7G9QfqSbFEs/giphy.gif",
+    "lyricsUrl": "https://genius.com/Destroy-lonely-rose-gold-ice-lyrics"
+  },
+  {
     "id": 1781641519149,
     "added": "2026-06-16",
     "artist": "Destroy Lonely",
