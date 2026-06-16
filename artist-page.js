@@ -121,6 +121,40 @@
     }
   }
 
+  // ── Wikipedia photo lookup ────────────────────────────────────────────────
+  async function fetchWikipediaPhoto(artist) {
+    var url = 'https://en.wikipedia.org/w/api.php' +
+      '?action=query&titles=' + encodeURIComponent(artist) +
+      '&prop=pageimages&format=json&pithumbsize=500&origin=*';
+    try {
+      var r = await fetchWithTimeout(url, {});
+      if (r.ok) {
+        var d = await r.json();
+        var pages = d.query && d.query.pages;
+        if (pages) {
+          var pk = Object.keys(pages)[0];
+          var pg = pages[pk];
+          if (pg && pg.thumbnail && pg.thumbnail.source) return pg.thumbnail.source;
+        }
+      }
+    } catch(e) { console.warn('[ArtistPage] Wikipedia photo failed:', e.message); }
+    return null;
+  }
+
+  // ── Stream memory helpers ─────────────────────────────────────────────────
+  function getStreamedForArtist(artist) {
+    var k = 'yt-streamed-' + artist.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    try { return JSON.parse(sessionStorage.getItem(k) || '[]'); } catch(e) { return []; }
+  }
+  function markStreamed(artist, trackName) {
+    var k = 'yt-streamed-' + artist.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    var list = getStreamedForArtist(artist);
+    if (!list.includes(trackName)) {
+      list.push(trackName);
+      try { sessionStorage.setItem(k, JSON.stringify(list)); } catch(e) {}
+    }
+  }
+
   async function fetchApiData(artist) {
     var cacheKey = 'ap2_' + artist.toLowerCase().replace(/\s+/g, '_');
     try {
@@ -256,6 +290,9 @@
       ? (words[0][0] + words[words.length-1][0]).toUpperCase()
       : artist.slice(0,2).toUpperCase();
 
+    var prevArtist = (window.artistPageHistory && window.artistPageHistory.length > 0)
+      ? window.artistPageHistory[window.artistPageHistory.length - 1] : null;
+
     var admin = (typeof isAdmin !== 'undefined' && isAdmin);
     var adminRow = admin ? (
       '<div class="ap-admin-row">' +
@@ -271,6 +308,7 @@
 
       '<div class="ap-header ap-header-anim" style="background:linear-gradient(135deg,'+pal.gradient[0]+'cc 0%,'+pal.gradient[1]+'88 55%,#080808 100%)">' +
         '<button class="ap-close-btn" onclick="closeArtistPage()">✕</button>' +
+        (prevArtist ? '<button class="ap-back-btn" onclick="window._apGoBack()">← ' + esc(prevArtist.toUpperCase()) + '</button>' : '') +
         '<div class="ap-header-left">' +
           '<h1 class="ap-name">'+esc(artist.toUpperCase())+'</h1>' +
           '<div id="ap-tags-row" class="ap-tags-row"></div>' +
@@ -335,6 +373,7 @@
     var allTracks = (typeof tracks !== 'undefined' ? tracks : []);
     var vaultArtistNames = {};
     allTracks.forEach(function(t){ vaultArtistNames[t.artist.toLowerCase().trim()] = true; });
+    var streamedTracks = getStreamedForArtist(artist);
     var html = '';
 
     var topTracks = data.topTracks || [];
@@ -355,9 +394,11 @@
               '}.bind(this),150)">▶ Play</button>';
           } else {
             // Not in vault — stream via YouTube
-            btn = '<button class="ap-vault-btn ap-yt-btn" id="' + btnId + '"' +
+            var prevStreamed = streamedTracks.includes(t.name);
+            btn = '<button class="ap-vault-btn ap-yt-btn' + (prevStreamed ? ' ap-yt-prev' : '') + '" id="' + btnId + '"' +
               ' data-artist="' + esc(artist) + '" data-track="' + esc(t.name) + '"' +
-              ' onclick="window._apYtPlay(this)">♫ Stream</button>';
+              (prevStreamed ? ' style="opacity:0.72" title="Streamed this session"' : '') +
+              ' onclick="window._apYtPlay(this)">' + (prevStreamed ? '↺ Stream again' : '♫ Stream') + '</button>';
           }
           return '<div class="ap-lfm-row">' +
             '<div class="ap-lfm-rank">'+(i+1)+'</div>' +
@@ -398,14 +439,16 @@
           var sInitials = s.name.split(/\s+/).slice(0,2).map(function(w){return w[0];}).join('').toUpperCase();
           var sImg     = bestImg(s.image);
           var handler  = inVault
-            ? 'onclick="openArtistPage(\'' + s.name.replace(/'/g,"\\'") + '\')"'
-            : 'onclick="window.open(\'' + esc(s.url||'') + '\',\'_blank\')"';
-          return '<div class="ap-similar-pill" '+handler+'>' +
+            ? 'onclick="window._apOpenArtistFromSimilar(\'' + s.name.replace(/'/g,"\\'") + '\')"'
+            : (s.url ? 'onclick="window.open(\'' + esc(s.url) + '\',\'_blank\')" title="Open on Last.fm"' : '');
+          return '<div class="ap-similar-pill" '+handler+' style="cursor:pointer">' +
             '<div class="ap-similar-av" style="background:'+pal.primary+'">' +
               (sImg ? '<img src="'+esc(sImg)+'" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : sInitials) +
             '</div>' +
             '<span class="ap-similar-name">'+esc(s.name)+'</span>' +
-            (inVault ? '<span class="ap-similar-dot" style="color:'+pal.primary+'">♦</span>' : '') +
+            (inVault
+              ? '<span class="ap-similar-dot" style="color:'+pal.primary+'" title="In vault">⬡</span>'
+              : '<span class="ap-similar-dot" style="color:#666;font-size:9px">↗</span>') +
           '</div>';
         }).join('') +
         '</div></div>';
@@ -421,6 +464,40 @@
 
     var info = data && data.info;
 
+    // ── Photo: Wikipedia → Last.fm, cached in sessionStorage ─────────────────
+    var photoSlug = 'artist-photo-' + artist.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    var cachedPhoto;
+    try { cachedPhoto = sessionStorage.getItem(photoSlug); } catch(e) {}
+
+    function applyAvatarPhoto(imgUrl) {
+      if (!imgUrl) return;
+      var av = document.getElementById('ap-avatar');
+      if (!av) return;
+      var tmp = new Image();
+      tmp.onload = function() {
+        av.textContent = '';
+        av.style.background = 'none';
+        av.style.overflow   = 'hidden';
+        av.style.padding    = '0';
+        var pic = document.createElement('img');
+        pic.src = imgUrl;
+        pic.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:50%';
+        av.appendChild(pic);
+      };
+      tmp.src = imgUrl;
+    }
+
+    if (cachedPhoto && cachedPhoto !== 'null') {
+      applyAvatarPhoto(cachedPhoto);
+    } else if (!cachedPhoto) {
+      fetchWikipediaPhoto(artist).then(function(wikiImg) {
+        var lfmImg = info ? bestImg(info.image) : null;
+        var chosen = wikiImg || lfmImg || null;
+        try { sessionStorage.setItem(photoSlug, chosen || 'null'); } catch(e) {}
+        if (chosen) applyAvatarPhoto(chosen);
+      });
+    }
+
     if (data.allFailed) {
       var bioSlotF = document.getElementById('ap-bio-slot');
       var apiSecF  = document.getElementById('ap-api-sections');
@@ -431,25 +508,6 @@
     }
 
     if (info) {
-      var imgUrl = bestImg(info.image);
-      console.log('[ArtistPage] artist image URL:', imgUrl);
-      if (imgUrl) {
-        var av = document.getElementById('ap-avatar');
-        if (av) {
-          var tmp = new Image();
-          tmp.onload = function() {
-            av.textContent = '';
-            av.style.background = 'none';
-            av.style.overflow   = 'hidden';
-            av.style.padding    = '0';
-            var pic = document.createElement('img');
-            pic.src = imgUrl;
-            pic.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:50%';
-            av.appendChild(pic);
-          };
-          tmp.src = imgUrl;
-        }
-      }
 
       var tags    = ((info.tags && info.tags.tag) || []).slice(0,4);
       var tagsRow = document.getElementById('ap-tags-row');
@@ -669,6 +727,7 @@
         console.log('[YT] Loading video:', videoId);
         self.player.loadVideoById(videoId);
         self.show(artist, trackName);
+        markStreamed(artist, trackName);
       });
     },
 

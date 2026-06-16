@@ -55,6 +55,16 @@ let lastApplied   = null;
 let syncCooldown  = false;
 let authOk        = false;
 
+// Feature 4: collab queue
+let collabQueueOff = null;
+
+// Feature 5: session play log
+let sessionPlayLog   = [];
+let sessionStartTime = null;
+
+// Expose session state to vault.js
+window._vaultSession = { isActive: false, role: null, roomCode: null };
+
 const SESSION_VERSION = 1;
 const SESSION_TTL_MS  = 86400000; // 24 h
 
@@ -276,6 +286,9 @@ async function startSession() {
 
   isActive    = true;
   sessionRole = 'host';
+  sessionStartTime = Date.now();
+  sessionPlayLog   = [];
+  window._vaultSession = { isActive: true, role: 'host', roomCode };
   setBtnActive(true);
   setEl('session-room-code', roomCode);
   setEl('session-guest-status', 'WAITING FOR GUEST…');
@@ -302,6 +315,7 @@ async function startSession() {
   attachHostListeners();
   startHeartbeat();
   startChat('host');
+  attachCollabQueue();
   window.addEventListener('beforeunload', onUnload);
 }
 
@@ -410,6 +424,9 @@ async function joinSession(code) {
   }
 
   isActive = true;
+  sessionStartTime = Date.now();
+  sessionPlayLog   = [];
+  window._vaultSession = { isActive: true, role: 'guest', roomCode };
   setBtnActive(true);
   lockControls();
   openPanel();
@@ -423,6 +440,7 @@ async function joinSession(code) {
   });
 
   startChat('guest');
+  attachCollabQueue();
   window.addEventListener('beforeunload', onUnload);
 }
 
@@ -465,6 +483,7 @@ function applyTrackChange(trackId, targetTime, shouldPlay) {
     return;
   }
   if (typeof playAtIndex === 'function') playAtIndex(idx);
+  logTrackPlay(playlist[idx]);
   const seekAfterLoad = () => {
     audio.currentTime = Math.max(0, targetTime);
     syncPlayPause(audio, shouldPlay);
@@ -504,6 +523,8 @@ function unlockControls() {
 
 async function endSession() {
   if (!isActive) return;
+  const logCopy   = sessionPlayLog.slice();
+  const startCopy = sessionStartTime;
   try {
     if (sessionRole === 'host') {
       if (sessionRef) await remove(sessionRef); // wipes messages + typing too
@@ -523,9 +544,12 @@ async function endSession() {
   closePanel();
   toast('SESSION ENDED', '');
   window.removeEventListener('beforeunload', onUnload);
+  if (logCopy.length >= 2) showSessionEndModal(logCopy, startCopy);
 }
 
 function handleEndedByHost() {
+  const logCopy   = sessionPlayLog.slice();
+  const startCopy = sessionStartTime;
   if (guestStateOff) { guestStateOff(); guestStateOff = null; }
   if (hostIdOff)     { hostIdOff();     hostIdOff     = null; }
   unlockControls();
@@ -535,6 +559,7 @@ function handleEndedByHost() {
   setBtnActive(false);
   toast('HOST ENDED THE SESSION', '');
   window.removeEventListener('beforeunload', onUnload);
+  if (logCopy.length >= 2) showSessionEndModal(logCopy, startCopy);
 }
 
 function onUnload() {
@@ -553,6 +578,10 @@ function reset() {
   roomCode     = null;
   lastApplied  = null;
   syncCooldown = false;
+  sessionPlayLog   = [];
+  sessionStartTime = null;
+  window._vaultSession = { isActive: false, role: null, roomCode: null };
+  if (collabQueueOff) { collabQueueOff(); collabQueueOff = null; }
   stopHeartbeat();
   detachHostListeners();
   if (guestIdOff)    { guestIdOff();    guestIdOff    = null; }
@@ -848,4 +877,108 @@ function animateReaction(emoji, x) {
   el.style.cssText = `left:${pct}%;bottom:168px;--rxn-dx:${dx}px;--rxn-r:${rot}deg`;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2600);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FEATURE 4 — COLLAB QUEUE
+// ══════════════════════════════════════════════════════════════════════════════
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function attachCollabQueue() {
+  if (!roomCode) return;
+  // Clear any existing items in both lists
+  ['sv-collab-queue-list', 'sv-collab-queue-list-guest'].forEach(lid => {
+    const el = document.getElementById(lid);
+    if (el) el.innerHTML = '<div class="sv-queue-empty">No tracks queued yet</div>';
+  });
+
+  const qRef = ref(db, 'sessions/' + roomCode + '/collabQueue');
+  collabQueueOff = onChildAdded(qRef, snap => {
+    const item = snap.val();
+    if (!item) return;
+    const listIds = ['sv-collab-queue-list', 'sv-collab-queue-list-guest'];
+    listIds.forEach(lid => {
+      const list2 = document.getElementById(lid);
+      if (!list2) return;
+      const empty = list2.querySelector('.sv-queue-empty');
+      if (empty) empty.remove();
+      const div = document.createElement('div');
+      div.className = 'sv-queue-item';
+      div.innerHTML =
+        '<span class="sv-queue-by">' + (item.addedBy === 'guest' ? '◎' : '◉') + '</span>' +
+        '<span class="sv-queue-info">' +
+          '<span class="sv-queue-title">' + escHtml(item.title) + '</span>' +
+          '<span class="sv-queue-artist">' + escHtml(item.artist) + '</span>' +
+        '</span>';
+      list2.appendChild(div);
+    });
+  });
+}
+
+window._addToCollabQueue = function(track) {
+  if (!isActive || !roomCode) return;
+  push(ref(db, 'sessions/' + roomCode + '/collabQueue'), {
+    trackId : String(track.trackId || ''),
+    title   : String(track.title   || ''),
+    artist  : String(track.artist  || ''),
+    addedBy : sessionRole || 'host',
+    addedAt : Date.now(),
+  }).catch(e => console.warn('[Session] collabQueue push failed:', e.message));
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FEATURE 5 — SESSION PLAY LOGGING + HISTORY MODAL
+// ══════════════════════════════════════════════════════════════════════════════
+
+function logTrackPlay(track) {
+  if (!isActive || !track) return;
+  sessionPlayLog.push({
+    title : track.title  || 'Unknown',
+    artist: track.artist || '',
+    at    : Date.now(),
+  });
+}
+
+// Called from vault.js playAtIndex when session is active (host side)
+window.logSessionTrack = function(title, artist) {
+  logTrackPlay({ title, artist });
+};
+
+function showSessionEndModal(playLog, startTime) {
+  const modal = document.getElementById('session-end-modal');
+  if (!modal) return;
+
+  const durationMs  = startTime ? Math.max(0, Date.now() - startTime) : 0;
+  const totalMin    = Math.floor(durationMs / 60000);
+  const dEl = modal.querySelector('#sem-duration');
+  const tEl = modal.querySelector('#sem-tracklist');
+  if (dEl) dEl.textContent = totalMin + ' min';
+  if (tEl) {
+    tEl.innerHTML = playLog.map(p =>
+      '<li>' + escHtml(p.artist ? p.artist + ' – ' + p.title : p.title) + '</li>'
+    ).join('');
+  }
+  modal.classList.add('open');
+
+  const saveBtn  = modal.querySelector('#sem-save-btn');
+  if (saveBtn) {
+    saveBtn.onclick = function() {
+      let sessions = [];
+      try { sessions = JSON.parse(localStorage.getItem('vault_sessions') || '[]'); } catch(e) {}
+      sessions.unshift({
+        date    : new Date().toISOString(),
+        duration: totalMin,
+        tracks  : playLog.map(p => ({ title: p.title, artist: p.artist })),
+      });
+      if (sessions.length > 20) sessions.splice(20);
+      try { localStorage.setItem('vault_sessions', JSON.stringify(sessions)); } catch(e) {}
+      toast('SESSION SAVED ✓', 'success');
+      modal.classList.remove('open');
+    };
+  }
+  const closeBtn = modal.querySelector('#sem-close-btn');
+  if (closeBtn) closeBtn.onclick = () => modal.classList.remove('open');
 }

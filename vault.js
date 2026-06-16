@@ -731,6 +731,12 @@ function addToQueue(id) {
   queue.push(id);
   renderQueue();
   showToast('ADDED TO QUEUE ✓', 'success');
+  // Sync to collab queue if session is active
+  const vs = window._vaultSession;
+  if (vs && vs.isActive && vs.role === 'host' && typeof window._addToCollabQueue === 'function') {
+    const t = tracks.find(x => x.id === id);
+    if (t) window._addToCollabQueue({ trackId: String(t.id), title: t.title, artist: t.artist });
+  }
 }
 function removeFromQueue(qi) {
   queue.splice(qi, 1);
@@ -1123,6 +1129,11 @@ function playAtIndex(idx) {
   showCanvas(t);       // ◈ Vault Canvas
   maybeFetchLyrics(t); // ♩ Lyrics
   maybeLoadStems(t);   // ⊕ Stems
+
+  // Log for session history (host side)
+  if (window._vaultSession && window._vaultSession.isActive && window._vaultSession.role === 'host') {
+    if (typeof window.logSessionTrack === 'function') window.logSessionTrack(t.title, t.artist);
+  }
 
   // Track play count + recently played
   incrementPlayCount(t.id);
@@ -6624,6 +6635,9 @@ function _histClear() {
 // FEATURE: ARTIST PAGE
 // =====================================================================
 
+var artistPageHistory = [];
+window.artistPageHistory = artistPageHistory;
+
 function openArtistPage(artist) {
   if (!artist) return;
   activeArtistName = artist;
@@ -6637,7 +6651,20 @@ function openArtistPage(artist) {
   if (overlay) overlay.scrollTop = 0;
 }
 
+window._apOpenArtistFromSimilar = function(artist) {
+  if (activeArtistName) artistPageHistory.push(activeArtistName);
+  openArtistPage(artist);
+};
+
+window._apGoBack = function() {
+  if (!artistPageHistory.length) return;
+  var prev = artistPageHistory.pop();
+  openArtistPage(prev);
+};
+
 function closeArtistPage() {
+  artistPageHistory = [];
+  window.artistPageHistory = artistPageHistory;
   if (window.location.hash.startsWith('#artist/')) {
     history.back();
   } else {

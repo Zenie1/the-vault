@@ -70,6 +70,22 @@
 
           "host":  { ".validate": "newData.isBoolean()" },
           "guest": { ".validate": "newData.isBoolean()" }
+        },
+
+        "collabQueue": {
+          // Both host and guest can read the queue.
+          ".read": "auth != null",
+
+          // Only authenticated users (host or guest in this session) can push.
+          ".write": "auth != null",
+
+          "$queueId": {
+            "trackId":  { ".validate": "newData.isString()" },
+            "title":    { ".validate": "newData.isString()" },
+            "artist":   { ".validate": "newData.isString()" },
+            "addedBy":  { ".validate": "newData.isString() && (newData.val() == 'host' || newData.val() == 'guest')" },
+            "addedAt":  { ".validate": "newData.isNumber()" }
+          }
         }
 
       }

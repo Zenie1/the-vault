@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://*.firebaseio.com https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src * blob:; connect-src https://api.github.com https://raw.githubusercontent.com https://res.cloudinary.com https://api.anthropic.com https://corsproxy.io https://api.allorigins.win https://api.lyrics.ovh https://lrclib.net https://itunes.apple.com https://images.weserv.nl https://*.workers.dev https://fal.run https://queue.fal.run https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com https://ws.audioscrobbler.com https://musicbrainz.org; frame-src https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://*.firebaseio.com https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src * blob:; connect-src https://api.github.com https://raw.githubusercontent.com https://res.cloudinary.com https://api.anthropic.com https://corsproxy.io https://api.allorigins.win https://api.lyrics.ovh https://lrclib.net https://itunes.apple.com https://images.weserv.nl https://*.workers.dev https://fal.run https://queue.fal.run https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com https://ws.audioscrobbler.com https://musicbrainz.org https://en.wikipedia.org https://upload.wikimedia.org; frame-src https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self';">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 <meta name="theme-color" content="#0a0408">
@@ -2838,6 +2838,16 @@ header {
   margin-bottom: 14px;
   padding: 6px 0;
 }
+.sv-collab-queue { margin: 10px 0 4px; }
+.sv-queue-label { font-size: 8px; letter-spacing: .14em; opacity: .45; margin-bottom: 6px; }
+.sv-queue-list { display: flex; flex-direction: column; gap: 4px; max-height: 90px; overflow-y: auto; }
+.sv-queue-empty { font-size: 10px; opacity: .35; font-style: italic; }
+.sv-queue-item { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.04); border-radius: 4px; padding: 5px 8px; }
+.sv-queue-by { font-size: 12px; opacity: .6; flex-shrink: 0; }
+.sv-queue-info { display: flex; flex-direction: column; min-width: 0; }
+.sv-queue-title { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sv-queue-artist { font-size: 9px; opacity: .5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .sv-guest-status.connected {
   color: #00e070;
   animation: session-pulse 2s ease-in-out infinite;
@@ -3434,6 +3444,22 @@ body.session-guest #player-bar {
   z-index: 2;
 }
 .ap-close-btn:hover { background: rgba(255,255,255,0.12); }
+.ap-back-btn {
+  position: absolute;
+  top: 16px; left: 16px;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.75);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  z-index: 2;
+}
+.ap-back-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
 .ap-header-left { flex: 1; min-width: 0; }
 .ap-name {
   font-size: clamp(20px,5vw,34px);
@@ -4023,6 +4049,12 @@ body.session-guest #player-bar {
         <button class="sv-copy-btn" id="session-code-copy-btn" title="Copy room code">⎘</button>
       </div>
       <div class="sv-guest-status" id="session-guest-status">WAITING FOR GUEST…</div>
+      <div class="sv-collab-queue">
+        <div class="sv-queue-label">QUEUE</div>
+        <div id="sv-collab-queue-list" class="sv-queue-list">
+          <div class="sv-queue-empty">No tracks queued yet</div>
+        </div>
+      </div>
       <button class="sv-end-btn" id="session-end-btn">END SESSION</button>
     </div>
 
@@ -4030,6 +4062,12 @@ body.session-guest #player-bar {
     <div id="sv-guest" class="session-view" style="display:none">
       <div class="sv-title sv-live">● LISTENING LIVE</div>
       <div class="sv-locked-notice">Controls locked<br>Host is in charge of playback</div>
+      <div class="sv-collab-queue">
+        <div class="sv-queue-label">QUEUE</div>
+        <div id="sv-collab-queue-list-guest" class="sv-queue-list">
+          <div class="sv-queue-empty">No tracks queued yet</div>
+        </div>
+      </div>
       <button class="sv-end-btn" id="session-leave-btn">LEAVE SESSION</button>
     </div>
 
@@ -4975,6 +5013,25 @@ body.session-guest #player-bar {
 
 <!-- ── HISTORY OVERLAY ──────────────────────────────────────────────────────── -->
 <div id="history-overlay" class="full-overlay"></div>
+
+<!-- ── SESSION END MODAL ──────────────────────────────────────────────────── -->
+<div id="session-end-modal" class="modal-overlay">
+  <div class="modal" style="max-width:400px;font-family:var(--font-mono)">
+    <div style="font-size:11px;letter-spacing:.14em;color:var(--accent);margin-bottom:14px">SESSION RECAP</div>
+    <div style="display:flex;gap:24px;margin-bottom:18px">
+      <div>
+        <div style="font-size:20px;font-weight:700" id="sem-duration">0 min</div>
+        <div style="font-size:9px;opacity:.5;letter-spacing:.1em">DURATION</div>
+      </div>
+    </div>
+    <div style="font-size:9px;letter-spacing:.12em;opacity:.5;margin-bottom:8px">TRACKS PLAYED</div>
+    <ul id="sem-tracklist" style="list-style:none;display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;margin-bottom:20px;font-size:11px;opacity:.85"></ul>
+    <div style="display:flex;gap:10px">
+      <button id="sem-save-btn" class="btn" style="flex:1;background:var(--accent);color:#000;font-weight:700">SAVE TO HISTORY</button>
+      <button id="sem-close-btn" class="btn" style="flex:0 0 auto;background:rgba(255,255,255,0.07)">DISMISS</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── ARTIST PAGE OVERLAY ─────────────────────────────────────────────────── -->
 <div id="artist-overlay" class="full-overlay"></div>
