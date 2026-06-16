@@ -1,5 +1,19 @@
 [
   {
+    "id": 1781635373002,
+    "added": "2026-06-16",
+    "artist": "Destroy Lonely",
+    "title": "sipped too much",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1781634793/sipped_too_much_KLICKAUD_hsptll.mp3",
+    "tags": [
+      "soundcloud exculsive"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F3fbe22aa8f9828bef9b89ae31bee7e37.500x500x1.jpg",
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExenRjeHdmcGh1OHhlMHBtbTlmcW0yZjFhbmx5Y3hicDIyMGpqYXc0eCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/58DkA2Btff3yKVOQDK/giphy.gif",
+    "lyricsUrl": "https://genius.com/Destroy-lonely-sipped-too-much-lyrics"
+  },
+  {
     "id": 1781635033260,
     "added": "2026-06-16",
     "artist": "Destroy Lonely",
