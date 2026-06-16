@@ -1,5 +1,19 @@
 [
   {
+    "id": 1781635033260,
+    "added": "2026-06-16",
+    "artist": "Destroy Lonely",
+    "title": "exorcist",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1781634793/exorcist_KLICKAUD_dr5cbt.mp3",
+    "tags": [
+      "soundcloud exclusive"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2F3fbe22aa8f9828bef9b89ae31bee7e37.500x500x1.jpg",
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaW9ydmhtcXV5a3d5d3d4N2VqM2dpemVseHRwdm90bzg5ZHUyazI3dSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/lnRPwTKKXfB2tpvl1x/giphy.gif",
+    "lyricsUrl": "https://genius.com/Destroy-lonely-exorcist-lyrics"
+  },
+  {
     "id": 1780512648117,
     "added": "2026-06-03",
     "artist": "Nine Vicious",
