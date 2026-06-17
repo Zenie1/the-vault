@@ -4693,6 +4693,7 @@ function openVisualizer() {
   vizOpen = true;
   vizOverlay.classList.add('active');
   document.getElementById('viz-btn').classList.add('active');
+  document.body.classList.add('viz-open');
   resizeVizCanvas();
   try { setupAudioContext(); } catch(e) {}
   setupVizAnalyser();
@@ -4704,6 +4705,7 @@ function closeVisualizer() {
   vizOpen = false;
   vizOverlay.classList.remove('active');
   document.getElementById('viz-btn').classList.remove('active');
+  document.body.classList.remove('viz-open');
   _stopVizLoop();
 }
 

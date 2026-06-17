@@ -2240,7 +2240,7 @@ header {
 #viz-overlay {
   position: fixed;
   inset: 0;
-  z-index: 490;
+  z-index: 99999;
   background: #0a0408;
   pointer-events: none;
   opacity: 0;
@@ -3965,6 +3965,56 @@ body.session-guest #player-bar {
   #yt-viz-canvas { display: none; }
   #yt-inline-bar.active { height: 70px; }
   #yt-player-container { width: 110px; height: 62px; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   VIZ MODE — minimal player bar strip
+   #viz-overlay (z-index 99999) sits above everything;
+   body.viz-open player bar sits above it at z-index 100000.
+═══════════════════════════════════════════════════════ */
+body.viz-open #player-bar {
+  height: 52px !important;
+  overflow: hidden !important;
+  background: rgba(0,0,0,0.6) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border-top: 1px solid rgba(255,255,255,0.08) !important;
+  z-index: 100000 !important;
+}
+
+/* Hide everything except the transport row */
+body.viz-open #player-toolbar,
+body.viz-open .player-row1,
+body.viz-open .player-progress,
+body.viz-open .player-right-col,
+body.viz-open .mobile-action-row,
+body.viz-open #comment-row,
+body.viz-open #yt-inline-bar,
+body.viz-open #waveform-wrap {
+  display: none !important;
+}
+
+/* Collapse the 3-col grid to a single centered flex row */
+body.viz-open .player-main-row {
+  display: flex !important;
+  height: 52px !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  justify-content: center !important;
+  align-items: center !important;
+  grid-template-columns: unset !important;
+}
+
+body.viz-open .player-center {
+  width: auto !important;
+  flex: none !important;
+  gap: 0 !important;
+}
+
+/* Center the prev/play/next buttons */
+body.viz-open .player-controls {
+  justify-content: center !important;
+  gap: 16px !important;
 }
 </style>
 </head>
