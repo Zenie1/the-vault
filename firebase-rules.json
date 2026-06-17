@@ -15,6 +15,21 @@
       }
     },
 
+    "comments": {
+      "$trackId": {
+        ".read": true,
+        "$commentId": {
+          ".write": "auth != null",
+          ".validate": "newData.hasChildren(['text','timestamp','authorName','uid','createdAt'])",
+          "text":       { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+          "timestamp":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "authorName": { ".validate": "newData.isString()" },
+          "uid":        { ".validate": "newData.isString() && newData.val() == auth.uid" },
+          "createdAt":  { ".validate": "newData.isNumber()" }
+        }
+      }
+    },
+
     "sessions": {
       "$roomCode": {
 

@@ -160,6 +160,7 @@ async function boot() {
     const result = await signInAnonymously(auth);
     myUid  = result.user.uid;
     authOk = true;
+    window._vaultUid = myUid; // expose for vault.js comment writes
     console.log('[Session] Signed in anonymously — uid:', myUid);
   } catch (err) {
     console.error('[Session] Anonymous auth failed — code:', err.code, '|', err.message);

@@ -887,6 +887,8 @@ function renderTracks() {
     const fireBadge = plays >= 5 ? `<span class="track-fire-badge" title="${plays} plays">🔥</span>` : '';
     const playCountEl = plays > 0 ? `<div class="track-play-count${plays >= 5 ? ' hot' : ''}">${plays} play${plays !== 1 ? 's' : ''}</div>` : '';
     const notesEl = t.notes ? `<div class="track-notes-preview" title="${t.notes.replace(/"/g,'&quot;')}">📝 ${t.notes}</div>` : '';
+    const cCount = commentCounts && commentCounts.get(t.id) || 0;
+    const commentBadgeEl = `<span class="track-comment-badge" data-comment-track="${t.id}">${cCount > 0 ? '💬 ' + cCount : ''}</span>`;
     return `
       <div class="track-card${isCurrentlyPlaying?' playing':''}" style="--artist-color:${color};--artist-primary:${pal.primary};--artist-secondary:${pal.secondary};--artist-text:${pal.text};--artist-glow:${pal.glow};--artist-gradient-start:${pal.gradient[0]};--artist-gradient-end:${pal.gradient[1]};--artist-secondary-bg:rgba(${secR},${secG},${secB},0.42);--artist-glow-30:rgba(${glowR},${glowG},${glowB},0.30)" data-id="${t.id}">
         <div class="track-card-top">
@@ -907,6 +909,7 @@ function renderTracks() {
             <button class="icon-btn delete-btn" onclick="deleteTrack(${t.id})" title="Delete">✕</button>
           </div>
         </div>
+        ${commentBadgeEl}
         ${playCountEl}
         ${notesEl}
         ${t.added ? `<div class="track-date">${formatDate(t.added)}</div>` : ''}
@@ -1096,6 +1099,7 @@ function playAtIndex(idx) {
   audio.load();
   audio.volume = parseFloat(document.getElementById('volume-slider').value);
   _decodePCM(t.url); // async PCM fingerprint — non-blocking
+  if (typeof loadComments === 'function') loadComments(String(t.id)); // Feature 3
 
   dismissYtBar();
   const playPromise = audio.play();
@@ -1427,12 +1431,23 @@ function drawWaveform() {
     smoothedBars = new Array(BAR_COUNT).fill(8);
   }
 
-  // Use static PCM fingerprint when not playing and data is cached
-  const _pcmDisplay = !isPlaying ? _getPCMBars(BAR_COUNT) : null;
-  const activeBars  = _pcmDisplay || smoothedBars;
+  // Always use static PCM fingerprint when available (shows track shape while playing)
+  const _pcmDisplay = _getPCMBars(BAR_COUNT);
+  // Animated shimmer while PCM decodes
+  const _needsShimmer = !_pcmDisplay && !!audio.src && !isPlaying;
+  let activeBars;
+  if (_pcmDisplay) {
+    activeBars = _pcmDisplay;
+  } else if (_needsShimmer) {
+    const _st = Date.now() * 0.003;
+    activeBars = Array.from({length: BAR_COUNT}, (_, i) =>
+      (0.2 + Math.sin(i * 0.3 + _st) * 0.15) * 255);
+  } else {
+    activeBars = smoothedBars; // live FFT fallback
+  }
 
-  // FIX: Waveform vs scrubber conflict — throttle redraws in PCM static mode — The Vault conflict resolution
-  if (_pcmDisplay && !isScrubbing) {
+  // FIX: Waveform vs scrubber conflict — throttle redraws in PCM static mode when paused — The Vault conflict resolution
+  if (_pcmDisplay && !isPlaying && !isScrubbing) {
     const _ct = audio.currentTime;
     if (Math.abs(_ct - _waveLastDrawTime) < 0.1) {
       waveAnimFrame = requestAnimationFrame(drawWaveform);
@@ -1575,7 +1590,28 @@ function drawWaveform() {
     waveCtx.globalAlpha = 1;
   }
 
+  // Comment markers (Feature 3)
+  _drawCommentDots(W, H);
+
   waveAnimFrame = requestAnimationFrame(drawWaveform);
+}
+
+function _drawCommentDots(W, H) {
+  var cmts = window._trackComments;
+  if (!cmts || !cmts.length || !audio.duration) return;
+  var dur = audio.duration;
+  waveCtx.save();
+  waveCtx.shadowBlur = 0;
+  waveCtx.globalAlpha = 0.85;
+  cmts.forEach(function(cm) {
+    var cx = (cm.timestamp / dur) * W;
+    if (cx < 0 || cx > W) return;
+    waveCtx.fillStyle = '#fff';
+    waveCtx.beginPath();
+    waveCtx.arc(cx, H - 5, 3, 0, Math.PI * 2);
+    waveCtx.fill();
+  });
+  waveCtx.restore();
 }
 
 function startWaveform() {
@@ -1602,6 +1638,9 @@ function stopWaveform() {
 // ── PCM amplitude waveform (static fingerprint) ───────────────────────────────
 const _pcmCache = new Map();
 let _pcmLoadingUrl = null;
+
+// Comment markers — populated by loadComments() (Feature 3)
+window._trackComments = [];
 
 async function _decodePCM(url) {
   if (!url || _pcmCache.has(url) || _pcmLoadingUrl === url) return;
@@ -1756,11 +1795,25 @@ function showScrubTooltip(pos, e) {
 }
 
 waveCanvas.addEventListener('mousedown', (e) => {
+  if (e.shiftKey) {
+    if (!audio.duration) return;
+    e.preventDefault();
+    var ts = getScrubPos(e) * audio.duration;
+    _openCommentInput(ts);
+    return;
+  }
   if (!audio.duration) return;
   isScrubbing = true;
   scrubProgress = getScrubPos(e);
   showScrubTooltip(scrubProgress, e);
   waveCanvas.style.cursor = 'grabbing';
+});
+
+waveCanvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  if (!audio.duration) return;
+  var t = Math.floor(getScrubPos(e) * audio.duration);
+  copyTimestamp(t);
 });
 
 // Touch support for mobile scrubbing
@@ -1806,8 +1859,31 @@ window.addEventListener('mouseup', (e) => {
   if (audio.duration) audio.currentTime = getScrubPos(e) * audio.duration;
 });
 
+waveCanvas.addEventListener('mousemove', (e) => {
+  if (isScrubbing) return;
+  showScrubTooltip(getScrubPos(e), e);
+  // Check if hovering over a comment marker
+  const _cmTip = document.getElementById('comment-hover-tooltip');
+  if (!_cmTip || !window._trackComments || !audio.duration) return;
+  const _rect = waveCanvas.getBoundingClientRect();
+  const _mx   = e.clientX - _rect.left;
+  const _W    = _rect.width;
+  const _hovered = window._trackComments.find(cm => {
+    return Math.abs((cm.timestamp / audio.duration) * _W - _mx) < 8;
+  });
+  if (_hovered) {
+    _cmTip.textContent = _hovered.authorName + ': ' + _hovered.text;
+    _cmTip.style.left    = _mx + 'px';
+    _cmTip.style.display = 'block';
+  } else {
+    _cmTip.style.display = 'none';
+  }
+});
+
 waveCanvas.addEventListener('mouseleave', () => {
   if (!isScrubbing) scrubTooltip.classList.remove('visible');
+  const _cmTip = document.getElementById('comment-hover-tooltip');
+  if (_cmTip) _cmTip.style.display = 'none';
 });
 
 waveCanvas.addEventListener('click', (e) => {
@@ -1949,6 +2025,149 @@ function fmt(s) {
   const m = Math.floor(s/60), sec = Math.floor(s%60);
   return `${m}:${sec.toString().padStart(2,'0')}`;
 }
+
+// ===== FEATURE 2 — SHAREABLE TIMESTAMPS =====
+
+function copyTimestamp(tOverride) {
+  const pl = getPlaylist();
+  const track = pl[currentTrackIdx];
+  if (!track) { showToast('NO TRACK PLAYING', 'error'); return; }
+  const t = (tOverride !== undefined) ? tOverride : Math.floor(audio.currentTime);
+  const url = window.location.origin + window.location.pathname +
+    '?track=' + encodeURIComponent(String(track.id)) + '&t=' + t;
+  navigator.clipboard.writeText(url)
+    .then(() => showToast('LINK COPIED — STARTS AT ' + fmt(t), 'success'))
+    .catch(() => {
+      const inp = document.createElement('input');
+      inp.value = url; document.body.appendChild(inp); inp.select();
+      document.execCommand('copy'); document.body.removeChild(inp);
+      showToast('LINK COPIED ✓', 'success');
+    });
+}
+
+function checkUrlParams() {
+  const params     = new URLSearchParams(window.location.search);
+  const trackIdStr = params.get('track');
+  const t          = parseFloat(params.get('t')) || 0;
+  if (!trackIdStr) return;
+
+  function tryPlay() {
+    const track = tracks.find(tr => String(tr.id) === trackIdStr);
+    if (!track) return;
+    const pl  = getPlaylist();
+    let   idx = pl.findIndex(x => String(x.id) === trackIdStr);
+    if (idx === -1) idx = tracks.findIndex(x => String(x.id) === trackIdStr);
+    if (idx === -1) return;
+    playAtIndex(idx);
+    if (t > 0) {
+      const onCP = () => {
+        audio.currentTime = Math.min(t, audio.duration || t);
+        audio.removeEventListener('canplay', onCP);
+      };
+      audio.addEventListener('canplay', onCP);
+      showToast('JUMPED TO ' + fmt(t), 'info');
+    }
+  }
+
+  if (tracks && tracks.length > 0) {
+    setTimeout(tryPlay, 100);
+  } else {
+    document.addEventListener('vault-tracks-loaded', () => setTimeout(tryPlay, 100), { once: true });
+  }
+  window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+}
+
+// ===== FEATURE 3 — TRACK COMMENTS =====
+
+let _trackCommentsList = [];
+window._trackComments  = _trackCommentsList;
+let _commentsOff       = null;
+let _commentTimestamp  = 0;
+const commentCounts    = new Map();
+
+function _getCurrentTrackIdStr() {
+  const pl = getPlaylist();
+  const t  = pl[currentTrackIdx];
+  return t ? String(t.id) : null;
+}
+
+function loadComments(trackId) {
+  if (_commentsOff) { _commentsOff(); _commentsOff = null; }
+  _trackCommentsList = [];
+  window._trackComments = _trackCommentsList;
+
+  if (!window._vaultDb || !window._vaultOnValue || !window._vaultDbRef) return;
+
+  const _cRef = window._vaultDbRef(window._vaultDb, 'comments/' + trackId);
+  _commentsOff = window._vaultOnValue(_cRef, snap => {
+    const data = snap.val() || {};
+    _trackCommentsList = Object.entries(data).map(([key, v]) => ({ key, ...v }))
+      .sort((a, b) => a.timestamp - b.timestamp);
+    window._trackComments = _trackCommentsList;
+    const tid = parseInt(trackId, 10) || trackId;
+    commentCounts.set(tid, _trackCommentsList.length);
+    _refreshCommentBadge(trackId, _trackCommentsList.length);
+  });
+}
+
+function postComment(text, timestamp) {
+  const trackId = _getCurrentTrackIdStr();
+  if (!trackId || !text.trim()) return;
+  if (!window._vaultDb || !window._vaultPush || !window._vaultDbRef) {
+    showToast('FIREBASE NOT READY', 'error'); return;
+  }
+  const uid = window._vaultUid || ('anon-' + Math.random().toString(36).slice(2));
+  window._vaultPush(
+    window._vaultDbRef(window._vaultDb, 'comments/' + trackId),
+    {
+      text      : text.trim().slice(0, 200),
+      timestamp : Math.floor(timestamp),
+      authorName: (typeof isAdmin !== 'undefined' && isAdmin) ? 'host' : 'listener',
+      uid,
+      createdAt : Date.now(),
+    }
+  ).then(() => showToast('COMMENT POSTED AT ' + fmt(timestamp), 'success'))
+   .catch(e  => showToast('POST FAILED: ' + e.message, 'error'));
+}
+
+function deleteComment(trackId, commentKey) {
+  if (!window._vaultDb || !window._vaultRemove || !window._vaultDbRef) return;
+  window._vaultRemove(
+    window._vaultDbRef(window._vaultDb, 'comments/' + trackId + '/' + commentKey)
+  ).then(() => showToast('COMMENT DELETED', 'success'))
+   .catch(e  => showToast('DELETE FAILED: ' + e.message, 'error'));
+}
+
+function _refreshCommentBadge(trackId, count) {
+  const el = document.querySelector('[data-comment-track="' + trackId + '"]');
+  if (!el) return;
+  el.textContent = count > 0 ? '💬 ' + count : '';
+}
+
+function _openCommentInput(timestamp) {
+  _commentTimestamp = timestamp;
+  const labelEl = document.getElementById('comment-at-label');
+  const wrap    = document.getElementById('comment-input-wrap');
+  const input   = document.getElementById('comment-input');
+  if (!wrap) return;
+  if (labelEl) labelEl.style.display = 'none';
+  wrap.style.display = 'flex';
+  if (input) {
+    input.placeholder = 'Comment at ' + fmt(timestamp) + '…';
+    input.value = '';
+    input.focus();
+  }
+}
+
+function _closeCommentInput() {
+  const labelEl = document.getElementById('comment-at-label');
+  const wrap    = document.getElementById('comment-input-wrap');
+  if (wrap)    wrap.style.display = 'none';
+  if (labelEl) labelEl.style.display = '';
+}
+
+// Comment input event wiring — vault.js is defer so DOM is already ready here.
+// Actual wiring happens near the bottom of vault.js after all elements are queried.
 
 // ===== COVER ART (iTunes Search API — free, no key, CORS-open) =====
 const coverArtCache = {};
@@ -4170,6 +4389,28 @@ renderFilters();
 renderTracks();
 renderRecentlyPlayed();
 renderQueue();
+checkUrlParams(); // Feature 2 — play track from URL params
+
+// ===== COMMENT INPUT + SHARE BUTTON WIRING (Features 2 & 3) =====
+(function() {
+  var postBtn   = document.getElementById('comment-post-btn');
+  var cancelBtn = document.getElementById('comment-cancel-btn');
+  var inputEl   = document.getElementById('comment-input');
+  var shareBtn  = document.getElementById('share-ts-btn');
+
+  if (postBtn) postBtn.addEventListener('click', function() {
+    var text = (inputEl && inputEl.value.trim()) || '';
+    if (!text) return;
+    postComment(text, _commentTimestamp);
+    _closeCommentInput();
+  });
+  if (cancelBtn) cancelBtn.addEventListener('click', _closeCommentInput);
+  if (inputEl) inputEl.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { if (postBtn) postBtn.click(); }
+    if (e.key === 'Escape') _closeCommentInput();
+  });
+  if (shareBtn) shareBtn.addEventListener('click', function() { copyTimestamp(); });
+})();
 
 // Seed artist palettes from localStorage immediately (so cards render with correct colors)
 artistPalettes = getLocalArtists();
@@ -4182,6 +4423,7 @@ loadTracks().then(loaded => {
     renderTracks();
     renderRecentlyPlayed();
   }
+  document.dispatchEvent(new Event('vault-tracks-loaded')); // Feature 2
   if (isAdmin && !ghConfigured()) {
     showToast('GITHUB NOT SET UP — CLICK ⚙ TO CONFIGURE', 'error');
   }

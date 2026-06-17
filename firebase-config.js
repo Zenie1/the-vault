@@ -7,7 +7,7 @@
 
 // All imports MUST be at the top of the module — do not move them.
 import { initializeApp }          from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js';
-import { getDatabase, ref, get, set, forceWebSockets } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js';
+import { getDatabase, ref, get, set, forceWebSockets, onValue, push, remove } from 'https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js';
 
 const firebaseConfig = {
   apiKey:            'AIzaSyDE64cLcQIKTjgLLIY7Njzdi9mNoIY_lHU',
@@ -25,8 +25,11 @@ forceWebSockets(); // prevent long-polling fallback which violates CSP script-sr
 
 // Expose to window so vault.js (non-module) can call Firebase for admin auth.
 // vault.js only reads these on user interaction (login click), never at init time.
-window._vaultDb    = db;
-window._vaultDbRef = ref;
-window._vaultDbGet = get;
-window._vaultDbSet = set;
+window._vaultDb       = db;
+window._vaultDbRef    = ref;
+window._vaultDbGet    = get;
+window._vaultDbSet    = set;
+window._vaultOnValue  = onValue;
+window._vaultPush     = push;
+window._vaultRemove   = remove;
 console.log('[Firebase] window._vaultDb ready');
