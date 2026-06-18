@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://*.firebaseio.com https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src * blob:; connect-src https://api.github.com https://raw.githubusercontent.com https://res.cloudinary.com https://api.anthropic.com https://corsproxy.io https://api.allorigins.win https://api.lyrics.ovh https://lrclib.net https://itunes.apple.com https://images.weserv.nl https://*.workers.dev https://fal.run https://queue.fal.run https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com https://ws.audioscrobbler.com https://musicbrainz.org https://en.wikipedia.org https://upload.wikimedia.org; frame-src https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://*.firebaseio.com https://www.youtube.com https://s.ytimg.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src * blob:; connect-src https://api.github.com https://raw.githubusercontent.com https://res.cloudinary.com https://api.anthropic.com https://corsproxy.io https://api.allorigins.win https://api.lyrics.ovh https://lrclib.net https://itunes.apple.com https://images.weserv.nl https://*.workers.dev https://fal.run https://queue.fal.run https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://www.googleapis.com https://ws.audioscrobbler.com https://musicbrainz.org https://en.wikipedia.org https://upload.wikimedia.org; frame-src https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self';">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 <meta name="theme-color" content="#0a0408">
@@ -4016,6 +4016,501 @@ body.viz-open .player-controls {
   justify-content: center !important;
   gap: 16px !important;
 }
+
+/* ═══════════════════════════════════════════════════════
+   FEATURE 1 — SELECTION MODE / ZIP DOWNLOAD
+═══════════════════════════════════════════════════════ */
+body.selection-mode .track-card {
+  cursor: pointer;
+  user-select: none;
+}
+body.selection-mode .track-card::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border2);
+  border-radius: 3px;
+  background: transparent;
+  transition: all 0.15s;
+  z-index: 5;
+}
+body.selection-mode .track-card.selected::after {
+  background: var(--artist-primary, var(--accent));
+  border-color: var(--artist-primary, var(--accent));
+  content: '✓';
+  color: #000;
+  font-size: 11px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+body.selection-mode .track-card.selected {
+  border-color: var(--artist-primary, var(--accent)) !important;
+  box-shadow: 0 0 0 1px var(--artist-primary, var(--accent)), inset 0 0 24px -10px var(--artist-primary, rgba(196,30,58,0.2));
+}
+body.selection-mode .track-card:hover:not(.selected) {
+  border-color: rgba(255,255,255,0.2);
+}
+
+#selection-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(10,4,8,0.96);
+  border-top: 1px solid var(--border2);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 9002;
+  padding: 10px 24px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+  flex-wrap: wrap;
+}
+#selection-bar.visible {
+  display: flex;
+  transform: translateY(0);
+}
+#selection-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--accent);
+  flex: 1;
+  text-transform: uppercase;
+}
+.sel-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sel-bar-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  padding: 7px 14px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted2);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.sel-bar-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+.sel-bar-btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.sel-bar-btn.primary:hover { background: #e02a48; }
+.sel-bar-btn.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+#zip-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#zip-progress-track {
+  width: 120px;
+  height: 4px;
+  background: var(--surface3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+#zip-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.2s;
+}
+#zip-progress-text {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted2);
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════
+   FEATURE 2 — STATS PAGE
+═══════════════════════════════════════════════════════ */
+#stats-overlay {
+  padding: 0;
+}
+.stats-page {
+  padding: 28px 32px 100px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.stats-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.stats-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 28px;
+  letter-spacing: 4px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.stats-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.stats-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 18px 16px;
+  text-align: center;
+}
+.stats-card-val {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 28px;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stats-card-lbl {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.stats-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.stats-section-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--muted2);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.stats-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.stats-bar-row:hover { opacity: 0.8; }
+.stats-bar-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text);
+  min-width: 0;
+  flex: 0 0 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stats-bar-label small {
+  font-size: 8px;
+  color: var(--muted);
+  display: block;
+  margin-top: 1px;
+}
+.stats-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--surface3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.stats-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s cubic-bezier(0.16,1,0.3,1);
+}
+.stats-bar-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted2);
+  min-width: 36px;
+  text-align: right;
+}
+.stats-canvas-wrap {
+  width: 100%;
+  position: relative;
+}
+.stats-canvas-wrap canvas {
+  width: 100%;
+  display: block;
+}
+.stats-records {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.stats-record-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 14px;
+}
+.stats-record-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.stats-record-val {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.stats-heatmap {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.stats-heatmap-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stats-heatmap-cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+.stats-heatmap-cell:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 3px 7px;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+}
+@media (max-width: 700px) {
+  .stats-overview { grid-template-columns: repeat(2, 1fr); }
+  .stats-page { padding: 16px 16px 120px; }
+  .stats-records { grid-template-columns: 1fr; }
+  .stats-bar-label { flex: 0 0 110px; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   FEATURE 3 — KARAOKE MODE
+═══════════════════════════════════════════════════════ */
+.lyrics-karaoke-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  padding: 4px 9px;
+  cursor: pointer;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: none;
+}
+.lyrics-karaoke-btn.visible { display: inline-flex; align-items: center; gap: 4px; }
+.lyrics-karaoke-btn:hover { color: var(--text); border-color: var(--border2); }
+.lyrics-karaoke-btn.active {
+  color: var(--current-color, var(--accent));
+  border-color: var(--current-color, var(--accent));
+  background: rgba(196,30,58,0.08);
+}
+
+#karaoke-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: #050305;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#karaoke-overlay.active {
+  display: flex;
+  opacity: 1;
+}
+#karaoke-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 50%,
+    var(--artist-glow-30, rgba(196,30,58,0.12)), transparent 65%);
+  pointer-events: none;
+}
+.karaoke-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  max-width: 90%;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
+.karaoke-prev, .karaoke-next {
+  font-family: var(--font-title);
+  font-size: clamp(14px, 2.2vw, 28px);
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  line-height: 1.3;
+  transition: all 0.2s ease-out;
+  min-height: 1.4em;
+}
+.karaoke-current {
+  font-family: var(--font-title);
+  font-size: clamp(28px, 5vw, 64px);
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 2px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 40px var(--artist-glow, rgba(196,30,58,0.8)),
+    0 0 80px var(--artist-glow-30, rgba(196,30,58,0.3));
+  transition: all 0.2s ease-out;
+  min-height: 1.3em;
+}
+@keyframes k-slide-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.karaoke-current.k-animate {
+  animation: k-slide-in 0.2s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .karaoke-current { animation: none !important; transition: none !important; }
+}
+.karaoke-progress-wrap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255,255,255,0.08);
+}
+#karaoke-progress {
+  height: 100%;
+  background: var(--current-color, var(--accent));
+  width: 0%;
+  transition: width 0.5s linear;
+}
+.karaoke-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 24px;
+  z-index: 3;
+}
+.karaoke-track-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  flex: 1;
+}
+#karaoke-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+#karaoke-artist {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+}
+.karaoke-ctrl-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.7);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  padding: 7px 14px;
+  cursor: pointer;
+  text-transform: uppercase;
+  border-radius: 2px;
+  transition: all 0.2s;
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+}
+.karaoke-ctrl-btn:hover { color: #fff; background: rgba(255,255,255,0.14); }
+.karaoke-play-btn { font-size: 14px; padding: 7px 12px; min-width: 40px; }
+
+/* ═══════════════════════════════════════════════════════
+   FEATURE 4 — IS-CACHED indicator on track cards
+═══════════════════════════════════════════════════════ */
+.track-card.is-cached::before {
+  /* Override the colored left-bar ::before with a cached indicator approach */
+}
+/* We use a dedicated CSS var approach — ⚡ bottom-right badge */
+.track-card.is-cached .track-cached-dot {
+  display: inline;
+}
+.track-cached-dot {
+  display: none;
+  font-size: 9px;
+  opacity: 0.55;
+  margin-left: 4px;
+  vertical-align: middle;
+  title: "Cached for offline";
+}
 </style>
 </head>
 <body>
@@ -5063,6 +5558,7 @@ body.viz-open .player-controls {
       <span class="lyrics-track-name" id="lyrics-track-name"></span>
     </div>
     <span class="lyrics-source-badge" id="lyrics-source-badge">GENIUS</span>
+    <button class="lyrics-karaoke-btn" id="lyrics-karaoke-btn" title="Karaoke mode (Shift+K)">⟁ KARAOKE</button>
     <button class="lyrics-close-btn" id="lyrics-close-btn" title="Close lyrics">✕</button>
   </div>
   <div id="lyrics-scroll">
@@ -5155,6 +5651,44 @@ body.viz-open .player-controls {
 <!-- ── HISTORY OVERLAY ──────────────────────────────────────────────────────── -->
 <div id="history-overlay" class="full-overlay"></div>
 
+<!-- ── STATS OVERLAY ────────────────────────────────────────────────────────── -->
+<div id="stats-overlay" class="full-overlay"></div>
+
+<!-- ── KARAOKE OVERLAY ──────────────────────────────────────────────────────── -->
+<div id="karaoke-overlay">
+  <div class="karaoke-content">
+    <div class="karaoke-prev" id="karaoke-prev"></div>
+    <div class="karaoke-current" id="karaoke-current">♪</div>
+    <div class="karaoke-next" id="karaoke-next"></div>
+  </div>
+  <div class="karaoke-progress-wrap">
+    <div id="karaoke-progress"></div>
+  </div>
+  <div class="karaoke-controls">
+    <div class="karaoke-track-info">
+      <span id="karaoke-title">—</span>
+      <span id="karaoke-artist">—</span>
+    </div>
+    <button class="karaoke-ctrl-btn karaoke-play-btn" id="karaoke-play-btn">▶</button>
+    <button class="karaoke-ctrl-btn" id="karaoke-close-btn">✕ CLOSE</button>
+  </div>
+</div>
+
+<!-- ── SELECTION BAR ─────────────────────────────────────────────────────────── -->
+<div id="selection-bar">
+  <span id="selection-count">0 TRACKS SELECTED</span>
+  <div class="sel-bar-actions">
+    <div id="zip-progress-wrap" style="display:none">
+      <div id="zip-progress-track"><div id="zip-progress-bar"></div></div>
+      <span id="zip-progress-text">0/0</span>
+    </div>
+    <button class="sel-bar-btn" id="select-all-btn">Select All</button>
+    <button class="sel-bar-btn primary" id="download-zip-btn" disabled>↓ Download ZIP</button>
+    <button class="sel-bar-btn" id="clear-selection-btn">Clear</button>
+    <button class="sel-bar-btn" id="exit-selection-btn">Done</button>
+  </div>
+</div>
+
 <!-- ── SESSION END MODAL ──────────────────────────────────────────────────── -->
 <div id="session-end-modal" class="modal-overlay">
   <div class="modal" style="max-width:400px;font-family:var(--font-mono)">
@@ -5188,6 +5722,9 @@ body.viz-open .player-controls {
     <div class="yml-countdown-bar"></div>
   </div>
 </div>
+
+<!-- JSZip — used by ZIP download feature -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <!-- YouTube IFrame API -->
 <script src="https://www.youtube.com/iframe_api"></script>

@@ -851,8 +851,27 @@ function renderFilters() {
       else { setView('history'); }
     });
 
+    const statsBtn = document.createElement('button');
+    statsBtn.className = 'sort-btn view-btn' + (activeView === 'stats' ? ' active' : '');
+    statsBtn.id = 'stats-view-btn';
+    statsBtn.textContent = '◈ Stats';
+    statsBtn.addEventListener('click', () => {
+      if (activeView === 'stats') { setView('tracks'); }
+      else { setView('stats'); }
+    });
+
+    const selectBtn = document.createElement('button');
+    selectBtn.className = 'sort-btn view-btn';
+    selectBtn.id = 'select-mode-btn';
+    selectBtn.textContent = '☐ Select';
+    selectBtn.addEventListener('click', () => {
+      if (selectionMode) exitSelectionMode(); else enterSelectionMode();
+    });
+
     sortWrap.appendChild(projectsBtn);
     sortWrap.appendChild(historyBtn);
+    sortWrap.appendChild(statsBtn);
+    sortWrap.appendChild(selectBtn);
   }
 }
 
@@ -890,7 +909,7 @@ function renderTracks() {
     const cCount = commentCounts && commentCounts.get(t.id) || 0;
     const commentBadgeEl = `<span class="track-comment-badge" data-comment-track="${t.id}">${cCount > 0 ? '💬 ' + cCount : ''}</span>`;
     return `
-      <div class="track-card${isCurrentlyPlaying?' playing':''}" style="--artist-color:${color};--artist-primary:${pal.primary};--artist-secondary:${pal.secondary};--artist-text:${pal.text};--artist-glow:${pal.glow};--artist-gradient-start:${pal.gradient[0]};--artist-gradient-end:${pal.gradient[1]};--artist-secondary-bg:rgba(${secR},${secG},${secB},0.42);--artist-glow-30:rgba(${glowR},${glowG},${glowB},0.30)" data-id="${t.id}">
+      <div class="track-card${isCurrentlyPlaying?' playing':''}" style="--artist-color:${color};--artist-primary:${pal.primary};--artist-secondary:${pal.secondary};--artist-text:${pal.text};--artist-glow:${pal.glow};--artist-gradient-start:${pal.gradient[0]};--artist-gradient-end:${pal.gradient[1]};--artist-secondary-bg:rgba(${secR},${secG},${secB},0.42);--artist-glow-30:rgba(${glowR},${glowG},${glowB},0.30)" data-id="${t.id}" data-url="${t.url||''}">
         <div class="track-card-top">
           ${coverSrc ? `<img class="track-cover loaded" src="${coverSrc}" alt="cover" loading="lazy">` : `<img class="track-cover" src="" data-fetch-cover="${t.id}" alt="cover">`}
           <div class="track-card-meta">
@@ -6036,23 +6055,21 @@ function _cacheCurrentTrack() {
 function _setOffline(offline) {
   const badge = document.getElementById('offline-badge');
   if (badge) badge.style.display = offline ? 'flex' : 'none';
-  if (!offline) {
-    // Restore track styles
-    document.querySelectorAll('.track-card.offline-uncached').forEach(c => c.classList.remove('offline-uncached'));
-  } else {
-    _applyOfflineState();
-  }
+  if (!offline) showToast('Back online', 'success');
+  else showToast("You're offline — cached tracks available", '');
+  _applyOfflineState();
 }
 
 function _applyOfflineState() {
-  if (navigator.onLine) return;
   document.querySelectorAll('#tracks-grid .track-card').forEach(card => {
     const id = parseInt(card.dataset.id);
     const t  = tracks.find(x => x.id === id);
-    if (!t || !t.url || _cachedTrackUrls.has(t.url)) {
-      card.classList.remove('offline-uncached');
+    const cached = t && t.url && _cachedTrackUrls.has(t.url);
+    card.classList.toggle('is-cached', !!cached);
+    if (!navigator.onLine) {
+      card.classList.toggle('offline-uncached', !cached || !t || !t.url);
     } else {
-      card.classList.add('offline-uncached');
+      card.classList.remove('offline-uncached');
     }
   });
 }
@@ -6082,7 +6099,7 @@ if ('serviceWorker' in navigator) {
         break;
       case 'CACHED_URLS':
         (d.urls || []).forEach(u => _cachedTrackUrls.add(u));
-        if (!navigator.onLine) _applyOfflineState();
+        _applyOfflineState();
         break;
       case 'CACHE_INFO':
         _renderCacheInfo(d);
@@ -6094,7 +6111,7 @@ if ('serviceWorker' in navigator) {
         _cachedTrackUrls.clear();
         showToast('AUDIO CACHE CLEARED', 'success');
         _refreshCacheInfo();
-        if (!navigator.onLine) _applyOfflineState();
+        _applyOfflineState();
         break;
     }
   });
@@ -6185,6 +6202,7 @@ function setView(v) {
   const artistHdr    = document.getElementById('artist-header');
   const projectsOv   = document.getElementById('projects-overlay');
   const historyOv    = document.getElementById('history-overlay');
+  const statsOv      = document.getElementById('stats-overlay');
   const projDetailOv = document.getElementById('project-detail-overlay');
   const artistOv     = document.getElementById('artist-overlay');
 
@@ -6199,17 +6217,21 @@ function setView(v) {
   if (projectsOv)   projectsOv.classList.toggle('open', v === 'projects');
   if (projDetailOv) projDetailOv.classList.toggle('open', v === 'project-detail');
   if (historyOv)    historyOv.classList.toggle('open', v === 'history');
+  if (statsOv)      statsOv.classList.toggle('open', v === 'stats');
   if (artistOv)     artistOv.classList.toggle('open', v === 'artist');
 
-  // Update PROJECTS/HISTORY button active states
+  // Update button active states
   const pb = document.getElementById('projects-view-btn');
   const hb = document.getElementById('history-view-btn');
+  const sb = document.getElementById('stats-view-btn');
   if (pb) pb.classList.toggle('active', v === 'projects' || v === 'project-detail');
   if (hb) hb.classList.toggle('active', v === 'history');
+  if (sb) sb.classList.toggle('active', v === 'stats');
 
   if (v === 'projects')       renderProjectsGrid();
   if (v === 'project-detail') renderProjectDetail(activeProjectId);
   if (v === 'history')        renderHistoryPage();
+  if (v === 'stats')          renderStatsPage();
   if (v === 'artist')         renderArtistPage(activeArtistName);
   if (v === 'tracks') { renderTracks(); }
 }
@@ -6925,6 +6947,9 @@ window.addEventListener('popstate', function() {
 
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && activeView === 'artist') closeArtistPage();
+  if (e.key === 'Escape' && karaokeOpen) { closeKaraoke(); return; }
+  if (e.key === 'Escape' && selectionMode) { exitSelectionMode(); return; }
+  if (e.key === 'K' && e.shiftKey) { e.preventDefault(); toggleKaraoke(); }
 });
 
 function _getArtistVizConfig(artist) {
@@ -7148,3 +7173,512 @@ function renderArtistPage(artist) {
 
   requestAnimationFrame(() => _drawAPHistChart(artistPlays, pal.primary));
 }
+
+// =====================================================================
+// FEATURE 1 â€” DOWNLOAD QUEUE (ZIP)
+// =====================================================================
+
+let selectionMode = false;
+const selectedTracks = new Set(); // track ids
+
+function enterSelectionMode() {
+  selectionMode = true;
+  document.body.classList.add('selection-mode');
+  const btn = document.getElementById('select-mode-btn');
+  if (btn) { btn.textContent = 'â˜‘ Select'; btn.classList.add('active'); }
+  document.getElementById('selection-bar').classList.add('visible');
+  _updateSelectionBar();
+  document.getElementById('tracks-grid').addEventListener('click', _selectionGridClick, true);
+}
+
+function exitSelectionMode() {
+  selectionMode = false;
+  selectedTracks.clear();
+  document.body.classList.remove('selection-mode');
+  const btn = document.getElementById('select-mode-btn');
+  if (btn) { btn.textContent = 'â˜ Select'; btn.classList.remove('active'); }
+  document.getElementById('selection-bar').classList.remove('visible');
+  document.querySelectorAll('.track-card.selected').forEach(c => c.classList.remove('selected'));
+  document.getElementById('tracks-grid').removeEventListener('click', _selectionGridClick, true);
+}
+
+function _selectionGridClick(e) {
+  const card = e.target.closest('.track-card');
+  if (!card) return;
+  if (e.target.closest('.icon-btn')) return;
+  e.stopPropagation();
+  e.preventDefault();
+  const id = parseInt(card.dataset.id);
+  if (selectedTracks.has(id)) {
+    selectedTracks.delete(id);
+    card.classList.remove('selected');
+  } else {
+    selectedTracks.add(id);
+    card.classList.add('selected');
+  }
+  _updateSelectionBar();
+}
+
+function _updateSelectionBar() {
+  const n = selectedTracks.size;
+  const countEl = document.getElementById('selection-count');
+  const dlBtn   = document.getElementById('download-zip-btn');
+  if (countEl) countEl.textContent = n + ' TRACK' + (n !== 1 ? 'S' : '') + ' SELECTED';
+  if (dlBtn)   dlBtn.disabled = (n === 0);
+}
+
+async function downloadSelectedAsZip() {
+  if (!window.JSZip) { showToast('JSZip not loaded â€” try refreshing', 'error'); return; }
+  const ids = [...selectedTracks];
+  const selected = ids.map(id => tracks.find(t => t.id === id)).filter(Boolean);
+  if (!selected.length) { showToast('NO TRACKS SELECTED', 'error'); return; }
+  if (selected.length > 20) showToast('Large download â€” this may take a while', '');
+
+  const dlBtn        = document.getElementById('download-zip-btn');
+  const progressWrap = document.getElementById('zip-progress-wrap');
+  const progressBar  = document.getElementById('zip-progress-bar');
+  const progressText = document.getElementById('zip-progress-text');
+  if (dlBtn)        dlBtn.disabled = true;
+  if (progressWrap) progressWrap.style.display = 'flex';
+
+  const zip    = new JSZip();
+  const folder = zip.folder('The Vault');
+  let done = 0;
+  let failed = 0;
+
+  showToast('Preparing downloadâ€¦', '');
+
+  for (const track of selected) {
+    if (!track.url) { failed++; continue; }
+    try {
+      const response = await fetch(track.url, { mode: 'cors' });
+      if (!response.ok) throw new Error(response.status);
+      const blob = await response.blob();
+      let ext = track.url.split('.').pop().split('?')[0].toLowerCase();
+      if (!['mp3','wav','flac','m4a','ogg','aac'].includes(ext)) ext = 'mp3';
+      let filename = (track.artist + ' - ' + track.title + '.' + ext)
+        .replace(/[/\\?%*:|"<>]/g, '-');
+      folder.file(filename, blob);
+      done++;
+    } catch (err) {
+      console.warn('[ZIP] Failed to fetch:', track.title, err);
+      failed++;
+    }
+    const total = selected.length;
+    const pct = Math.round(((done + failed) / total) * 100);
+    if (progressBar)  progressBar.style.width = pct + '%';
+    if (progressText) progressText.textContent = (done + failed) + '/' + total;
+    showToast('Adding ' + (done + failed) + '/' + total + 'â€¦', '');
+  }
+
+  try {
+    const content = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+    const url = URL.createObjectURL(content);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'the-vault-' + Date.now() + '.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+    const msg = failed > 0
+      ? done + '/' + selected.length + ' tracks (' + failed + ' unavailable)'
+      : done + ' track' + (done !== 1 ? 's' : '') + ' downloaded';
+    showToast(msg, 'success');
+  } catch (err) {
+    showToast('ZIP generation failed', 'error');
+    console.error('[ZIP] generateAsync error:', err);
+  }
+
+  if (progressWrap) progressWrap.style.display = 'none';
+  if (progressBar)  progressBar.style.width = '0%';
+  if (dlBtn)        dlBtn.disabled = false;
+}
+
+// Wire selection bar buttons
+(function() {
+  document.getElementById('select-all-btn').addEventListener('click', function() {
+    document.querySelectorAll('#tracks-grid .track-card').forEach(function(card) {
+      const id = parseInt(card.dataset.id);
+      selectedTracks.add(id);
+      card.classList.add('selected');
+    });
+    _updateSelectionBar();
+  });
+  document.getElementById('clear-selection-btn').addEventListener('click', function() {
+    selectedTracks.clear();
+    document.querySelectorAll('.track-card.selected').forEach(function(c) { c.classList.remove('selected'); });
+    _updateSelectionBar();
+  });
+  document.getElementById('exit-selection-btn').addEventListener('click', exitSelectionMode);
+  document.getElementById('download-zip-btn').addEventListener('click', downloadSelectedAsZip);
+})();
+
+// =====================================================================
+// FEATURE 2 â€” VAULT STATS PAGE
+// =====================================================================
+
+function renderStatsPage() {
+  const ov = document.getElementById('stats-overlay');
+  if (!ov) return;
+  const h     = _getHistory();
+  const plays = h.plays || [];
+  if (!plays.length) {
+    ov.innerHTML = '<div class="stats-page"><div class="stats-header-row"><div class="stats-title">â—ˆ VAULT STATS</div><button class="sort-btn" onclick="setView(\'tracks\')">âœ• Close</button></div><div style="text-align:center;padding:60px 20px;font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase">No listening history yet â€” start playing!</div></div>';
+    return;
+  }
+
+  const totalSec = h.totalTime || 0;
+  const totalHr  = Math.floor(totalSec / 3600);
+  const totalMin = Math.floor((totalSec % 3600) / 60);
+  const timeStr  = totalHr ? totalHr + 'h ' + totalMin + 'm' : totalMin + 'm';
+  const uniqueIds = new Set(plays.map(function(p) { return p.trackId; })).size;
+
+  const dayCounts = {};
+  plays.forEach(function(p) {
+    const d = new Date(p.playedAt).toLocaleDateString('en-US', {month:'short', day:'numeric'});
+    dayCounts[d] = (dayCounts[d] || 0) + 1;
+  });
+  const topDay    = Object.entries(dayCounts).sort(function(a,b) { return b[1]-a[1]; })[0];
+  const topDayStr = topDay ? topDay[0] + ' (' + topDay[1] + ' plays)' : 'â€”';
+
+  const trackCounts = {};
+  plays.forEach(function(p) { trackCounts[p.trackId] = (trackCounts[p.trackId]||0) + 1; });
+  const topTracks = Object.entries(trackCounts)
+    .sort(function(a,b) { return b[1]-a[1]; }).slice(0, 10)
+    .map(function(entry) {
+      const id  = entry[0], cnt = entry[1];
+      const rec = plays.find(function(p) { return String(p.trackId) === id; });
+      return { trackId: id, title: (rec && rec.title)||'â€”', artist: (rec && rec.artist)||'', count: cnt };
+    });
+  const maxTCount = Math.max(1, topTracks[0] ? topTracks[0].count : 1);
+
+  const artistSec = {};
+  plays.forEach(function(p) { artistSec[p.artist] = (artistSec[p.artist]||0) + (p.duration||180); });
+  const topArtists = Object.entries(artistSec).sort(function(a,b) { return b[1]-a[1]; }).slice(0, 8);
+  const maxASec    = topArtists.length ? Math.max(1, topArtists[0][1]) : 1;
+
+  function fmtSec(s) {
+    const m = Math.floor(s/60), hr = Math.floor(m/60);
+    return hr ? hr + 'h ' + (m%60) + 'm' : m + 'm';
+  }
+
+  const tagCounts = {};
+  plays.forEach(function(p) {
+    const t = tracks.find(function(x) { return String(x.id) === String(p.trackId); });
+    ((t && t.tags) || []).forEach(function(tag) { tagCounts[tag] = (tagCounts[tag]||0) + 1; });
+  });
+  const topTags = Object.entries(tagCounts).sort(function(a,b) { return b[1]-a[1]; }).slice(0, 8);
+
+  const streakSet  = new Set(plays.map(function(p) { return new Date(p.playedAt).toDateString(); }));
+  let streak = 0;
+  const todayD = new Date();
+  for (let si = 0; si < 365; si++) {
+    const sd = new Date(todayD); sd.setDate(sd.getDate() - si);
+    if (streakSet.has(sd.toDateString())) streak++;
+    else if (si > 0) break;
+  }
+  const mostPlayedEntry = topTracks[0];
+  const hourCounts = [0,0,0,0];
+  plays.forEach(function(p) {
+    const hh = new Date(p.playedAt).getHours();
+    if (hh >= 5 && hh < 12) hourCounts[0]++;
+    else if (hh >= 12 && hh < 17) hourCounts[1]++;
+    else if (hh >= 17 && hh < 22) hourCounts[2]++;
+    else hourCounts[3]++;
+  });
+  const timeLabels = ['Morning','Afternoon','Evening','Night'];
+  const favTime = timeLabels[hourCounts.indexOf(Math.max.apply(null, hourCounts))];
+  const firstPlay    = plays[plays.length - 1];
+  const memberSince  = firstPlay ? new Date(firstPlay.playedAt).toLocaleDateString('en-US', {month:'long',year:'numeric'}) : 'â€”';
+
+  const topBarsHtml = topTracks.map(function(t) {
+    const col  = getArtistColor(t.artist);
+    const pIdx = tracks.findIndex(function(x) { return String(x.id) === String(t.trackId); });
+    return '<div class="stats-bar-row" onclick="setView(\'tracks\');setTimeout(function(){ if(' + pIdx + '!==-1) playAtIndex(' + pIdx + '); },100)">' +
+      '<div class="stats-bar-label">' + _esc(t.title) + '<small>' + _esc(t.artist) + '</small></div>' +
+      '<div class="stats-bar-track"><div class="stats-bar-fill" style="width:' + Math.round((t.count/maxTCount)*100) + '%;background:' + col + '"></div></div>' +
+      '<div class="stats-bar-count">' + t.count + '</div></div>';
+  }).join('');
+
+  const artistBarsHtml = topArtists.map(function(entry) {
+    const artist = entry[0], secs = entry[1];
+    const col = getArtistColor(artist);
+    return '<div class="stats-bar-row">' +
+      '<div class="stats-bar-label" style="color:' + col + '">' + _esc(artist) + '<small>' + fmtSec(secs) + '</small></div>' +
+      '<div class="stats-bar-track"><div class="stats-bar-fill" style="width:' + Math.round((secs/maxASec)*100) + '%;background:' + col + '"></div></div>' +
+      '<div class="stats-bar-count">' + fmtSec(secs) + '</div></div>';
+  }).join('');
+
+  const tagBarsHtml = topTags.map(function(entry) {
+    const tag = entry[0], cnt = entry[1];
+    const maxCnt = topTags[0] ? topTags[0][1] : 1;
+    return '<div class="stats-bar-row">' +
+      '<div class="stats-bar-label">' + _esc(tag) + '</div>' +
+      '<div class="stats-bar-track"><div class="stats-bar-fill" style="width:' + Math.round((cnt/maxCnt)*100) + '%;background:var(--accent)"></div></div>' +
+      '<div class="stats-bar-count">' + cnt + '</div></div>';
+  }).join('');
+
+  ov.innerHTML =
+    '<div class="stats-page">' +
+      '<div class="stats-header-row">' +
+        '<div class="stats-title">â—ˆ VAULT STATS</div>' +
+        '<button class="sort-btn" onclick="setView(\'tracks\')">âœ• Close</button>' +
+      '</div>' +
+      '<div class="stats-overview">' +
+        '<div class="stats-card"><div class="stats-card-val">' + tracks.length + '</div><div class="stats-card-lbl">Tracks in Vault</div></div>' +
+        '<div class="stats-card"><div class="stats-card-val">' + timeStr + '</div><div class="stats-card-lbl">Total Listening</div></div>' +
+        '<div class="stats-card"><div class="stats-card-val">' + plays.length + '</div><div class="stats-card-lbl">Total Plays</div></div>' +
+        '<div class="stats-card"><div class="stats-card-val" style="font-size:16px">' + topDayStr + '</div><div class="stats-card-lbl">Most Active Day</div></div>' +
+      '</div>' +
+      '<div class="stats-section"><div class="stats-section-title">Top Tracks by Play Count</div>' + topBarsHtml + '</div>' +
+      '<div class="stats-section"><div class="stats-section-title">Top Artists by Listening Time</div>' + artistBarsHtml + '</div>' +
+      '<div class="stats-section"><div class="stats-section-title">Listening Over Time (last 30 days)</div><div class="stats-canvas-wrap"><canvas id="stats-line-canvas" height="80"></canvas></div></div>' +
+      '<div class="stats-section"><div class="stats-section-title">Activity Heatmap (52 weeks)</div><div class="stats-heatmap" id="stats-heatmap"></div></div>' +
+      '<div class="stats-section"><div class="stats-section-title">Personal Records</div><div class="stats-records">' +
+        '<div class="stats-record-item"><div class="stats-record-label">Listening Streak</div><div class="stats-record-val">ðŸ”¥ ' + streak + ' day' + (streak!==1?'s':'') + '</div></div>' +
+        '<div class="stats-record-item"><div class="stats-record-label">Most Played Track</div><div class="stats-record-val">' + (mostPlayedEntry ? _esc(mostPlayedEntry.title) + ' Â· ' + mostPlayedEntry.count + ' plays' : 'â€”') + '</div></div>' +
+        '<div class="stats-record-item"><div class="stats-record-label">Favorite Time of Day</div><div class="stats-record-val">ðŸ• ' + favTime + '</div></div>' +
+        '<div class="stats-record-item"><div class="stats-record-label">Unique Tracks Played</div><div class="stats-record-val">' + uniqueIds + ' / ' + tracks.length + '</div></div>' +
+        '<div class="stats-record-item"><div class="stats-record-label">Member Since</div><div class="stats-record-val">' + memberSince + '</div></div>' +
+        '<div class="stats-record-item"><div class="stats-record-label">Completed Tracks</div><div class="stats-record-val">' + plays.filter(function(p) { return p.completed; }).length + '</div></div>' +
+      '</div></div>' +
+      (topTags.length ? '<div class="stats-section"><div class="stats-section-title">Genre / Tag Breakdown</div>' + tagBarsHtml + '</div>' : '') +
+    '</div>';
+
+  requestAnimationFrame(function() {
+    _drawStatsLineChart(plays);
+    _buildStatsHeatmap(plays);
+  });
+}
+
+function _esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _drawStatsLineChart(plays) {
+  const canvas = document.getElementById('stats-line-canvas');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = canvas.offsetWidth  * dpr;
+  canvas.height = canvas.offsetHeight * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const days = 30;
+  const now  = new Date();
+  const buckets = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d  = new Date(now); d.setDate(d.getDate() - i);
+    const ds = d.toDateString();
+    const dayPlays = plays.filter(function(p) { return new Date(p.playedAt).toDateString() === ds; });
+    const cnt = dayPlays.length;
+    const ac  = {};
+    dayPlays.forEach(function(p) { ac[p.artist] = (ac[p.artist]||0)+1; });
+    const topA = Object.entries(ac).sort(function(a,b) { return b[1]-a[1]; })[0];
+    buckets.push({ cnt: cnt, color: topA ? getArtistColor(topA[0]) : 'rgba(196,30,58,0.8)' });
+  }
+  const maxCnt    = Math.max(1, buckets.reduce(function(m,b) { return Math.max(m,b.cnt); }, 0));
+  const topBucket = buckets.reduce(function(best,b) { return b.cnt > best.cnt ? b : best; }, {cnt:0, color:'rgba(196,30,58,0.8)'});
+  const lineColor = topBucket.color;
+  const pad = { l:4, r:4, t:8, b:18 };
+  const chartW = W - pad.l - pad.r;
+  const chartH = H - pad.t - pad.b;
+  const pts = buckets.map(function(b, i) {
+    return { x: pad.l + (i / (days-1)) * chartW, y: pad.t + chartH - (b.cnt / maxCnt) * chartH };
+  });
+
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pad.t + chartH);
+  pts.forEach(function(p) { ctx.lineTo(p.x, p.y); });
+  ctx.lineTo(pts[pts.length-1].x, pad.t + chartH);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(196,30,58,0.12)';
+  ctx.fill();
+
+  ctx.beginPath();
+  pts.forEach(function(p, i) { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth   = 2;
+  ctx.lineJoin    = 'round';
+  ctx.stroke();
+
+  ctx.fillStyle  = 'rgba(255,255,255,0.3)';
+  ctx.font       = '9px monospace';
+  ctx.textAlign  = 'center';
+  buckets.forEach(function(b, i) {
+    if (i % 5 !== 0) return;
+    const d = new Date(now); d.setDate(d.getDate() - (days - 1 - i));
+    ctx.fillText(d.getDate(), pts[i].x, H - 2);
+  });
+}
+
+function _buildStatsHeatmap(plays) {
+  const wrap = document.getElementById('stats-heatmap');
+  if (!wrap) return;
+  const WEEKS = 52;
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - (WEEKS * 7 - 1));
+
+  const ac = {};
+  plays.forEach(function(p) { ac[p.artist] = (ac[p.artist]||0)+1; });
+  const topAEntry = Object.entries(ac).sort(function(a,b) { return b[1]-a[1]; })[0];
+  const hmColor   = topAEntry ? getArtistColor(topAEntry[0]) : '#c41e3a';
+
+  const dayMap = {};
+  plays.forEach(function(p) {
+    const key = new Date(p.playedAt).toDateString();
+    dayMap[key] = (dayMap[key]||0) + 1;
+  });
+  const maxDay = Math.max(1, Object.keys(dayMap).reduce(function(m,k) { return Math.max(m, dayMap[k]); }, 0));
+
+  wrap.innerHTML = '';
+  for (let w = 0; w < WEEKS; w++) {
+    const col = document.createElement('div');
+    col.className = 'stats-heatmap-col';
+    for (let d = 0; d < 7; d++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + w * 7 + d);
+      const cell = document.createElement('div');
+      cell.className = 'stats-heatmap-cell';
+      if (date > today) {
+        cell.style.background = 'transparent';
+      } else {
+        const cnt     = dayMap[date.toDateString()] || 0;
+        const dateStr = date.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+        cell.title = cnt ? cnt + ' play' + (cnt!==1?'s':'') + ' â€” ' + dateStr : dateStr;
+        if (cnt === 0) {
+          cell.style.background = 'rgba(255,255,255,0.05)';
+        } else {
+          cell.style.background = hmColor;
+          cell.style.opacity    = String(0.3 + (cnt / maxDay) * 0.7);
+        }
+      }
+      col.appendChild(cell);
+    }
+    wrap.appendChild(col);
+  }
+}
+
+// =====================================================================
+// FEATURE 3 â€” LYRICS KARAOKE MODE
+// =====================================================================
+
+let karaokeOpen   = false;
+let _karaokeTimer = null;
+let _karaokeLastLine = '';
+
+function openKaraoke() {
+  if (!lyricsLines || !lyricsLines.length) {
+    showToast('KARAOKE REQUIRES SYNCED LYRICS', 'error');
+    return;
+  }
+  karaokeOpen = true;
+  const ov = document.getElementById('karaoke-overlay');
+  if (ov) ov.classList.add('active');
+  const pl = getPlaylist();
+  const t  = pl[currentTrackIdx];
+  const titleEl  = document.getElementById('karaoke-title');
+  const artistEl = document.getElementById('karaoke-artist');
+  if (titleEl  && t) titleEl.textContent  = t.title;
+  if (artistEl && t) artistEl.textContent = t.artist;
+  _karaokeUpdatePlayBtn();
+  syncKaraokeDisplay();
+}
+
+function closeKaraoke() {
+  karaokeOpen = false;
+  const ov = document.getElementById('karaoke-overlay');
+  if (ov) ov.classList.remove('active');
+  clearTimeout(_karaokeTimer);
+  _karaokeLastLine = '';
+}
+
+function toggleKaraoke() {
+  if (karaokeOpen) closeKaraoke(); else openKaraoke();
+}
+
+function _karaokeUpdatePlayBtn() {
+  const btn = document.getElementById('karaoke-play-btn');
+  if (btn) btn.textContent = isPlaying ? 'â¸' : 'â–¶';
+}
+
+function syncKaraokeDisplay() {
+  if (!karaokeOpen || !lyricsLines || !lyricsLines.length) return;
+
+  let activeIdx = 0;
+  if (lyricsIsSynced) {
+    const now = audio.currentTime;
+    for (let i = lyricsLines.length - 1; i >= 0; i--) {
+      if (lyricsLines[i].time !== undefined && lyricsLines[i].time <= now) {
+        activeIdx = i;
+        break;
+      }
+    }
+  } else if (audio.duration) {
+    activeIdx = Math.floor((audio.currentTime / audio.duration) * (lyricsLines.length - 1));
+  }
+
+  const prevText = ((lyricsLines[activeIdx - 1] && lyricsLines[activeIdx - 1].text) || '').toUpperCase();
+  const currText = ((lyricsLines[activeIdx]     && lyricsLines[activeIdx].text)     || 'â™ª').toUpperCase();
+  const nextText = ((lyricsLines[activeIdx + 1] && lyricsLines[activeIdx + 1].text) || '').toUpperCase();
+
+  const prevEl = document.getElementById('karaoke-prev');
+  const currEl = document.getElementById('karaoke-current');
+  const nextEl = document.getElementById('karaoke-next');
+
+  if (prevEl) prevEl.textContent = prevText;
+  if (nextEl) nextEl.textContent = nextText;
+
+  if (currEl && currText !== _karaokeLastLine) {
+    _karaokeLastLine  = currText;
+    currEl.textContent = currText;
+    currEl.classList.remove('k-animate');
+    void currEl.offsetWidth;
+    currEl.classList.add('k-animate');
+  }
+
+  if (audio.duration) {
+    const pct = (audio.currentTime / audio.duration) * 100;
+    const pb  = document.getElementById('karaoke-progress');
+    if (pb) pb.style.width = pct + '%';
+  }
+}
+
+audio.addEventListener('timeupdate', function() {
+  if (!karaokeOpen) return;
+  clearTimeout(_karaokeTimer);
+  _karaokeTimer = setTimeout(syncKaraokeDisplay, lyricsIsSynced ? 200 : 400);
+});
+
+audio.addEventListener('play',  _karaokeUpdatePlayBtn);
+audio.addEventListener('pause', _karaokeUpdatePlayBtn);
+
+function _karaokeUpdateBtn() {
+  const btn = document.getElementById('lyrics-karaoke-btn');
+  if (!btn) return;
+  if (lyricsLines && lyricsLines.length > 0) {
+    btn.style.display = '';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+(function() {
+  const karaokeBtn   = document.getElementById('lyrics-karaoke-btn');
+  const karaokeClose = document.getElementById('karaoke-close-btn');
+  const karaokePlay  = document.getElementById('karaoke-play-btn');
+
+  if (karaokeBtn)   karaokeBtn.addEventListener('click', toggleKaraoke);
+  if (karaokeClose) karaokeClose.addEventListener('click', closeKaraoke);
+  if (karaokePlay)  karaokePlay.addEventListener('click', function() {
+    if (isPlaying) audio.pause(); else audio.play().catch(function(){});
+    _karaokeUpdatePlayBtn();
+  });
+
+  // Initial hide until lyrics load
+  _karaokeUpdateBtn();
+})();
+
+// Periodically sync karaoke button visibility with lyrics state
+setInterval(_karaokeUpdateBtn, 1500);
+
