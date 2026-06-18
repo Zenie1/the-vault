@@ -4434,6 +4434,9 @@ checkUrlParams(); // Feature 2 — play track from URL params
 // Seed artist palettes from localStorage immediately (so cards render with correct colors)
 artistPalettes = getLocalArtists();
 
+// Expose for pull-to-refresh
+window.reloadTracks = loadTracks;
+
 // Then async-load from GitHub (may update the list with newer tracks + palettes)
 loadTracks().then(loaded => {
   if (loaded && loaded.length > 0) {
@@ -7681,4 +7684,266 @@ function _karaokeUpdateBtn() {
 
 // Periodically sync karaoke button visibility with lyrics state
 setInterval(_karaokeUpdateBtn, 1500);
+
+
+// =====================================================================
+// FIX 2 â€” PWA INSTALL PROMPT
+// =====================================================================
+(function() {
+  var deferredPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (localStorage.getItem('vault-pwa-dismissed')) return;
+    setTimeout(function() {
+      var banner = document.getElementById('pwa-install-banner');
+      if (banner) banner.classList.add('visible');
+    }, 30000);
+  });
+
+  window.addEventListener('appinstalled', function() {
+    var banner = document.getElementById('pwa-install-banner');
+    if (banner) banner.classList.remove('visible');
+    deferredPrompt = null;
+    showToast('THE VAULT installed', 'success');
+  });
+
+  var installBtn = document.getElementById('pwa-install-btn');
+  var dismissBtn = document.getElementById('pwa-dismiss-btn');
+
+  if (installBtn) {
+    installBtn.addEventListener('click', function() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function() {
+        deferredPrompt = null;
+        var banner = document.getElementById('pwa-install-banner');
+        if (banner) banner.classList.remove('visible');
+      });
+    });
+  }
+
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', function() {
+      var banner = document.getElementById('pwa-install-banner');
+      if (banner) banner.classList.remove('visible');
+      localStorage.setItem('vault-pwa-dismissed', '1');
+    });
+  }
+})();
+
+// =====================================================================
+// FIX 3 â€” DOUBLE-TAP TO LIKE
+// =====================================================================
+if (window.matchMedia('(pointer: coarse)').matches) {
+  document.addEventListener('touchend', function(e) {
+    var card = e.target.closest('.track-card');
+    if (!card) return;
+    var now = Date.now();
+    var lastTap = parseInt(card.dataset.lastTap || '0');
+    if (now - lastTap < 300 && now - lastTap > 50) {
+      e.preventDefault();
+      var trackId = parseInt(card.dataset.id);
+      if (trackId && typeof toggleTrackLike === 'function') {
+        toggleTrackLike(trackId);
+        showHeartBurst(card);
+      }
+    }
+    card.dataset.lastTap = String(now);
+  }, { passive: false });
+}
+
+function showHeartBurst(card) {
+  var heart = document.createElement('div');
+  heart.textContent = 'â™¥';
+  heart.style.cssText = [
+    'position:absolute',
+    'top:50%',
+    'left:50%',
+    'transform:translate(-50%,-50%) scale(0)',
+    'font-size:52px',
+    'color:#ff3c3c',
+    'pointer-events:none',
+    'z-index:100',
+    'animation:heartBurst 0.55s ease-out forwards',
+    'text-shadow:0 0 20px rgba(255,60,60,0.8)'
+  ].join(';');
+  var prevPos = getComputedStyle(card).position;
+  if (prevPos === 'static') card.style.position = 'relative';
+  card.appendChild(heart);
+  setTimeout(function() {
+    heart.remove();
+    if (prevPos === 'static') card.style.position = '';
+  }, 600);
+}
+
+// =====================================================================
+// FIX 4 â€” PULL TO REFRESH
+// =====================================================================
+(function() {
+  if (!window.matchMedia('(pointer: coarse)').matches) return;
+
+  var pullStartY  = 0;
+  var isPulling   = false;
+  var THRESHOLD   = 75;
+
+  var indicator = document.createElement('div');
+  indicator.id  = 'pull-refresh-indicator';
+  indicator.style.cssText = [
+    'position:fixed',
+    'top:0',
+    'left:50%',
+    'transform:translateX(-50%) translateY(-100%)',
+    'background:rgba(20,20,20,0.95)',
+    'color:rgba(255,255,255,0.6)',
+    'font-family:var(--font-mono,monospace)',
+    'font-size:10px',
+    'letter-spacing:3px',
+    'text-transform:uppercase',
+    'padding:10px 20px',
+    'border-radius:0 0 20px 20px',
+    'border:1px solid rgba(255,255,255,0.08)',
+    'border-top:none',
+    'z-index:9999',
+    'transition:transform 0.2s ease',
+    'pointer-events:none',
+    'white-space:nowrap'
+  ].join(';');
+  indicator.textContent = 'â†“ Pull to refresh';
+  document.body.appendChild(indicator);
+
+  document.addEventListener('touchstart', function(e) {
+    if (window.scrollY === 0 && e.touches.length === 1) {
+      pullStartY = e.touches[0].clientY;
+      isPulling  = true;
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!isPulling) return;
+    var dist = e.touches[0].clientY - pullStartY;
+    if (dist <= 0) { isPulling = false; return; }
+    var translateY = Math.min(dist * 0.4, THRESHOLD * 0.8);
+    indicator.style.transform = 'translateX(-50%) translateY(' + (translateY - 40) + 'px)';
+    indicator.textContent = dist > THRESHOLD ? 'â†‘ Release to refresh' : 'â†“ Pull to refresh';
+    indicator.style.color = dist > THRESHOLD ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)';
+  }, { passive: true });
+
+  document.addEventListener('touchend', function(e) {
+    if (!isPulling) return;
+    var dist = e.changedTouches[0].clientY - pullStartY;
+    isPulling = false;
+    indicator.style.transform = 'translateX(-50%) translateY(-100%)';
+
+    if (dist > THRESHOLD && window.scrollY === 0) {
+      indicator.textContent = 'âŸ³ Refreshing...';
+      indicator.style.transform = 'translateX(-50%) translateY(0px)';
+
+      if (typeof window.reloadTracks === 'function') {
+        window.reloadTracks().then(function() {
+          showToast('Vault refreshed', 'success');
+          setTimeout(function() {
+            indicator.style.transform = 'translateX(-50%) translateY(-100%)';
+          }, 800);
+        }).catch(function() {
+          indicator.style.transform = 'translateX(-50%) translateY(-100%)';
+        });
+      } else {
+        setTimeout(function() { location.reload(); }, 500);
+      }
+    }
+  }, { passive: true });
+})();
+
+// =====================================================================
+// FIX 5 â€” MOBILE ACTION ROW: SESSION + HISTORY BUTTONS
+// =====================================================================
+(function() {
+  var mobileSessionBtn = document.getElementById('mobile-session-btn');
+  var mobileHistoryBtn = document.getElementById('mobile-history-btn');
+
+  if (mobileSessionBtn) {
+    mobileSessionBtn.addEventListener('click', function() {
+      var sessionBtn = document.getElementById('session-btn');
+      if (sessionBtn) sessionBtn.click();
+    });
+  }
+
+  if (mobileHistoryBtn) {
+    mobileHistoryBtn.addEventListener('click', function() {
+      var historyBtn = document.getElementById('history-view-btn');
+      if (historyBtn) {
+        historyBtn.click();
+      } else if (typeof setView === 'function') {
+        setView('history');
+      }
+    });
+  }
+})();
+
+// =====================================================================
+// FIX 6 â€” NOW-PLAYING MINI CARD ON TAP
+// =====================================================================
+(function() {
+  if (!window.matchMedia('(pointer: coarse)').matches) return;
+
+  var playerInfo = document.querySelector('.player-info');
+  if (!playerInfo) return;
+
+  playerInfo.addEventListener('click', function() {
+    var card      = document.getElementById('now-playing-card');
+    var coverEl   = document.getElementById('now-playing-cover');
+    var titleEl   = document.getElementById('now-playing-title');
+    var artistEl  = document.getElementById('now-playing-artist');
+    var likeBtn   = document.getElementById('now-playing-like');
+    var artistBtn = document.getElementById('now-playing-artist-btn');
+    if (!card) return;
+
+    var pl    = typeof getPlaylist === 'function' ? getPlaylist() : tracks;
+    var track = pl && pl[currentTrackIdx];
+    if (!track) return;
+
+    if (coverEl)  coverEl.src          = track.coverArt || '';
+    if (titleEl)  titleEl.textContent  = track.title   || '';
+    if (artistEl) artistEl.textContent = track.artist  || '';
+
+    var liked = likedTracks && likedTracks.has ? likedTracks.has(track.id) : false;
+    if (likeBtn) likeBtn.textContent = liked ? 'â™¥' : 'â™¡';
+
+    if (likeBtn) {
+      likeBtn.onclick = function() {
+        if (typeof toggleTrackLike === 'function') {
+          toggleTrackLike(track.id);
+          var isNowLiked = likedTracks && likedTracks.has ? likedTracks.has(track.id) : false;
+          likeBtn.textContent = isNowLiked ? 'â™¥' : 'â™¡';
+        }
+      };
+    }
+
+    if (artistBtn) {
+      artistBtn.onclick = function() {
+        card.classList.remove('visible');
+        if (typeof openArtistPage === 'function') openArtistPage(track.artist);
+      };
+    }
+
+    card.classList.add('visible');
+  });
+
+  var shareBtn = document.getElementById('now-playing-share');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', function() {
+      if (typeof copyTimestamp === 'function') copyTimestamp();
+    });
+  }
+
+  var closeBtn = document.getElementById('now-playing-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function() {
+      var card = document.getElementById('now-playing-card');
+      if (card) card.classList.remove('visible');
+    });
+  }
+})();
 
