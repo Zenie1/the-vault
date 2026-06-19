@@ -678,13 +678,13 @@ function renderRecentlyPlayed() {
   if (!found.length) { section.classList.remove('visible'); return; }
   section.classList.add('visible');
   strip.innerHTML = found.map(t => `
-    <div class="recently-chip" onclick="handlePlay(${t.id})" title="${t.artist} — ${t.title}">
+    <div class="recently-chip" onclick="handlePlay(${t.id})" title="${escHtml(t.artist)} — ${escHtml(t.title)}">
       ${t.coverArt
         ? `<img src="${t.coverArt}" alt="" loading="lazy">`
         : `<div style="width:28px;height:28px;background:var(--surface3);flex-shrink:0;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:10px">♪</div>`}
       <div class="recently-chip-info">
-        <div class="recently-chip-title">${t.title}</div>
-        <div class="recently-chip-artist">${t.artist}</div>
+        <div class="recently-chip-title">${escHtml(t.title)}</div>
+        <div class="recently-chip-artist">${escHtml(t.artist)}</div>
       </div>
     </div>`).join('');
 }
@@ -716,8 +716,8 @@ function renderQueue() {
         ? `<img src="${t.coverArt}" alt="" loading="lazy">`
         : `<div style="width:36px;height:36px;background:var(--surface3);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">♪</div>`}
       <div class="queue-item-info" onclick="playFromQueue(${qi})">
-        <div class="queue-item-title">${t.title}</div>
-        <div class="queue-item-artist">${t.artist}</div>
+        <div class="queue-item-title">${escHtml(t.title)}</div>
+        <div class="queue-item-artist">${escHtml(t.artist)}</div>
       </div>
       <button class="queue-item-remove" onclick="removeFromQueue(${qi})" title="Remove">✕</button>
     </div>`;
@@ -894,9 +894,9 @@ function renderTracks() {
     // Compute rgba helpers for CSS overlays (needed because we can't add opacity to hex vars in CSS)
     const secR = parseInt(pal.secondary.slice(1,3),16), secG = parseInt(pal.secondary.slice(3,5),16), secB = parseInt(pal.secondary.slice(5,7),16);
     const glowR = parseInt(pal.glow.slice(1,3),16), glowG = parseInt(pal.glow.slice(3,5),16), glowB = parseInt(pal.glow.slice(5,7),16);
-    const tags = (t.tags||[]).map(tag=>`<span class="tag">${tag}</span>`).join('');
+    const tags = (t.tags||[]).map(tag=>`<span class="tag">${escHtml(tag)}</span>`).join('');
     const proj = t.projectId ? projects.find(p => p.id === t.projectId) : null;
-    const projBadge = proj ? `<button class="track-project-badge" onclick="event.stopPropagation();openProjectDetail('${proj.id}')" title="${proj.title}">${proj.title.slice(0,12)}</button>` : '';
+    const projBadge = proj ? `<button class="track-project-badge" onclick="event.stopPropagation();openProjectDetail('${proj.id}')" title="${escHtml(proj.title)}">${escHtml(proj.title.slice(0,12))}</button>` : '';
     const hasAudio = !!t.url;
     const pIdx = playlist.findIndex(x=>x.id===t.id);
     const isCurrentlyPlaying = currentTrackIdx === pIdx && isPlaying;
@@ -905,7 +905,7 @@ function renderTracks() {
     const plays = counts[t.id] || 0;
     const fireBadge = plays >= 5 ? `<span class="track-fire-badge" title="${plays} plays">🔥</span>` : '';
     const playCountEl = plays > 0 ? `<div class="track-play-count${plays >= 5 ? ' hot' : ''}">${plays} play${plays !== 1 ? 's' : ''}</div>` : '';
-    const notesEl = t.notes ? `<div class="track-notes-preview" title="${t.notes.replace(/"/g,'&quot;')}">📝 ${t.notes}</div>` : '';
+    const notesEl = t.notes ? `<div class="track-notes-preview" title="${escHtml(t.notes)}">📝 ${escHtml(t.notes)}</div>` : '';
     const cCount = commentCounts && commentCounts.get(t.id) || 0;
     const commentBadgeEl = `<span class="track-comment-badge" data-comment-track="${t.id}">${cCount > 0 ? '💬 ' + cCount : ''}</span>`;
     return `
@@ -913,8 +913,8 @@ function renderTracks() {
         <div class="track-card-top">
           ${coverSrc ? `<img class="track-cover loaded" src="${coverSrc}" alt="cover" loading="lazy">` : `<img class="track-cover" src="" data-fetch-cover="${t.id}" alt="cover">`}
           <div class="track-card-meta">
-            <div class="track-artist"><span class="artist-link" onclick="event.stopPropagation();openArtistPage('${t.artist.replace(/'/g,"\\'")}')">${t.artist}</span>${sourceBadge}${fireBadge}${projBadge}</div>
-            <div class="track-title">${t.title}</div>
+            <div class="track-artist"><span class="artist-link" onclick="event.stopPropagation();openArtistPage('${t.artist.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">${escHtml(t.artist)}</span>${sourceBadge}${fireBadge}${projBadge}</div>
+            <div class="track-title">${escHtml(t.title)}</div>
           </div>
         </div>
         <div class="track-bottom">
@@ -2472,7 +2472,7 @@ document.getElementById('edit-find-cover-btn').addEventListener('click', async (
   if (!results.length) { showToast('NO COVER ART FOUND', 'error'); return; }
   const resultsEl = document.getElementById('edit-cover-results');
   resultsEl.innerHTML = results.slice(0, 6).map(r =>
-    `<img class="cover-option" src="${r.url}" data-url="${r.url}" title="${r.label}" loading="lazy">`
+    `<img class="cover-option" src="${r.url}" data-url="${r.url}" title="${escHtml(r.label)}" loading="lazy">`
   ).join('');
   resultsEl.classList.add('visible');
   resultsEl.querySelectorAll('.cover-option').forEach(img => {
@@ -2827,9 +2827,9 @@ ${filenames}`
     resultsList.innerHTML = parsed.map((t,i) => `
       <div class="ai-track-row">
         <input type="checkbox" class="ai-check" data-idx="${i}" checked>
-        <div class="atitle">${t.title}</div>
-        <div class="aartist">${t.artist}</div>
-        <div class="atags">${(t.tags||[]).map(tag=>`<span class="tag">${tag}</span>`).join('')}</div>
+        <div class="atitle">${escHtml(t.title)}</div>
+        <div class="aartist">${escHtml(t.artist)}</div>
+        <div class="atags">${(t.tags||[]).map(tag=>`<span class="tag">${escHtml(tag)}</span>`).join('')}</div>
       </div>
     `).join('');
     output.classList.add('visible');
@@ -3314,7 +3314,7 @@ function setupCoverPicker({ btnId, artistId, titleId, coverInputId, resultsId, p
     btn.disabled = false;
     btn.textContent = '🔍 Find Art';
     if (!results.length) { showToast('NO COVER ART FOUND', 'error'); return; }
-    resultsEl.innerHTML = results.slice(0, 6).map(r => `<img class="cover-option" src="${r.url}" data-url="${r.url}" title="${r.label}" loading="lazy">`).join('');
+    resultsEl.innerHTML = results.slice(0, 6).map(r => `<img class="cover-option" src="${r.url}" data-url="${r.url}" title="${escHtml(r.label)}" loading="lazy">`).join('');
     resultsEl.classList.add('visible');
     resultsEl.querySelectorAll('.cover-option').forEach(img => {
       img.addEventListener('click', () => selectCover(img.dataset.url));
@@ -3676,7 +3676,13 @@ function renderPlainLyrics(rawText, sourceUrl) {
 }
 
 function escHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
 }
 
 // ── Error state ───────────────────────────────────────────────────
@@ -6281,9 +6287,9 @@ function renderProjectsGrid() {
     return `<div class="proj-card" onclick="openProjectDetail('${p.id}')">
       ${p.cover ? `<img class="proj-card-cover" src="${p.cover}" alt="">` : '<div class="proj-card-cover-placeholder">◈</div>'}
       <div class="proj-card-info">
-        <div class="proj-card-title">${p.title}</div>
-        <div class="proj-card-artist">${p.artist}</div>
-        <div class="proj-card-meta">${count} track${count!==1?'s':''} · ${p.releaseDate||''}</div>
+        <div class="proj-card-title">${escHtml(p.title)}</div>
+        <div class="proj-card-artist">${escHtml(p.artist)}</div>
+        <div class="proj-card-meta">${count} track${count!==1?'s':''} · ${escHtml(p.releaseDate||'')}</div>
       </div>
       ${isAdmin ? `<div class="proj-card-actions">
         <button onclick="event.stopPropagation();openProjectModal('${p.id}')" title="Edit">✎</button>
@@ -6310,10 +6316,10 @@ function renderProjectDetail(id) {
     <div class="proj-detail-header" style="--artist-primary:${pal.primary};--artist-secondary:${pal.secondary}">
       ${p.cover ? `<img class="proj-detail-cover" src="${p.cover}" alt="">` : '<div class="proj-detail-cover-placeholder">◈</div>'}
       <div class="proj-detail-info">
-        <div class="proj-detail-title">${p.title}</div>
-        <div class="proj-detail-artist">${p.artist}</div>
-        ${p.releaseDate ? `<div class="proj-detail-date">${p.releaseDate}</div>` : ''}
-        ${p.description ? `<div class="proj-detail-desc">${p.description}</div>` : ''}
+        <div class="proj-detail-title">${escHtml(p.title)}</div>
+        <div class="proj-detail-artist">${escHtml(p.artist)}</div>
+        ${p.releaseDate ? `<div class="proj-detail-date">${escHtml(p.releaseDate)}</div>` : ''}
+        ${p.description ? `<div class="proj-detail-desc">${escHtml(p.description)}</div>` : ''}
         <div class="proj-detail-btns">
           <button class="btn primary" onclick="playProject('${p.id}')">▶ Play All</button>
           <button class="btn" onclick="shuffleProject('${p.id}')">⇄ Shuffle</button>
@@ -6326,8 +6332,8 @@ function renderProjectDetail(id) {
         const liked = likedTracks.has(String(t.id));
         return `<div class="proj-track-row" onclick="playProjectTrack('${p.id}',${i})">
           <span class="proj-track-num">${i+1}</span>
-          <span class="proj-track-title">${t.title}</span>
-          <span class="proj-track-artist">${t.artist}</span>
+          <span class="proj-track-title">${escHtml(t.title)}</span>
+          <span class="proj-track-artist">${escHtml(t.artist)}</span>
           <span class="proj-track-dur" id="ptdur-${t.id}">—</span>
           <button class="icon-btn" onclick="event.stopPropagation();toggleTrackLike(${t.id})" title="Like">${liked?'♥':'♡'}</button>
         </div>`;
@@ -6392,7 +6398,7 @@ function openProjectModal(id) {
     const checked = (p?.trackIds || []).map(String).includes(String(t.id));
     return `<label class="pm-track-item">
       <input type="checkbox" value="${t.id}" ${checked ? 'checked' : ''}>
-      <span>${t.artist} — ${t.title}</span>
+      <span>${escHtml(t.artist)} — ${escHtml(t.title)}</span>
     </label>`;
   }).join('');
 
@@ -6534,8 +6540,8 @@ function _showYML(nextIdx) {
     <div class="yml-card" onclick="_ymlPlay(${t.id})">
       ${t.coverArt ? `<img src="${t.coverArt}" alt="">` : '<div class="yml-cover-ph">♪</div>'}
       <div class="yml-card-info">
-        <div class="yml-card-title">${t.title}</div>
-        <div class="yml-card-artist">${t.artist}</div>
+        <div class="yml-card-title">${escHtml(t.title)}</div>
+        <div class="yml-card-artist">${escHtml(t.artist)}</div>
       </div>
       <button class="yml-play-btn">▶ Play</button>
     </div>`).join('');
@@ -6717,7 +6723,7 @@ function renderHistoryPage() {
     return `<div class="hist-rank-row">
       <span class="hist-rank-num">${i+1}</span>
       ${e.cover?`<img src="${e.cover}" alt="" class="hist-rank-cover">`:'<div class="hist-rank-cover hist-no-cover">♪</div>'}
-      <div class="hist-rank-info"><div>${e.title||'—'}</div><div style="opacity:.6;font-size:10px">${e.artist||''}</div></div>
+      <div class="hist-rank-info"><div>${escHtml(e.title||'—')}</div><div style="opacity:.6;font-size:10px">${escHtml(e.artist||'')}</div></div>
       <div class="hist-bar-wrap"><div class="hist-bar" style="width:${Math.round((e.count/max)*100)}%"></div></div>
       <span class="hist-rank-cnt">${e.count}</span>
     </div>`;
@@ -6727,8 +6733,8 @@ function renderHistoryPage() {
     const col = getArtistColor(e.artist);
     return `<div class="hist-rank-row">
       <span class="hist-rank-num">${i+1}</span>
-      <div class="hist-rank-cover" style="background:${col};display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${e.artist.slice(0,2).toUpperCase()}</div>
-      <div class="hist-rank-info"><div style="color:${col}">${e.artist}</div></div>
+      <div class="hist-rank-cover" style="background:${col};display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${escHtml(e.artist.slice(0,2).toUpperCase())}</div>
+      <div class="hist-rank-info"><div style="color:${col}">${escHtml(e.artist)}</div></div>
       <div class="hist-bar-wrap"><div class="hist-bar" style="width:${Math.round((e.seconds/max)*100)}%;background:${col}"></div></div>
       <span class="hist-rank-cnt">${fmtSec(e.seconds)}</span>
     </div>`;
@@ -6803,8 +6809,8 @@ function renderHistoryPage() {
           <div class="hist-recent-row" onclick="_histPlayTrack(${p.trackId})">
             ${p.cover?`<img src="${p.cover}" alt="" class="hist-recent-cover">`:'<div class="hist-recent-cover hist-no-cover">♪</div>'}
             <div class="hist-recent-info">
-              <div>${p.title||'—'}</div>
-              <div style="opacity:.6;font-size:10px">${p.artist||''}</div>
+              <div>${escHtml(p.title||'—')}</div>
+              <div style="opacity:.6;font-size:10px">${escHtml(p.artist||'')}</div>
             </div>
             <div class="hist-recent-time">${timeAgo(p.playedAt)}</div>
             ${p.completed?'<span class="hist-completed" title="Completed">✓</span>':''}
@@ -6990,7 +6996,7 @@ function _renderAPDiscGrid(sortedTracks, counts) {
         ${t.coverArt ? `<img class="ap-disc-cover" src="${t.coverArt}" alt="">` : `<div class="ap-disc-cover-placeholder">♪</div>`}
         ${plays > 0 ? `<div class="ap-disc-plays-badge">${plays}</div>` : ''}
         <div class="ap-disc-info">
-          <div class="ap-disc-title">${t.title}</div>
+          <div class="ap-disc-title">${escHtml(t.title)}</div>
           <div class="ap-disc-plays">${plays > 0 ? plays + ' play' + (plays !== 1 ? 's' : '') : 'unplayed'}</div>
         </div>
       </div>`;
@@ -7008,7 +7014,7 @@ function _renderAPDiscList(sortedTracks, counts) {
           ? `<img class="ap-disc-row-cover" src="${t.coverArt}" alt="">`
           : `<div class="ap-disc-row-cover" style="display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.2);border-radius:4px;background:rgba(255,255,255,0.06)">♪</div>`}
         <div class="ap-disc-row-info">
-          <div class="ap-disc-row-title">${t.title}</div>
+          <div class="ap-disc-row-title">${escHtml(t.title)}</div>
           <div class="ap-disc-row-plays">${plays > 0 ? plays + ' play' + (plays !== 1 ? 's' : '') : 'unplayed'}</div>
         </div>
       </div>`;
@@ -7127,17 +7133,17 @@ function renderArtistPage(artist) {
       <div class="ap-header" style="background:linear-gradient(135deg,${pal.gradient[0]}cc 0%,${pal.gradient[1]}88 55%,#080808 100%)">
         <button class="ap-close-btn" onclick="closeArtistPage()">✕</button>
         <div class="ap-header-left">
-          <h1 class="ap-name">${artist.toUpperCase()}</h1>
-          <div class="ap-meta">${artistTracks.length} track${artistTracks.length !== 1 ? 's' : ''} &middot; ${listenStr} played &middot; Top: ${topName}</div>
+          <h1 class="ap-name">${escHtml(artist.toUpperCase())}</h1>
+          <div class="ap-meta">${artistTracks.length} track${artistTracks.length !== 1 ? 's' : ''} &middot; ${listenStr} played &middot; Top: ${escHtml(topName)}</div>
         </div>
-        <div class="ap-avatar" style="background:${pal.primary};box-shadow:0 0 0 3px ${pal.glow},0 4px 20px ${hexToRgba(pal.glow, 0.35)}">${initials}</div>
+        <div class="ap-avatar" style="background:${pal.primary};box-shadow:0 0 0 3px ${pal.glow},0 4px 20px ${hexToRgba(pal.glow, 0.35)}">${escHtml(initials)}</div>
       </div>
 
       <div class="ap-stats" style="--ap-primary:${pal.primary};--ap-secondary:${pal.secondary}">
         <div class="ap-stat"><div class="ap-stat-val">${artistTracks.length}</div><div class="ap-stat-label">Tracks</div></div>
         <div class="ap-stat"><div class="ap-stat-val">${totalPlays}</div><div class="ap-stat-label">Plays</div></div>
         <div class="ap-stat"><div class="ap-stat-val">${listenStr}</div><div class="ap-stat-label">Listened</div></div>
-        <div class="ap-stat" title="${topName}"><div class="ap-stat-val" style="font-size:11px;line-height:1.2">${topName.length > 14 ? topName.slice(0, 13) + '…' : topName}</div><div class="ap-stat-label">Top Track</div></div>
+        <div class="ap-stat" title="${escHtml(topName)}"><div class="ap-stat-val" style="font-size:11px;line-height:1.2">${escHtml(topName.length > 14 ? topName.slice(0, 13) + '…' : topName)}</div><div class="ap-stat-label">Top Track</div></div>
       </div>
 
       ${artistProjects.length ? `
@@ -7146,7 +7152,7 @@ function renderArtistPage(artist) {
         <div class="ap-projects-row">
           ${artistProjects.map(p => `
             <div class="ap-project-card" onclick="closeArtistPage();setTimeout(()=>openProjectDetail('${p.id}'),150)">
-              <div class="ap-project-name">${p.title}</div>
+              <div class="ap-project-name">${escHtml(p.title)}</div>
               <div class="ap-project-count">${(p.tracks || []).length} tracks</div>
             </div>`).join('')}
         </div>
