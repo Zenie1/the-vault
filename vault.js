@@ -1409,20 +1409,20 @@ function drawWaveform() {
   const W = waveCanvas.offsetWidth;
   const H = waveCanvas.offsetHeight;
 
-  if (W === 0 || H === 0) {
+  if (!W || !H) {
     waveAnimFrame = requestAnimationFrame(drawWaveform);
     return;
   }
 
   const dpr = window.devicePixelRatio || 1;
-  const expectedW = Math.round(W * dpr);
-  const expectedH = Math.round(H * dpr);
-  if (waveCanvas.width !== expectedW || waveCanvas.height !== expectedH) {
-    waveCanvas.width  = expectedW;
-    waveCanvas.height = expectedH;
-    waveCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const bufW = Math.round(W * dpr);
+  const bufH = Math.round(H * dpr);
+  if (waveCanvas.width !== bufW || waveCanvas.height !== bufH) {
+    waveCanvas.width  = bufW;
+    waveCanvas.height = bufH;
   }
 
+  waveCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   waveCtx.clearRect(0, 0, W, H);
 
   const rawColor = getComputedStyle(document.getElementById('player-bar'))
