@@ -1,5 +1,19 @@
 [
   {
+    "id": 1781896754310,
+    "added": "2026-06-19",
+    "artist": "Che",
+    "title": "Los Santos",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1781895957/Los_Santos_-_Che_qtezq5.mp4",
+    "tags": [
+      "soundcloud exclusive"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fb69b3fcd57e54e55f7e6f341a637bae3.499x499x1.png",
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3N2lkdWo3eTAzcjA1N3YxZXpiMmR2OGhudnd0djE2NjRzZm81YWg5aSZlcD12MV9naWZzX3JlbGF0ZWQmY3Q9Zw/IydPf2owx5UwdlPqef/giphy.gif",
+    "lyricsUrl": "https://genius.com/Che-los-santos-lyrics"
+  },
+  {
     "id": 1781896653260,
     "added": "2026-06-19",
     "artist": "Che",
