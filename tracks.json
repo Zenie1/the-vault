@@ -1,5 +1,19 @@
 [
   {
+    "id": 1781896539911,
+    "added": "2026-06-19",
+    "artist": "Che",
+    "title": "DMX",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1781895958/Dmx_-_Che_a3fz3j.mp4",
+    "tags": [
+      "soundcloud exclusive"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fb69b3fcd57e54e55f7e6f341a637bae3.499x499x1.png",
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaGxmd2t6Mmt3azFpcnd2dWZoZjQzeHY5OXF0NHd2aXRxNzFlaHZuciZlcD12MV9naWZzX3JlbGF0ZWQmY3Q9Zw/1tpIf9Zaz1cnYpVj2L/giphy.gif",
+    "lyricsUrl": "https://genius.com/Che-dmx-lyrics"
+  },
+  {
     "id": 1781896462588,
     "added": "2026-06-19",
     "artist": "Che",
