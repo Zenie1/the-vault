@@ -252,7 +252,7 @@ async function loadTracks() {
         const trackArr = _extractTracks(decoded);
         const projArr  = _extractProjects(decoded);
         localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
-        if (projArr.length) { projects = projArr; localStorage.setItem(PROJECTS_KEY, JSON.stringify(projArr)); }
+        if (projArr.length && !projects.length) { projects = projArr; localStorage.setItem(PROJECTS_KEY, JSON.stringify(projArr)); }
         return trackArr;
       }
       if (res.status === 404) { ghFileSha = null; return getLocalTracks(); }
@@ -268,7 +268,7 @@ async function loadTracks() {
           const trackArr = _extractTracks(decoded);
           const projArr  = _extractProjects(decoded);
           localStorage.setItem('vault-tracks-v2', JSON.stringify(decoded));
-          if (projArr.length) { projects = projArr; localStorage.setItem(PROJECTS_KEY, JSON.stringify(projArr)); }
+          if (projArr.length && !projects.length) { projects = projArr; localStorage.setItem(PROJECTS_KEY, JSON.stringify(projArr)); }
           return trackArr;
         }
       } catch(e) { /* suppressed */ }
@@ -6279,7 +6279,7 @@ function renderProjectsGrid() {
 function renderProjectDetail(id) {
   const ov = document.getElementById('project-detail-overlay');
   if (!ov) return;
-  const p = projects.find(x => x.id === id);
+  const p = projects.find(x => String(x.id) === String(id));
   if (!p) { setView('projects'); return; }
 
   const projTracks = (p.trackIds || [])
