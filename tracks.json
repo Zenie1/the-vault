@@ -1,5 +1,19 @@
 [
   {
+    "id": 1781896334202,
+    "added": "2026-06-19",
+    "artist": "Che",
+    "title": "Like Lil Mexico",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1781895959/Like_Lil_Mexico_-_Che_izljwe.mp4",
+    "tags": [
+      "soundcloud exclusive"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://t2.genius.com/unsafe/258x258/https%3A%2F%2Fimages.genius.com%2Fb69b3fcd57e54e55f7e6f341a637bae3.499x499x1.png",
+    "canvas": "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExanRicm03cWV5eHBicHpydXFveXI2M241MGg5ZTFrbjU2YXZoamZpaSZlcD12MV9naWZzX3JlbGF0ZWQmY3Q9Zw/c237HABvMsuhAKj29t/giphy.gif",
+    "lyricsUrl": "https://genius.com/Che-like-lil-mexico-lyrics"
+  },
+  {
     "id": 1781641984990,
     "added": "2026-06-16",
     "artist": "Destroy Lonely",
