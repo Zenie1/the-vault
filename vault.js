@@ -6238,6 +6238,8 @@ function setView(v) {
   if (statsOv)      statsOv.classList.toggle('open', v === 'stats');
   if (artistOv)     artistOv.classList.toggle('open', v === 'artist');
 
+  if (v !== 'project-detail' && projDetailOv) projDetailOv.innerHTML = '';
+
   // Update button active states
   const pb = document.getElementById('projects-view-btn');
   const hb = document.getElementById('history-view-btn');
@@ -6256,7 +6258,6 @@ function setView(v) {
 
 function openProjectDetail(id) {
   activeProjectId = String(id);
-  renderProjectDetail(activeProjectId);
   setView('project-detail');
 }
 
@@ -6295,6 +6296,7 @@ function renderProjectsGrid() {
 function renderProjectDetail(id) {
   const ov = document.getElementById('project-detail-overlay');
   if (!ov) return;
+  ov.innerHTML = '';
   const p = projects.find(x => String(x.id) === String(id));
   if (!p) { setView('projects'); return; }
 
