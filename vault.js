@@ -1465,12 +1465,12 @@ function drawWaveform() {
     smoothedBars = new Array(BAR_COUNT).fill(8);
   }
 
-  // Always use static PCM fingerprint when available (shows track shape while playing)
+  // Use static PCM fingerprint only when paused — while playing, live FFT drives the animation
   const _pcmDisplay = _getPCMBars(BAR_COUNT);
   // Animated shimmer while PCM decodes
   const _needsShimmer = !_pcmDisplay && !!audio.src && !isPlaying;
   let activeBars;
-  if (_pcmDisplay) {
+  if (_pcmDisplay && !isPlaying) {
     activeBars = _pcmDisplay;
   } else if (_needsShimmer) {
     const _st = Date.now() * 0.003;
