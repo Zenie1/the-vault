@@ -135,9 +135,10 @@
     "visualizer": {
       "mode": "radial",
       "intensity": 1.2,
-      "rotationSpeed": 1.2,
-      "particleBurst": false
-    }
+      "particleBurst": false,
+      "rotationSpeed": 1.2
+    },
+    "photo": "https://i.pinimg.com/736x/36/c5/9a/36c59a32769d12164e469312f8a9993b.jpg"
   },
   "osamaon": {
     "primary": "#c8ff3c",
