@@ -119,9 +119,10 @@
     "visualizer": {
       "mode": "oscilloscope",
       "intensity": 1,
-      "trailLength": 70,
-      "particleBurst": false
-    }
+      "particleBurst": false,
+      "trailLength": 70
+    },
+    "photo": "https://i.pinimg.com/736x/bd/89/12/bd8912ca2b3824a8610ba8da48138f66.jpg"
   },
   "che": {
     "primary": "#ff6b3c",
