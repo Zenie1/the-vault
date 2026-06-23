@@ -142,10 +142,31 @@
   }
 
   // ── Stream memory helpers ─────────────────────────────────────────────────
+
+  // Session-only: tracks which songs were streamed this tab open (for button state)
   function getStreamedForArtist(artist) {
     var k = 'yt-streamed-' + artist.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     try { return JSON.parse(sessionStorage.getItem(k) || '[]'); } catch(e) { return []; }
   }
+
+  // Persistent: cumulative stream count per track, survives across sessions
+  function getStreamCount(artist, trackName) {
+    var k = 'yt-count-' + artist.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    try {
+      var data = JSON.parse(localStorage.getItem(k) || '{}');
+      return data[(trackName || '').toLowerCase()] || 0;
+    } catch(e) { return 0; }
+  }
+  function incrementStreamCount(artist, trackName) {
+    var k = 'yt-count-' + artist.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    try {
+      var data = JSON.parse(localStorage.getItem(k) || '{}');
+      var key  = (trackName || '').toLowerCase();
+      data[key] = (data[key] || 0) + 1;
+      localStorage.setItem(k, JSON.stringify(data));
+    } catch(e) {}
+  }
+
   function markStreamed(artist, trackName) {
     var k = 'yt-streamed-' + artist.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     var list = getStreamedForArtist(artist);
@@ -153,6 +174,8 @@
       list.push(trackName);
       try { sessionStorage.setItem(k, JSON.stringify(list)); } catch(e) {}
     }
+    // Also bump the persistent counter used for popularity sorting
+    incrementStreamCount(artist, trackName);
   }
 
   async function fetchApiData(artist) {
@@ -161,12 +184,6 @@
       var cached = sessionStorage.getItem(cacheKey);
       if (cached) { console.log('[ArtistPage] cache hit:', artist); return JSON.parse(cached); }
     } catch (e) {}
-
-    if (!isMainstream(artist)) {
-      var noData = { mainstream: false };
-      try { sessionStorage.setItem(cacheKey, JSON.stringify(noData)); } catch (e) {}
-      return noData;
-    }
 
     console.log('[ArtistPage] Fetching all API data for:', artist);
     var results = await Promise.all([
@@ -501,9 +518,92 @@
     if (data.allFailed) {
       var bioSlotF = document.getElementById('ap-bio-slot');
       var apiSecF  = document.getElementById('ap-api-sections');
-      if (bioSlotF) bioSlotF.remove();
-      if (apiSecF)  apiSecF.innerHTML =
-        '<div class="ap-section"><div class="ap-unavailable">External data unavailable</div></div>';
+      var entryF   = window.getArtistEntry ? window.getArtistEntry(artist) : null;
+      if (!entryF) entryF = {};
+
+      // ── Bio from artists.json (if available) ──────────────────────────────
+      if (bioSlotF) {
+        if (entryF.bio) {
+          var bioTextF  = entryF.bio.trim();
+          var isLongF   = bioTextF.length > 300;
+          var shortBioF = isLongF ? bioTextF.slice(0, 300) + '…' : bioTextF;
+          window._apBioFull  = bioTextF;
+          window._apBioShort = shortBioF;
+          bioSlotF.className = 'ap-section';
+          bioSlotF.innerHTML =
+            '<div class="ap-section-title">ABOUT</div>' +
+            '<p class="ap-bio-text" id="ap-bio-text">' + esc(shortBioF) + '</p>' +
+            (isLongF
+              ? '<button class="ap-bio-more" id="ap-bio-more"' +
+                ' onclick="var b=document.getElementById(\'ap-bio-text\'),m=this;' +
+                'if(b.dataset.x){b.textContent=window._apBioShort;delete b.dataset.x;m.textContent=\'Read more\';}' +
+                'else{b.textContent=window._apBioFull;b.dataset.x=1;m.textContent=\'Read less\';}">Read more</button>'
+              : '');
+        } else {
+          bioSlotF.remove();
+        }
+      }
+
+      // ── Tags / origin from artists.json ──────────────────────────────────
+      if (entryF.tags && entryF.tags.length) {
+        var tagsRowF = document.getElementById('ap-tags-row');
+        if (tagsRowF) {
+          tagsRowF.innerHTML = entryF.tags.map(function(tag) {
+            return '<span class="ap-genre-pill" style="background:' + rgba(pal.primary, 0.18) + ';color:' + pal.text + '">' + esc(tag) + '</span>';
+          }).join('');
+        }
+      }
+      if (entryF.origin) {
+        var orRowF = document.getElementById('ap-origin-row');
+        if (orRowF) orRowF.textContent = entryF.origin;
+      }
+
+      // ── Auto-sorted popular tracks (vault plays + YouTube stream counts) ──
+      if (apiSecF) {
+        var _vCountsF    = playCounts();
+        var _vaultTopsF  = vaultTracks(artist)
+          .map(function(t) { return { name: t.title, score: _vCountsF[t.id] || 0, source: 'vault' }; })
+          .sort(function(a, b) { return b.score - a.score; });
+        var _manualExtraF = (entryF.manualTopTracks || [])
+          .filter(function(t) { return !isTrackInVault(artist, t.name); })
+          .map(function(t) { return { name: t.name, score: getStreamCount(artist, t.name), source: 'stream' }; })
+          .sort(function(a, b) { return b.score - a.score; });
+        var _allTracksF = _vaultTopsF.concat(_manualExtraF);
+
+        if (_allTracksF.length) {
+          var _streamedF = getStreamedForArtist(artist);
+          apiSecF.innerHTML = '<div class="ap-section"><div class="ap-section-title">POPULAR</div>' +
+            '<div class="ap-lfm-list">' +
+            _allTracksF.map(function(t, i) {
+              var btnId      = 'ap-fb-btn-' + i;
+              var inVault    = t.source === 'vault';
+              var scoreLabel = t.score > 0 ? fmtNum(t.score) + (inVault ? ' plays' : ' streams') : '';
+              var btn;
+              if (inVault) {
+                btn = '<button class="ap-vault-btn" data-trackname="' + esc(t.name) + '"' +
+                  ' onclick="closeArtistPage();setTimeout(function(){' +
+                  'var n=this.dataset.trackname,inp=document.getElementById(\'search-input\');' +
+                  'if(inp){inp.value=n;inp.dispatchEvent(new Event(\'input\'));}}.bind(this),150)">▶ Play</button>';
+              } else {
+                var prevS = _streamedF.includes(t.name);
+                btn = '<button class="ap-vault-btn ap-yt-btn' + (prevS ? ' ap-yt-prev' : '') + '" id="' + btnId + '"' +
+                  ' data-artist="' + esc(artist) + '" data-track="' + esc(t.name) + '"' +
+                  (prevS ? ' style="opacity:0.72" title="Streamed this session"' : '') +
+                  ' onclick="window._apYtPlay(this)">' + (prevS ? '↺ Stream again' : '♫ Stream') + '</button>';
+              }
+              return '<div class="ap-lfm-row">' +
+                '<div class="ap-lfm-rank">' + (i + 1) + '</div>' +
+                '<div class="ap-lfm-info">' +
+                  '<div class="ap-lfm-name">' + esc(t.name) + '</div>' +
+                  (scoreLabel ? '<div class="ap-lfm-plays">' + scoreLabel + '</div>' : '') +
+                '</div>' + btn + '</div>';
+            }).join('') +
+            '</div></div>';
+        } else {
+          apiSecF.remove();
+        }
+      }
+
       return;
     }
 
@@ -838,13 +938,6 @@
 
     ov.innerHTML = buildSkeleton(artist, pal, at, c);
 
-    if (!isMainstream(artist)) {
-      var bioSlot = document.getElementById('ap-bio-slot');
-      var apiSec  = document.getElementById('ap-api-sections');
-      if (bioSlot) bioSlot.remove();
-      if (apiSec)  apiSec.remove();
-      return;
-    }
 
     fetchApiData(artist).then(function(data){
       enhancePage(artist, pal, data);

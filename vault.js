@@ -203,6 +203,15 @@ function getArtistPalette(artist) {
   return generatePaletteFromPrimary(getArtistColor(artist));
 }
 
+// Expose full artists.json entry so artist-page.js can read manual bio/tags/tracks
+window.getArtistEntry = function(artist) {
+  const key = (artist || '').toLowerCase();
+  for (const [k, v] of Object.entries(artistPalettes)) {
+    if (key.includes(k) || k.includes(key)) return v;
+  }
+  return null;
+};
+
 // Convert hex to rgba string with given alpha (0-1)
 function hexToRgba(hex, a) {
   const r2 = parseInt(hex.slice(1,3),16), g2 = parseInt(hex.slice(3,5),16), b2 = parseInt(hex.slice(5,7),16);
