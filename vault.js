@@ -2314,6 +2314,7 @@ function openEditModal(id) {
   document.getElementById('pe-glow').value       = _existingPal.glow;
   document.getElementById('pe-grad-start').value = _existingPal.gradient[0];
   document.getElementById('pe-grad-end').value   = _existingPal.gradient[1];
+  document.getElementById('pe-photo').value      = _existingPal.photo || '';
   // Update artist label in preview and re-render preview
   const ppLabel = document.getElementById('pp-artist-label');
   if (ppLabel) ppLabel.textContent = (t.artist || 'ARTIST').toUpperCase();
@@ -2441,7 +2442,11 @@ document.getElementById('edit-save-btn').addEventListener('click', async () => {
   if (_existEntry && _existEntry.visualizer && !_newPalette.visualizer) {
     _newPalette.visualizer = _existEntry.visualizer;
   }
-  artistPalettes[_paletteSaveKey] = _newPalette;
+  // Handle photo URL — save if provided, clear if field was emptied
+  const _pePhoto = (document.getElementById('pe-photo') && document.getElementById('pe-photo').value.trim()) || '';
+  if (_pePhoto) _newPalette.photo = _pePhoto;
+  // Spread existing entry so bio/tags/origin/manualTopTracks are never wiped by palette saves
+  artistPalettes[_paletteSaveKey] = Object.assign({}, _existEntry || {}, _newPalette);
   saveArtists(artistPalettes); // fire-and-forget; shows its own toast
 
   // Re-apply palette immediately if this artist is currently playing
