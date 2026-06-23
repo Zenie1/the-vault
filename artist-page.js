@@ -504,7 +504,11 @@
       tmp.src = imgUrl;
     }
 
-    if (cachedPhoto && cachedPhoto !== 'null') {
+    // Manual photo in artists.json takes priority over everything
+    var _entry = window.getArtistEntry ? window.getArtistEntry(artist) : null;
+    if (_entry && _entry.photo) {
+      applyAvatarPhoto(_entry.photo);
+    } else if (cachedPhoto && cachedPhoto !== 'null') {
       applyAvatarPhoto(cachedPhoto);
     } else if (!cachedPhoto) {
       fetchWikipediaPhoto(artist).then(function(wikiImg) {
