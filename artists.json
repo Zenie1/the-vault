@@ -233,8 +233,9 @@
     "visualizer": {
       "mode": "oscilloscope",
       "intensity": 0.8,
-      "trailLength": 40,
-      "particleBurst": false
-    }
+      "particleBurst": false,
+      "trailLength": 40
+    },
+    "photo": "https://i.pinimg.com/736x/f9/63/09/f96309bf5851a3fd55d54e4857210262.jpg"
   }
 }
