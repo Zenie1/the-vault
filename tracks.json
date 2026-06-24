@@ -1,5 +1,1031 @@
 [
   {
+    "id": 1782334461644,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "One Day",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334461/carti-one-day",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "playboi carti"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334462812,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Check Please",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334464/carti-check-please",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782334463984,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Choppa",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334465/carti-choppa",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334464983,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Choppa Sing",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334466/carti-choppa-sing",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334466335,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Dog Food",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334467/carti-dog-food",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782334467733,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Essentials",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334468/carti-essentials",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334468939,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Fall In Love",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334469/carti-fall-in-love",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782334470386,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Fashion Nova",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334471/carti-fashion-nova",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334472596,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Fisher Price",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334473/carti-fisher-price",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334477247,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Flex",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334475/carti-flex",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/9115b9fbc7cf8db99d504319cdf6bd90.png"
+  },
+  {
+    "id": 1782334478385,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Fuck My Ex",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334479/carti-fuck-my-ex",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334479442,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Fuck School",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334480/carti-fuck-school",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334481437,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Goyard Shopping Bag",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334481/carti-goyard-shopping-bag",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334482740,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Gwapanese",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334483/carti-gwapanese",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334483721,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Hoes Fo Sho",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334484/carti-hoes-fo-sho",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334484508,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "I Got",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334485/carti-i-got",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782334487213,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "I Walk In",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334486/carti-i-walk-in",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334488312,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Issa Dub",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334489/carti-issa-dub",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334489114,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Kate Moss",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334490/carti-kate-moss",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334490737,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Kids",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334491/carti-kids",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782334491618,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Killa",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334492/carti-killa",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334495661,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Lit",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334493/carti-lit",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334500866,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Luv With The Geek",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334498/carti-luv-with-the-geek",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334501842,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Mine",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334503/carti-mine",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334502611,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Monday Through Sunday",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334504/carti-monday-through-sunday",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334503693,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "No Feel",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334504/carti-no-feel",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334504761,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "No Lie",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334505/carti-no-lie",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782334508365,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "No Relation",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334507/carti-no-relation",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334511668,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Poppin' A Bean",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334510/carti-poppin-a-bean",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334515872,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Supersonic",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334514/carti-supersonic",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334517156,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Texas",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334518/carti-texas",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334519267,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Toke Shit",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334519/carti-toke-shit",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334525479,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Trap",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334521/carti-trap",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334527455,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "VLone Jacket",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334527/carti-vlone-jacket",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782334528615,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Way Too Geeked",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334529/carti-way-too-geeked",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334529561,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Work",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334530/carti-work",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782334533666,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Pi'erre Bourne - Hacked My Instagram (Remix)",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334531/carti-pi-erre-bourne-hacked-my-instagram-remix",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334534598,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Pi'erre Bourne - Ripleys",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334535/carti-pi-erre-bourne-ripleys",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334537878,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Young Thug - Up",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334537/carti-young-thug-up",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "die lit"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334539074,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Athena",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334540/carti-athena",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/f5a4328a6923c14ccfbf9c4798c22c00.png"
+  },
+  {
+    "id": 1782334540573,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Back Up",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334541/carti-back-up",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334541927,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Back Room",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334542/carti-back-room",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334543673,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Butterfly Doors",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334544/carti-butterfly-doors",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/ef30f85bcbc28a9130f9c429ecd7a7fa.png"
+  },
+  {
+    "id": 1782334546275,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Cancún",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334546/carti-canc-n",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/17c0010c8f420443d1e55bb8a043f659.png"
+  },
+  {
+    "id": 1782334550695,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Designer Shoes",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334548/carti-designer-shoes",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/17c0010c8f420443d1e55bb8a043f659.png"
+  },
+  {
+    "id": 1782334551693,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Dreams",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334552/carti-dreams",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/df7d6f546e6e947456306731090d7264.png"
+  },
+  {
+    "id": 1782334553789,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Hellcat",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334554/carti-hellcat",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334555283,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Nine Nine",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334556/carti-nine-nine",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/ef30f85bcbc28a9130f9c429ecd7a7fa.png"
+  },
+  {
+    "id": 1782334556244,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Not Real",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334557/carti-not-real",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334565592,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "One Day (Remix)",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334558/carti-one-day-remix",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334569391,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Pop Bottles",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334567/carti-pop-bottles",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/ef30f85bcbc28a9130f9c429ecd7a7fa.png"
+  },
+  {
+    "id": 1782334570980,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Proud of You",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334571/carti-proud-of-you",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/17c0010c8f420443d1e55bb8a043f659.png"
+  },
+  {
+    "id": 1782334572990,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Racks",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334573/carti-racks",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334577983,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Red Ice",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334575/carti-red-ice",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/6bcde368e58bd834117b491b9db2c8f7.png"
+  },
+  {
+    "id": 1782334579898,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "VVV",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334580/carti-vvv",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/4b90d35d7b79d41f74fe7d9531af06d4.png"
+  },
+  {
+    "id": 1782334582888,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "V. Westwood",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334582/carti-v-westwood",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334584063,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Woah",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334585/carti-woah",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334585192,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Young Nudy & Pi'erre Bourne - Pissy Pamper",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334586/carti-young-nudy-pi-erre-bourne-pissy-pamper",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334586888,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "* i promise you !",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334587/carti-i-promise-you",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334587799,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "They Afraid Of You",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334589/carti-they-afraid-of-you",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "we don't dial 911"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334588737,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "2Many",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334590/carti-2many",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/6bcde368e58bd834117b491b9db2c8f7.png"
+  },
+  {
+    "id": 1782334591505,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Ballin",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334590/carti-ballin",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334593594,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Cartier",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334593/carti-cartier",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334597611,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Friends",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334595/carti-friends",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/6bcde368e58bd834117b491b9db2c8f7.png"
+  },
+  {
+    "id": 1782334600290,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Headshot",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334599/carti-headshot",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/6bcde368e58bd834117b491b9db2c8f7.png"
+  },
+  {
+    "id": 1782334601725,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "M.A.D",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334602/carti-m-a-d",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334603495,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "My Cup",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334603/carti-my-cup",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/df7d6f546e6e947456306731090d7264.png"
+  },
+  {
+    "id": 1782334606110,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Pass It",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334605/carti-pass-it",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334607802,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "SRT",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334608/carti-srt",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334608888,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "u kan do it too.",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334610/carti-u-kan-do-it-too",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "whole lotta red [v2]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334609646,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Worried Bout Shit",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334611/carti-worried-bout-shit",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334610983,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Drake - Pain 1993",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334612/carti-drake-pain-1993",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "whole lotta red [v2]"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334612307,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Can't Fake It*",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334613/carti-can-t-fake-it",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red (deluxe)"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782334614925,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Money",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334614/carti-money",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red (deluxe)"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/baf91849c0523ebfaf77ff07fccf5798.png"
+  },
+  {
+    "id": 1782334615916,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Never Seen Shit",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334617/carti-never-seen-shit",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red (deluxe)"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/baf91849c0523ebfaf77ff07fccf5798.png"
+  },
+  {
+    "id": 1782334616901,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Lil Uzi Vert -  Pass It",
+    "url": "https://res.cloudinary.com/dmpwlevyh/raw/upload/v1782334618/carti-lil-uzi-vert-pass-it",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "music [v2]"
+    ],
+    "type": "cloudinary"
+  },
+  {
     "id": 1781896754310,
     "added": "2026-06-19",
     "artist": "Che",
