@@ -1,5 +1,1031 @@
 [
   {
+    "id": 1782336483452,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "One Day",
+    "url": "https://api.pillows.su/api/download/23186168a26818c13fe2ab9059297967",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "playboi carti"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336483651,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Check Please",
+    "url": "https://api.pillows.su/api/download/80dfc13d664f63e25cbd3fbca9750ee0",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782336483808,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Choppa",
+    "url": "https://api.pillows.su/api/download/733eceb273271e5c44c78b5def79dffb",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336484051,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Choppa Sing",
+    "url": "https://api.pillows.su/api/download/2d6a43d06a19592a0a1ba70b5bb7a56c",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336484303,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Dog Food",
+    "url": "https://api.pillows.su/api/download/20798f5ddfa2d7ca1dd764e392647e38",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782336484710,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Essentials",
+    "url": "https://api.pillows.su/api/download/64e1237421809106bc8d8cf65de33a42",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336484905,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Fall In Love",
+    "url": "https://api.pillows.su/api/download/e4ba09488d0b63fa3466cab230e04471",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782336485110,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Fashion Nova",
+    "url": "https://api.pillows.su/api/download/8a019132c51c608e2250ec48cc531d6b",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336485350,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Fisher Price",
+    "url": "https://api.pillows.su/api/download/4cbfd25a8c7465e487a4e86ccffdcd92",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336485536,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Flex",
+    "url": "https://api.pillows.su/api/download/7b389b4c79de2971dbf8e0076d688917",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/9115b9fbc7cf8db99d504319cdf6bd90.png"
+  },
+  {
+    "id": 1782336485736,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Fuck My Ex",
+    "url": "https://api.pillows.su/api/download/da8a650668ae3cb450ce543e18f94899",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336485921,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Fuck School",
+    "url": "https://api.pillows.su/api/download/467a98d91bbc8713e61b9b7eee320a65",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336486118,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Goyard Shopping Bag",
+    "url": "https://api.pillows.su/api/download/8e8832f751a3ec539e1bd3fd33da5c37",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336486279,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Gwapanese",
+    "url": "https://api.pillows.su/api/download/c95134dae14241fa17b2dc2108360764",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336487071,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Hoes Fo Sho",
+    "url": "https://api.pillows.su/api/download/21b5458a88312d5077748e8b34feb230",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336487240,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "I Got",
+    "url": "https://api.pillows.su/api/download/ae6f804776b2e5479f3a5855adc34309",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782336487732,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "I Walk In",
+    "url": "https://api.pillows.su/api/download/7f8f139832ec6e6fc141f4dfdb3167c9",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336487958,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Issa Dub",
+    "url": "https://api.pillows.su/api/download/776548e86e106063d6ec11db1218cfa4",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336488133,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Kate Moss",
+    "url": "https://api.pillows.su/api/download/5490991fe4b7c8d4762c986b3e368940",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336488324,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Kids",
+    "url": "https://api.pillows.su/api/download/0e0f74f972cc983a3f1ddba09e6ad314",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782336488715,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Killa",
+    "url": "https://api.pillows.su/api/download/9da3240cbad4fd96ebcb7333f2c5be2c",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336489440,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Lit",
+    "url": "https://api.pillows.su/api/download/021189c943d51a56c465657f2ff38f14",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336489627,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Luv With The Geek",
+    "url": "https://api.pillows.su/api/download/620b560091c6ffcde9bea4f123b5a9cf",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336489931,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Mine",
+    "url": "https://api.pillows.su/api/download/4e4f056b6a37e89eb8929ac25f1f8853",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336490111,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Monday Through Sunday",
+    "url": "https://api.pillows.su/api/download/f4ca55a8e315b9ed8ddec1c1717f9409",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336490328,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "No Feel",
+    "url": "https://api.pillows.su/api/download/7663e0933699e9f273352e58b57f1670",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336491152,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "No Lie",
+    "url": "https://api.pillows.su/api/download/ab163fbc0b453482a5465017a8168cc9",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782336491345,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "No Relation",
+    "url": "https://api.pillows.su/api/download/28377f8ce6eccb77359d76537959727e",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336491545,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Poppin' A Bean",
+    "url": "https://api.pillows.su/api/download/6d4d263df4a323595db4da21f0d90074",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336491729,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Supersonic",
+    "url": "https://api.pillows.su/api/download/b36cea54d93416b165542031994aa7cc",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336491886,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Texas",
+    "url": "https://api.pillows.su/api/download/4c5a3e0eb7e8af117ef060d539cc1241",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336492066,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Toke Shit",
+    "url": "https://api.pillows.su/api/download/02dcd62f893694a8fbb4bf94d284bb72",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336492226,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Trap",
+    "url": "https://api.pillows.su/api/download/83604e5271642c07c87094463b8f7e22",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336492452,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "VLone Jacket",
+    "url": "https://api.pillows.su/api/download/2dbf71e11652cd4a94274787c7606331",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/35041491954bd61bdfd129803b43dca0.png"
+  },
+  {
+    "id": 1782336492660,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Way Too Geeked",
+    "url": "https://api.pillows.su/api/download/d690702f5fa3a999ab05c279edb68a9e",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336492817,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Work",
+    "url": "https://api.pillows.su/api/download/42c981265a60ec95636fcf978b91dd92",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/1fe4c05003c792f4ab4e2a8d707b5a10.png"
+  },
+  {
+    "id": 1782336493003,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Pi'erre Bourne - Hacked My Instagram (Remix)",
+    "url": "https://api.pillows.su/api/download/c5dcc59718388b6b3a7dbdb6f1397969",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336493177,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Pi'erre Bourne - Ripleys",
+    "url": "https://api.pillows.su/api/download/cb7293f22785d3502abac05df951873d",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336493350,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Young Thug - Up",
+    "url": "https://api.pillows.su/api/download/c57f590e08dd32b9a9de581f8e9896d1",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "die lit"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336493550,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Athena",
+    "url": "https://api.pillows.su/api/download/a1e826920c6b544d7ce11c973c5bce98",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/f5a4328a6923c14ccfbf9c4798c22c00.png"
+  },
+  {
+    "id": 1782336493746,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Back Up",
+    "url": "https://api.pillows.su/api/download/9ba834f00f1a6c8863cdba9834b5531f",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336493927,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Back Room",
+    "url": "https://api.pillows.su/api/download/f6ce832bc5cc0ad862f61b98e7891e60",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336494123,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Butterfly Doors",
+    "url": "https://api.pillows.su/api/download/6f4a8ed658385ee1d12e49da0fac1185",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/ef30f85bcbc28a9130f9c429ecd7a7fa.png"
+  },
+  {
+    "id": 1782336494287,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Cancún",
+    "url": "https://api.pillows.su/api/download/0b9993d5f74a039dcac41e864d3e0769",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/17c0010c8f420443d1e55bb8a043f659.png"
+  },
+  {
+    "id": 1782336494459,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Designer Shoes",
+    "url": "https://api.pillows.su/api/download/022e78bb31e92b5d399be797bda51d11",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/17c0010c8f420443d1e55bb8a043f659.png"
+  },
+  {
+    "id": 1782336494667,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Dreams",
+    "url": "https://api.pillows.su/api/download/f6f1d685941873eb716c011599e32614",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/df7d6f546e6e947456306731090d7264.png"
+  },
+  {
+    "id": 1782336494862,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Hellcat",
+    "url": "https://api.pillows.su/api/download/7be8aeb4c3e39b39a28779dbcd584449",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336495261,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Nine Nine",
+    "url": "https://api.pillows.su/api/download/1c6d142343000b116b2411d6e42abae4",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/ef30f85bcbc28a9130f9c429ecd7a7fa.png"
+  },
+  {
+    "id": 1782336495449,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Not Real",
+    "url": "https://api.pillows.su/api/download/57617709523b8ae79555eed9b5cef340",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336495746,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "One Day (Remix)",
+    "url": "https://api.pillows.su/api/download/e5dd7b9328861d1db336dd499d153e4e",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336495911,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Pop Bottles",
+    "url": "https://api.pillows.su/api/download/e453ba86833f7819e385b487182b7a8b",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/ef30f85bcbc28a9130f9c429ecd7a7fa.png"
+  },
+  {
+    "id": 1782336496080,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Proud of You",
+    "url": "https://api.pillows.su/api/download/dfb14bc8345a77ef229af208fe331424",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/17c0010c8f420443d1e55bb8a043f659.png"
+  },
+  {
+    "id": 1782336496266,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Racks",
+    "url": "https://api.pillows.su/api/download/4f9ad4df20668b0abe89d183ce3ee807",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336496457,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Red Ice",
+    "url": "https://api.pillows.su/api/download/75e676dbc608340f671420a821ec8fbf",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/6bcde368e58bd834117b491b9db2c8f7.png"
+  },
+  {
+    "id": 1782336496782,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "VVV",
+    "url": "https://api.pillows.su/api/download/cd4810a0b38715196a3a5db009766c4f",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/4b90d35d7b79d41f74fe7d9531af06d4.png"
+  },
+  {
+    "id": 1782336496973,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "V. Westwood",
+    "url": "https://api.pillows.su/api/download/120f2c5b263e2faccfd0cf5ea4a65698",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336497500,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Woah",
+    "url": "https://api.pillows.su/api/download/e0744de7ef9fdacb65c3515d4881d3d5",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336497667,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Young Nudy & Pi'erre Bourne - Pissy Pamper",
+    "url": "https://api.pillows.su/api/download/d0bdba45219912c3b13d39f5f1ae7995",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336497844,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "* i promise you !",
+    "url": "https://api.pillows.su/api/download/703ddffe8bf111692c8359195953b309",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v1]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336498041,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "They Afraid Of You",
+    "url": "https://api.pillows.su/api/download/e943243908850ce2f1e426745735c88d",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "we don't dial 911"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336498221,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "2Many",
+    "url": "https://api.pillows.su/api/download/2ec425fb9e02485450378ce9f501e991",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/6bcde368e58bd834117b491b9db2c8f7.png"
+  },
+  {
+    "id": 1782336498389,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Ballin",
+    "url": "https://api.pillows.su/api/download/20a6276e7c312d51f23f45d46705d9be",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336498611,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Cartier",
+    "url": "https://api.pillows.su/api/download/3fdb9a04f66b2dc015d67f73b5359890",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336498786,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Friends",
+    "url": "https://api.pillows.su/api/download/7942607cae2cd6beadd07d5acc12110e",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/6bcde368e58bd834117b491b9db2c8f7.png"
+  },
+  {
+    "id": 1782336499068,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Headshot",
+    "url": "https://api.pillows.su/api/download/175c2d5d87c0bd1f772c58929a114e0f",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/6bcde368e58bd834117b491b9db2c8f7.png"
+  },
+  {
+    "id": 1782336499276,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "M.A.D",
+    "url": "https://api.pillows.su/api/download/8ca2b234869fcd33ae37dcda4c9b8774",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336499477,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "My Cup",
+    "url": "https://api.pillows.su/api/download/4cc3d990eccde7d88d137170e8e34272",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/df7d6f546e6e947456306731090d7264.png"
+  },
+  {
+    "id": 1782336499643,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Pass It",
+    "url": "https://api.pillows.su/api/download/5ee3db7852bc56ed60440401bc85b905",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336499841,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "SRT",
+    "url": "https://api.pillows.su/api/download/ffed951dc30a01efb401563f020ee4a3",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336500020,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "u kan do it too.",
+    "url": "https://api.pillows.su/api/download/4114a7cf4d0e5a6568c0528c1688af66",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "whole lotta red [v2]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336500378,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Worried Bout Shit",
+    "url": "https://api.pillows.su/api/download/9270f2de469d16ca03394f5e1aa55db7",
+    "tags": [
+      "unreleased",
+      "high quality",
+      "whole lotta red [v2]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336500543,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Drake - Pain 1993",
+    "url": "https://api.pillows.su/api/download/a3e96110e5e539ab3357e747e5c8b7c0",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "whole lotta red [v2]"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336500723,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Can't Fake It*",
+    "url": "https://api.pillows.su/api/download/292e1ee07351f04d73c855f651edfc89",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red (deluxe)"
+    ],
+    "type": "pillows"
+  },
+  {
+    "id": 1782336500897,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Money",
+    "url": "https://api.pillows.su/api/download/fa29edfa2d6ef6f1f57e89240fef1b2e",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red (deluxe)"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/baf91849c0523ebfaf77ff07fccf5798.png"
+  },
+  {
+    "id": 1782336501150,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Never Seen Shit",
+    "url": "https://api.pillows.su/api/download/3e2ebbd74d9e458b7801fcfeef9d1420",
+    "tags": [
+      "unreleased",
+      "cd quality",
+      "whole lotta red (deluxe)"
+    ],
+    "type": "pillows",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/baf91849c0523ebfaf77ff07fccf5798.png"
+  },
+  {
+    "id": 1782336501332,
+    "added": "2026-06-24",
+    "artist": "Playboi Carti",
+    "title": "Lil Uzi Vert -  Pass It",
+    "url": "https://api.pillows.su/api/download/013d68d4cc2f34715d8873f5832473e7",
+    "tags": [
+      "unreleased",
+      "lossless",
+      "music [v2]"
+    ],
+    "type": "pillows"
+  },
+  {
     "id": 1781896754310,
     "added": "2026-06-19",
     "artist": "Che",
