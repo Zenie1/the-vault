@@ -6,6 +6,8 @@
 // Admin auth — password is SHA-256 hashed and stored in Firebase at vault-config/adminHash.
 // No plaintext password lives in this file.
 
+const KRAKEN_PROXY = 'https://fancy-paper-61c6.n3hemiahgustave.workers.dev';
+
 async function hashPassword(password) {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
