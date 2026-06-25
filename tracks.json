@@ -1,5 +1,875 @@
 [
   {
+    "id": 1782411687156,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "01_02-12-21_V2_-JAYME_MIX_1-",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411686/mwjruunktwvrgkrb6eve.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411693117,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "01_10_12_2020",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411693/t3gojsihz5xopwfiekfc.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411698028,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "28-21 {JAYME ROUGH MIX}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411697/lnqcd5xiexqzc99uszoj.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411703210,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "24-22_JAYME_ROUGH_MIX",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411703/njewllih9qsyny5qs1if.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411705970,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Lucki (Mbw) 12.19.24",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411706/icrwzhgfm5umgrqatycg.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411710819,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "02-16-22 {JAYME ROUGH MIX}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411710/fw6i7jj8rkdesqdlcsmm.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411715205,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "09-09-20 {JAYME MIX 1}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411715/idht3qprahurbueipkzh.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411718514,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "09-29-20 {JAYME MIX 1}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411718/tlkcdjpeli41i7brzz6e.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411722872,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "09-30-20 {JAYME MIX 1}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411722/v1yhspeexraysrataguq.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411726931,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "10-24-20 JAYME MIX 1",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411727/ddi984wzoikw2sy2wmqo.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411731307,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "02-21 {JAYME ROUGH MIX}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411731/qtqzu6px6ughyoy1zkzm.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411735419,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "11-21 {JAYME MIX 2}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411735/yxgbeea3m9dw1ntdcesm.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411739028,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "02-16-22 {JAYME ROUGH MIX}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411739/aznpread1gbgysbnqgdk.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411743076,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "09-10-20 {JAYME_MIX_2}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411743/ekepmrswfwfewz44bqrb.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411747329,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "11-21 {JAYME MIX 1}_1",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411747/n2vvyq2hygpfczolxttq.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411754094,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "26-21 V1 {JAYME MIX 1}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411751/dggpcipkllqmkpn9eeur.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411758761,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "09-09-20 {JAYME MIX 1}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411758/j0lqtrgymur3iocs0y7g.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411763691,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "29-20 {JAYME MIX 1}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411762/ggs4xyvtbu6zqurkgwm5.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411768075,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Snake Pit Flow (with Lil Baby)",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411767/almnp71mbuv8g6zefpbl.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411771767,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "03-20_JAYMEMIX_1",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411771/j10vccdgpkdiuythnu8s.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411778112,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "07-20 {JAYME MIX 1}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411778/eylujp62zperdwyqnlzg.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411782858,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "07-20 {JAYME MIX 2}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411782/vbcrjwumcfh2oee3rco5.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411788002,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "09-20 {JAYME MIX 1}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411787/mg3yrwpc68ywqq07or7n.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411792451,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "17-20_JAYME_MIX_1",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411792/qpwvfi2xcup8k8i4ydrk.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411798885,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "28-20 {JAYME MIX 1}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411796/vvhzwkvge0ipwmj2lpfm.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411803899,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "05-20_JAYME_MIX_1",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411803/zpvtk6ts0gqkx8bov8hy.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411809112,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "24-20 {JAYME MIX 1}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411808/r99x4cstugfwhupmylgf.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411812409,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "WAYBetter Dayz",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411812/fuj6hpk1amvtsazs6jhj.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411817698,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "3-cupid",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411817/ffbcjrw3gqzmiw3upgiv.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411833879,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "am mix 1.3",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411832/ypqlmfsv1urkfbmfenqw.wav",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411837819,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "AUDIO_6792",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411837/hjya9lka1pjbvbwos6jf.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411863618,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "BFR_x_LUCKI_1__@SharifUrWorld_@UrWorldStudio_Rough_",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411862/yautrf99gya9avzscisz.wav",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411880459,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "BFR_x_LUCKI_2__@SharifUrWorld_@UrWorldStudio_Rough_",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411880/ezghrzdbnex5dn6g2pfs.wav",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411884775,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Bury Me Luv Me 09-30-20 {JAYME MIX 1}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411884/hhaohtubhdy0dhtvcfk5.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411890099,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "DROUGHT {MIX 1} {LIMITED}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411890/znsjskbozw6tqgbuqswh.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411895765,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Fairytale",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411895/fvclltos6rxz9akip0ij.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411900035,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "go to far rough copy",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411899/lpdck0iua6wsaktj1thq.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411905318,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Gotit_x_Lucki_-_Turnt_up-1",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411905/tgn7ligbinmiwbbq9wpa.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411908932,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "HOTSEAT_-_chuckyy_-_V1",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411908/ojezyvf19n3ftcfhuumc.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411915685,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "I can't even - lucki (prod. bobby n wheezy)",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411915/kawbbbewajajyncs61kw.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411923005,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "ID 1 KANKAN LUCKI 08.09.22",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411920/zxmx6wdjvgkiqpmskeal.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411928069,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "IM x Lucki - Roxy 1st 4.4.22",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411927/mx46wf35lowawiolohbj.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411933504,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "It_Could_Be_-_Mbw_V4_-_Lucki",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411932/qpcmmmorjcx6zwo32lhn.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411937111,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Kani Lucki 12 21 24",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411935/ibnzdvubfv9x1hjer807.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411939588,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "KANI_LUCKI_[BHEAVY_RAWGERIO]_MACKMIX1",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411939/jlsaahul9i3kpsmgmjfk.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411942543,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "L Corona JR01 ReferenceMix 44k32",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411942/hwfvtczsm30gl2kwgt9y.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411945595,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "L_V2_JR01_ReferenceMix_48k32",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411944/ywkkx1ibi9ornqcbtwe3.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411947994,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "LifestyleBrazy_II_01.11.25",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411948/wfqdvrbamixw33niz8fw.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411953062,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "24-22",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411953/lry0bfkoy2ndq6dezhle.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411957339,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Auntie",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411957/nbq8ohw6rwhwyy078lk7.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411962089,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Okay",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411961/o95dqwtpqiad8bqevvb9.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411964712,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Str8 2_8.2",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411964/egg7gx2klmuse0bmjojv.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411969661,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "LUCKI BOAT VEEZE BABY – 9.21.24",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411969/xcou2kjzig3rjsnbs6wl.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411973979,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Lucki Song 1_12.16.24",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411974/p0bylmmhhqnnqa3mfmty.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411978988,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Lucki sorry",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411979/nnwynlqwuzjywtht6jy6.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411981454,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "LUCKI_-_Higher_Than_Pluto_v2_4.6.25_1 (1)",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411981/wviolnnyhitnsvxqh6bm.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411984516,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Lucki_-_Made_Martian_ft._Lil_Yachty",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411984/otcf0jrysmpa1gbmvad3.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411989486,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Lucki_-_SONG2_122124_AmeraycanB_Lizzz_ENG_1.1",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411989/aqc82ex2vf0h4u5vimvp.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782411991361,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "LUCKI_002_4.4.25.mpg",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782411991/vwmjpds78uo0flhonkpw.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412003649,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Lucki_04.25.22_2_Rough_Draft",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412003/cbsmsnabb4sivlz77w4m.wav",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412006811,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Lucki_Lucki_11.6.2021_Riugh_V1",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412006/vfgzcmor2lbs162ecwkl.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412009514,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "_-Stab",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412009/wouam6q0tfmakeqccxii.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412012309,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "LUCKI_X_BOAT_01.11.25",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412012/a5tpjaszvtzdeimaxyif.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412018023,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Mark Buol - LUCKI - 12-09-20 JAYME MIX 2",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412017/ezmefhdyknroyfzny7bt.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412021886,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "MY HEART",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412021/mwsynbcsnqyomkep8w75.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412031767,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Needed Me (Power Up)",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412031/irbvibxwmms7mu43773g.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412033965,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Never_See_The_Day_4.29.25_-_Lucki__Mbw_",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412034/oetgt1lkiictjuiifnla.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412037224,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "one of one",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412036/um4bvpitdpcyj60wdgk6.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412042120,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Orange_Leather_Seats_-_Mbw_Main_Mix_V4_-_LUCKI",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412041/vlhubigksrsam03g6qov.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412046306,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "PRACTICE MAKE PERFECT MIX 1 {LIMITED}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412045/qoevdvrsvt6vjubuzbrl.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412049420,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "PSYCHO TRCUK 01-13-21 {JAYME ROUGH MIX}",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412049/wvgwt0ht0tslhos1osuo.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412052033,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Pure Codeine",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412052/gzamxraxp3k3t3tqeyxz.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412056773,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "sauce_lucki740am",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412056/lgh3sonea8c2gyoyugqt.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412059505,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "THE DATE",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412059/wlsilhukvoj7r03canar.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412064244,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Too Far",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412064/pk1c7mvxl4efwqz3vrvd.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary",
+    "coverArt": "https://lastfm.freetls.fastly.net/i/u/300x300/571e8aff2a25d4b8ecc34ded98d37fc1.png"
+  },
+  {
+    "id": 1782412068126,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "Track 1_06.03.23_ARS.B",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412068/ddqnof2nzw233pa0krvh.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412071073,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "V x R x L june 25 miami v1",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412071/pn75yc7ig317aemqoa8m.m4a",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412075586,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "VEEZE SLAY TOON_121021_",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412075/aa1lvx0d80iduoichena.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
+    "id": 1782412087235,
+    "added": "2026-06-25",
+    "artist": "Lucki",
+    "title": "who can i trust face lucki v2",
+    "url": "https://res.cloudinary.com/dmpwlevyh/video/upload/v1782412087/kj36mm26iq6omyrbe6e0.mp3",
+    "tags": [
+      "unreleased"
+    ],
+    "type": "cloudinary"
+  },
+  {
     "id": 1782405637513,
     "added": "2026-06-25",
     "artist": "Playboi Carti",
