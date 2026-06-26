@@ -2024,12 +2024,12 @@ header {
   header {
     flex-direction: column;
     align-items: flex-start;
-    padding: 24px 0 20px;
-    gap: 16px;
-    margin-bottom: 24px;
+    padding: 12px 0 10px;
+    gap: 10px;
+    margin-bottom: 14px;
   }
-  .logo { font-size: 42px; }
-  .logo-sub { font-size: 9px; letter-spacing: 4px; }
+  .logo { font-size: 30px; }
+  .logo-sub { font-size: 8px; letter-spacing: 3px; }
   .header-right {
     width: 100%;
     display: grid;
@@ -2133,7 +2133,8 @@ header {
     gap: 0;
     padding: 0 4px;
   }
-  .play-pause { width: 46px; height: 46px; font-size: 16px; }
+  .play-pause { width: 52px; height: 52px; font-size: 18px; }
+  #comment-at-label { display: none; }
   .ctrl-btn { font-size: 16px; padding: 6px; }
   .ctrl-btn.shuffle-btn, .ctrl-btn.loop-btn { font-size: 14px; }
 
@@ -2218,6 +2219,10 @@ header {
   /* Filter buttons scroll horizontally on mobile */
   .filter-btns { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .filter-btns::-webkit-scrollbar { display: none; }
+
+  /* Sort buttons scroll horizontally on mobile */
+  .sort-wrap { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .sort-wrap::-webkit-scrollbar { display: none; }
 
   /* Inputs use 16px font to prevent iOS zoom on focus */
   .search-wrap input,
