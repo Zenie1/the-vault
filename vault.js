@@ -8,14 +8,12 @@
 // them through a tiny Cloudflare Worker. Deploy kraken-proxy.js to Cloudflare
 // Workers (free, 2 min) and paste your worker URL here.
 // Leave empty ('') to attempt the request directly (works from localhost).
-const KRAKEN_PROXY = 'https://fancy-paper-61c6.n3hemiahgustave.workers.dev'; // e.g. 'https://kraken-proxy.yourname.workers.dev'
+const KRAKEN_PROXY = 'https://fancy-paper-61c6.n3hemiahgustave.workers.dev';
 
 // =============================================================
 // ===== CONFIG =====
 // Admin auth — password is SHA-256 hashed and stored in Firebase at vault-config/adminHash.
 // No plaintext password lives in this file.
-
-const KRAKEN_PROXY = 'https://fancy-paper-61c6.n3hemiahgustave.workers.dev';
 
 async function hashPassword(password) {
   const encoder = new TextEncoder();
