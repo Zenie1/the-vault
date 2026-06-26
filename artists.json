@@ -56,8 +56,8 @@
     "visualizer": {
       "mode": "808",
       "intensity": 1.1,
-      "trailLength": 60,
-      "particleBurst": false
+      "particleBurst": false,
+      "trailLength": 60
     }
   },
   "nine vicious": {
