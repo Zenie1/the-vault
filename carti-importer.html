@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vault — Carti Importer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0a0a; color: #e0e0e0; font-family: system-ui, -apple-system, sans-serif; padding: 28px 24px; max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.3rem; font-weight: 600; margin-bottom: 6px; }
+    h2 { font-size: 0.75rem; font-weight: 600; margin: 0 0 12px; color: #666; text-transform: uppercase; letter-spacing: .08em; }
+    .step { background: #111; border: 1px solid #222; border-radius: 10px; padding: 20px; margin-bottom: 14px; }
+    textarea, input[type=text], input[type=password] {
+      width: 100%; background: #080808; border: 1px solid #2a2a2a; color: #ddd;
+      border-radius: 6px; padding: 10px 12px; font-size: 0.83rem; font-family: monospace;
+      outline: none; transition: border-color .15s;
+    }
+    textarea:focus, input:focus { border-color: #444; }
+    textarea { resize: vertical; }
+    button {
+      background: #181830; border: 1px solid #383870; color: #9898e8;
+      padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+      transition: background .15s;
+    }
+    button:hover { background: #20204a; }
+    button.primary { background: #22225a; border-color: #5858bb; color: #b0b0ff; }
+    button.primary:hover { background: #2a2a6a; }
+    button:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.81rem; }
+    th { text-align: left; padding: 7px 10px; color: #555; border-bottom: 1px solid #1e1e1e; font-weight: 500; white-space: nowrap; }
+    td { padding: 7px 10px; border-bottom: 1px solid #161616; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #131313; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; white-space: nowrap; }
+    .badge-hq  { background: #0e1e30; color: #5590cc; border: 1px solid #1a3050; }
+    .badge-og  { background: #251e08; color: #c09040; border: 1px solid #453010; }
+    .badge-rec { background: #1a1a1a; color: #777; border: 1px solid #2a2a2a; }
+    .log { background: #060606; border: 1px solid #1a1a1a; border-radius: 6px; padding: 12px 14px;
+           font-size: 0.77rem; font-family: monospace; max-height: 280px; overflow-y: auto; line-height: 1.6; }
+    .ok   { color: #60b060; }
+    .err  { color: #c06060; }
+    .info { color: #5888b8; }
+    .hint { color: #555; font-size: 0.8rem; margin-bottom: 12px; line-height: 1.5; }
+    a { color: #5858a8; text-decoration: none; }
+    a:hover { color: #8888d8; }
+    .flex { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .status-text { font-size: 0.82rem; color: #666; }
+    #results-json { height: 180px; margin-top: 10px; }
+    .section-sep { border: none; border-top: 1px solid #1e1e1e; margin: 18px 0; }
+    input[type=checkbox] { accent-color: #5858bb; width: 14px; height: 14px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<h1>🔒 Vault — Leak Importer</h1>
+<p style="color:#555;font-size:.82rem;margin-bottom:22px">Parse the tracker spreadsheet → select tracks → push to tracks.json</p>
+
+<!-- ── Fix URLs utility ─────────────────────────────────────────────────── -->
+<div class="step" style="border-color:#1a2a1a">
+  <h2 style="color:#558844">🎵 Fix audio — use pillows.su direct URLs (recommended)</h2>
+  <p class="hint" style="margin-bottom:10px">Paste your CSV below, enter a GitHub token, and click Fix. It will match your existing Carti tracks in tracks.json to direct <code style="color:#888">api.pillows.su/api/download/</code> audio URLs — no Cloudinary needed.</p>
+  <div class="flex" style="margin-bottom:8px">
+    <label style="cursor:pointer">
+      <input type="file" id="fix-csv-file" accept=".csv,text/csv" style="display:none" onchange="loadFixCSV(this)">
+      <button onclick="document.getElementById('fix-csv-file').click()">📂 Choose .csv file</button>
+    </label>
+    <span style="color:#333;font-size:.8rem">— or paste below —</span>
+  </div>
+  <textarea id="fix-csv" rows="3" placeholder="Paste CSV here…" style="margin-bottom:10px"></textarea>
+  <div class="flex">
+    <input type="password" id="fix-token" placeholder="ghp_xxxxxxxxxxxx" style="max-width:280px">
+    <input type="text" id="fix-repo" value="zenie1/the-vault" style="max-width:160px">
+    <button class="primary" onclick="fixWithPillows()">✅ Fix audio URLs from CSV</button>
+    <button onclick="removeDuplicates()">🧹 Remove duplicate tracks</button>
+    <button onclick="removeCarti()">🗑 Remove broken Carti tracks</button>
+    <button onclick="removeArtist('Lucki')">🗑 Remove Lucki tracks</button>
+  </div>
+  <div class="flex" style="margin-top:10px">
+    <label style="cursor:pointer">
+      <input type="file" id="restore-json-file" accept=".json,application/json" style="display:none" onchange="restoreFromLocal(this)">
+      <button onclick="document.getElementById('restore-json-file').click()">🔁 Restore GitHub from local tracks.json</button>
+    </label>
+    <span style="color:#888;font-size:.78rem;align-self:center">⚠ Replaces ALL of GitHub's tracks.json with the selected file</span>
+  </div>
+  <div id="fix-log" class="log" style="display:none;margin-top:10px;max-height:200px"></div>
+  <div id="fix-status" class="status-text" style="margin-top:8px"></div>
+</div>
+
+<!-- ── Bulk File Upload ──────────────────────────────────────────────────── -->
+<div class="step" style="border-color:#1a1a2a">
+  <h2 style="color:#7777bb">☁ Bulk upload local files → Cloudinary</h2>
+  <p class="hint">Download the audio files, pick them all here. Each file gets uploaded to Cloudinary, cover art fetched from Last.fm, then pushed to tracks.json automatically.</p>
+  <div class="flex" style="margin-bottom:10px">
+    <label style="font-size:.82rem;color:#888;white-space:nowrap;align-self:center">Artist name:</label>
+    <input type="text" id="bulk-artist" value="Lucki" style="max-width:220px">
+    <span style="color:#555;font-size:.78rem">Prefix like "Lucki - " is stripped from filenames automatically.</span>
+  </div>
+  <div class="flex" style="margin-bottom:10px">
+    <label style="cursor:pointer">
+      <input type="file" id="bulk-files" accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.aac" multiple style="display:none" onchange="previewBulkFiles(this)">
+      <button onclick="document.getElementById('bulk-files').click()">📂 Choose audio files</button>
+    </label>
+    <span id="bulk-file-count" style="color:#555;font-size:.8rem"></span>
+  </div>
+  <div id="bulk-preview" style="display:none;margin-bottom:10px;background:#080808;border:1px solid #1a1a1a;border-radius:6px;padding:10px;max-height:180px;overflow-y:auto;font-size:.78rem;font-family:monospace;line-height:1.6"></div>
+  <div class="flex" style="margin-bottom:10px">
+    <input type="password" id="bulk-token" placeholder="ghp_xxxxxxxxxxxx" style="max-width:280px">
+    <input type="text"     id="bulk-repo"  value="zenie1/the-vault"       style="max-width:160px">
+    <button class="primary" id="bulk-upload-btn" onclick="startBulkUpload()">☁ Upload &amp; Push to GitHub →</button>
+  </div>
+  <div id="bulk-log"    class="log" style="display:none"></div>
+  <div id="bulk-status" class="status-text" style="margin-top:8px"></div>
+</div>
+
+<!-- ── Step 1: CSV ───────────────────────────────────────────────────────── -->
+<div class="step">
+  <h2>1 · Artist &amp; CSV</h2>
+  <p class="hint">Open the Google Sheet → File → Download → CSV. Then either pick the file or paste the contents below.</p>
+  <div class="flex" style="margin-bottom:12px">
+    <label style="font-size:.82rem;color:#888;white-space:nowrap;align-self:center">Artist name:</label>
+    <input type="text" id="artist-name" value="Playboi Carti" style="max-width:220px">
+  </div>
+  <div class="flex" style="margin-bottom:10px">
+    <label style="cursor:pointer">
+      <input type="file" id="csv-file" accept=".csv,text/csv" style="display:none" onchange="loadCSVFile(this)">
+      <button onclick="document.getElementById('csv-file').click()">📂 Choose .csv file</button>
+    </label>
+    <span style="color:#333;font-size:.8rem">— or paste below —</span>
+  </div>
+  <textarea id="csv-input" rows="6" placeholder="Era,Name,Notes,Track Length,Leak Date,Recording Date,Type,Available Length,Quality,Link(s)&#10;..."></textarea>
+  <br><br>
+  <div class="flex">
+    <button class="primary" onclick="parseCSV()">Parse CSV →</button>
+    <span id="parse-status" class="status-text"></span>
+  </div>
+</div>
+
+<!-- ── Step 2: Preview ──────────────────────────────────────────────────── -->
+<div class="step" id="step2" style="display:none">
+  <h2>2 · Select Tracks to Import</h2>
+  <p class="hint">Only tracks with available audio (pillows.su links) are listed. Tracks marked "Not Available" or "Rumored" are excluded automatically.</p>
+  <div class="flex" style="margin-bottom:12px">
+    <button onclick="selectAll(true)">Select All</button>
+    <button onclick="selectAll(false)">Deselect All</button>
+    <span id="sel-count" class="status-text"></span>
+  </div>
+  <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Era</th>
+          <th>Title</th>
+          <th>Quality</th>
+          <th>Duration</th>
+          <th>Leak Date</th>
+          <th>Audio Link</th>
+        </tr>
+      </thead>
+      <tbody id="track-table"></tbody>
+    </table>
+  </div>
+  <br>
+  <div class="flex" style="margin-top:4px">
+    <button onclick="exportURLs()">📋 Export URL list (for JDownloader)</button>
+    <button class="primary" id="import-btn" onclick="startImport()">Import Selected →</button>
+  </div>
+  <textarea id="url-export" style="display:none;margin-top:10px;height:160px" readonly placeholder="URL list will appear here…"></textarea>
+</div>
+
+<!-- ── Step 3: Progress ─────────────────────────────────────────────────── -->
+<div class="step" id="step3" style="display:none">
+  <h2>3 · Import Progress</h2>
+  <div id="import-log" class="log"></div>
+</div>
+
+<!-- ── Step 4: Export ───────────────────────────────────────────────────── -->
+<div class="step" id="step4" style="display:none">
+  <h2>4 · Export / Push</h2>
+  <div class="flex" style="margin-bottom:10px">
+    <button onclick="downloadJSON()">⬇ Download carti-tracks.json</button>
+    <button onclick="copyJSON()">📋 Copy to clipboard</button>
+  </div>
+  <textarea id="results-json" readonly></textarea>
+
+  <hr class="section-sep">
+  <h2 style="margin-bottom:8px">Push directly to GitHub</h2>
+  <p class="hint">Provide your GitHub personal access token to prepend these entries to tracks.json and commit automatically.</p>
+  <div class="flex" style="margin-bottom:10px">
+    <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" style="max-width:280px">
+    <input type="text"     id="gh-repo"  value="zenie1/the-vault"       style="max-width:180px">
+    <button class="primary" onclick="pushToGitHub()">Push to GitHub →</button>
+  </div>
+  <div id="gh-status" class="status-text"></div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const CLOUD_NAME   = 'dmpwlevyh';
+
+// ── Saved selection (your 76 picks) ──────────────────────────────────────────
+const SAVED_HASHES = new Set([
+  '23186168a26818c13fe2ab9059297967','80dfc13d664f63e25cbd3fbca9750ee0',
+  '733eceb273271e5c44c78b5def79dffb','2d6a43d06a19592a0a1ba70b5bb7a56c',
+  '20798f5ddfa2d7ca1dd764e392647e38','64e1237421809106bc8d8cf65de33a42',
+  'e4ba09488d0b63fa3466cab230e04471','8a019132c51c608e2250ec48cc531d6b',
+  '4cbfd25a8c7465e487a4e86ccffdcd92','7b389b4c79de2971dbf8e0076d688917',
+  'da8a650668ae3cb450ce543e18f94899','467a98d91bbc8713e61b9b7eee320a65',
+  '8e8832f751a3ec539e1bd3fd33da5c37','c95134dae14241fa17b2dc2108360764',
+  '21b5458a88312d5077748e8b34feb230','ae6f804776b2e5479f3a5855adc34309',
+  '7f8f139832ec6e6fc141f4dfdb3167c9','776548e86e106063d6ec11db1218cfa4',
+  '5490991fe4b7c8d4762c986b3e368940','0e0f74f972cc983a3f1ddba09e6ad314',
+  '9da3240cbad4fd96ebcb7333f2c5be2c','021189c943d51a56c465657f2ff38f14',
+  '620b560091c6ffcde9bea4f123b5a9cf','4e4f056b6a37e89eb8929ac25f1f8853',
+  'f4ca55a8e315b9ed8ddec1c1717f9409','7663e0933699e9f273352e58b57f1670',
+  'ab163fbc0b453482a5465017a8168cc9','28377f8ce6eccb77359d76537959727e',
+  '6d4d263df4a323595db4da21f0d90074','b36cea54d93416b165542031994aa7cc',
+  '4c5a3e0eb7e8af117ef060d539cc1241','02dcd62f893694a8fbb4bf94d284bb72',
+  '83604e5271642c07c87094463b8f7e22','2dbf71e11652cd4a94274787c7606331',
+  'd690702f5fa3a999ab05c279edb68a9e','42c981265a60ec95636fcf978b91dd92',
+  'c5dcc59718388b6b3a7dbdb6f1397969','cb7293f22785d3502abac05df951873d',
+  'c57f590e08dd32b9a9de581f8e9896d1','a1e826920c6b544d7ce11c973c5bce98',
+  '9ba834f00f1a6c8863cdba9834b5531f','f6ce832bc5cc0ad862f61b98e7891e60',
+  '6f4a8ed658385ee1d12e49da0fac1185','0b9993d5f74a039dcac41e864d3e0769',
+  '022e78bb31e92b5d399be797bda51d11','f6f1d685941873eb716c011599e32614',
+  '7be8aeb4c3e39b39a28779dbcd584449','1c6d142343000b116b2411d6e42abae4',
+  '57617709523b8ae79555eed9b5cef340','e5dd7b9328861d1db336dd499d153e4e',
+  'e453ba86833f7819e385b487182b7a8b','dfb14bc8345a77ef229af208fe331424',
+  '4f9ad4df20668b0abe89d183ce3ee807','75e676dbc608340f671420a821ec8fbf',
+  'cd4810a0b38715196a3a5db009766c4f','120f2c5b263e2faccfd0cf5ea4a65698',
+  'e0744de7ef9fdacb65c3515d4881d3d5','d0bdba45219912c3b13d39f5f1ae7995',
+  '703ddffe8bf111692c8359195953b309','e943243908850ce2f1e426745735c88d',
+  '2ec425fb9e02485450378ce9f501e991','20a6276e7c312d51f23f45d46705d9be',
+  '3fdb9a04f66b2dc015d67f73b5359890','7942607cae2cd6beadd07d5acc12110e',
+  '175c2d5d87c0bd1f772c58929a114e0f','8ca2b234869fcd33ae37dcda4c9b8774',
+  '4cc3d990eccde7d88d137170e8e34272','5ee3db7852bc56ed60440401bc85b905',
+  'ffed951dc30a01efb401563f020ee4a3','4114a7cf4d0e5a6568c0528c1688af66',
+  '9270f2de469d16ca03394f5e1aa55db7','a3e96110e5e539ab3357e747e5c8b7c0',
+  '292e1ee07351f04d73c855f651edfc89','fa29edfa2d6ef6f1f57e89240fef1b2e',
+  '3e2ebbd74d9e458b7801fcfeef9d1420','013d68d4cc2f34715d8873f5832473e7',
+]);
+const UPLOAD_PRESET = 'vault_stems_unsigned';
+const LASTFM_KEY   = '311be84da488e0f3eae8987d051e2cc3';
+const LASTFM_PH    = '2a96cbd8b46e442fc41c2b86b821562f'; // placeholder image to reject
+const getArtist = () => document.getElementById('artist-name').value.trim() || 'Unknown Artist';
+
+// ── CSV / TSV Parser ──────────────────────────────────────────────────────────
+// Auto-detects tab-separated (Google Sheets copy-paste) vs comma-separated.
+function parseCSVText(text) {
+  // Detect delimiter: if the first non-empty line has tabs, treat as TSV
+  const firstLine = text.split(/\r?\n/).find(l => l.trim());
+  const SEP = firstLine && firstLine.includes('\t') ? '\t' : ',';
+
+  const rows = [];
+  let i = 0, n = text.length;
+  while (i < n) {
+    const row = [];
+    // skip blank lines
+    while (i < n && (text[i] === '\r' || text[i] === '\n')) i++;
+    if (i >= n) break;
+
+    do {
+      if (text[i] === '"') {
+        i++; // opening quote
+        let field = '';
+        while (i < n) {
+          if (text[i] === '"') {
+            if (i + 1 < n && text[i+1] === '"') { field += '"'; i += 2; }
+            else { i++; break; }
+          } else {
+            field += text[i++];
+          }
+        }
+        row.push(field);
+      } else {
+        let field = '';
+        while (i < n && text[i] !== SEP && text[i] !== '\n' && text[i] !== '\r') {
+          field += text[i++];
+        }
+        row.push(field.trim());
+      }
+      if (i < n && text[i] === SEP) i++; else break;
+    } while (true);
+
+    // consume line ending
+    if (i < n && text[i] === '\r') i++;
+    if (i < n && text[i] === '\n') i++;
+
+    if (row.some(c => c.trim())) rows.push(row);
+  }
+  return rows;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let parsedTracks  = [];
+let importedEntries = [];
+
+// ── Step 1 ────────────────────────────────────────────────────────────────────
+function loadCSVFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('csv-input').value = e.target.result;
+    setStatus(`Loaded: ${file.name}`);
+  };
+  reader.readAsText(file);
+}
+
+function loadFixCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('fix-csv').value = e.target.result;
+    document.getElementById('fix-status').textContent = `Loaded: ${file.name}`;
+  };
+  reader.readAsText(file);
+}
+
+function parseCSV() {
+  const raw = document.getElementById('csv-input').value;
+  if (!raw.trim()) { setStatus('Paste CSV first.'); return; }
+
+  const rows = parseCSVText(raw);
+
+  // Locate header row (contains "Era" and "Name")
+  let hi = -1;
+  for (let i = 0; i < Math.min(rows.length, 15); i++) {
+    if (rows[i].some(c => c.trim() === 'Era') && rows[i].some(c => c.trim() === 'Name')) {
+      hi = i; break;
+    }
+  }
+  if (hi === -1) { setStatus('Header row not found. Make sure to paste the full CSV (including the Era/Name header row).'); return; }
+
+  const hdrs = rows[hi].map(h => h.trim());
+  const idx  = name => hdrs.findIndex(h => h.includes(name));
+
+  const C = {
+    era:      idx('Era'),
+    name:     idx('Name'),
+    length:   idx('Track Length'),
+    leakDate: idx('Leak Date'),
+    // Support both 'Portion' (Lucki) and 'Available' (Carti)
+    portion:  idx('Portion') >= 0 ? idx('Portion') : idx('Available'),
+    quality:  idx('Quality'),
+    links:    idx('Link'),
+    type:     idx('Type'),
+  };
+
+  parsedTracks = [];
+
+  for (let i = hi + 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r.length < 5) continue;
+
+    const era       = get(r, C.era);
+    const rawName   = get(r, C.name);
+    const portion   = get(r, C.portion);
+    const quality   = get(r, C.quality);
+    const linksRaw  = get(r, C.links);
+    const length    = get(r, C.length);
+    const leakDate  = get(r, C.leakDate);
+    const type      = get(r, C.type);
+
+    // Skip section headers / stat rows
+    if (!rawName || rawName.startsWith('[Unknown')) continue;
+
+    // Skip unavailable/unconfirmed/snippet-only entries
+    const portionLow = portion.toLowerCase();
+    if (!portionLow || portionLow === 'not available' || portionLow === 'rumored' ||
+        portionLow === 'confirmed' || portionLow === 'snippet') continue;
+
+    // Skip low-quality or unavailable
+    const qualLow = quality.toLowerCase();
+    if (!quality || qualLow === 'not available' || qualLow === 'recording') continue;
+
+    // Extract first usable audio link (pillows.su, krakenfiles, imgur.gg)
+    const m = linksRaw.match(/https?:\/\/(pillows\.su\/f\/[a-zA-Z0-9]+|krakenfiles\.com\/view\/[a-zA-Z0-9]+\/file\.html|imgur\.gg\/f\/[a-zA-Z0-9]+)/);
+    if (!m) continue;
+    const link = 'https://' + m[1];
+
+    parsedTracks.push({ era, rawName, title: cleanTitle(rawName), quality, portion, type, length, leakDate, link });
+  }
+
+  if (!parsedTracks.length) {
+    setStatus('No importable tracks found. Check the CSV has a Link(s) column with krakenfiles, pillows.su, or imgur.gg URLs.');
+    return;
+  }
+
+  setStatus(`Found ${parsedTracks.length} importable tracks.`);
+  renderTable();
+  document.getElementById('step2').style.display = '';
+  updateSelCount();
+}
+
+function get(row, i) { return i >= 0 && i < row.length ? row[i].trim() : ''; }
+function autoChecked(t) {
+  if (getArtist() !== 'Playboi Carti') return 'checked';
+  const h = hashFromLink(t.link);
+  return (h && SAVED_HASHES.has(h)) ? 'checked' : '';
+}
+function hashFromLink(link) {
+  let m;
+  if (m = link.match(/pillows\.su\/f\/([a-zA-Z0-9]+)/))    return m[1];
+  if (m = link.match(/krakenfiles\.com\/view\/([a-zA-Z0-9]+)/)) return m[1];
+  if (m = link.match(/imgur\.gg\/f\/([a-zA-Z0-9]+)/))      return m[1];
+  return null;
+}
+function hostFromLink(link) {
+  if (link.includes('pillows.su'))    return 'pillows';
+  if (link.includes('krakenfiles.com')) return 'kraken';
+  if (link.includes('imgur.gg'))      return 'imgur';
+  return 'unknown';
+}
+
+function setStatus(msg) { document.getElementById('parse-status').textContent = msg; }
+
+// ── Title cleaner ─────────────────────────────────────────────────────────────
+function cleanTitle(raw) {
+  return raw
+    .split('\n')[0]                          // first line only
+    .replace(/\*+$/, '')                     // trailing *
+    .replace(/\s*\(prod\..*?\)/gi, '')       // (prod. ...)
+    .replace(/\s*\[.*?\]/g, '')              // [Freestyle] etc
+    .replace(/\s*\(feat\.\s*\?\?\?\)/gi, '') // (feat. ???)
+    .replace(/\s*\(ft\..*?\)/gi, '')         // (ft. ...)
+    .replace(/[⭐️✨🏆🗑️]+/g, '')           // rating emojis
+    .trim();
+}
+
+// ── Step 2 ────────────────────────────────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('track-table');
+  tbody.innerHTML = '';
+  parsedTracks.forEach((t, idx) => {
+    const q = t.quality.toLowerCase();
+    const badgeCls = (q.includes('cd') || q.includes('lossless') || q.includes('high')) ? 'badge badge-hq'
+                   : (q.includes('og') || q.includes('original'))                        ? 'badge badge-og'
+                   : 'badge badge-rec';
+    tbody.innerHTML += `<tr>
+      <td><input type="checkbox" class="row-check" data-idx="${idx}" ${autoChecked(t)} onchange="updateSelCount()"></td>
+      <td style="color:#555;font-size:.76rem;white-space:nowrap">${t.era}</td>
+      <td>
+        ${escHtml(t.title)}
+        ${t.title !== t.rawName.split('\n')[0].replace(/\*+$/,'').trim()
+          ? `<br><span style="color:#3a3a3a;font-size:.72rem">${escHtml(t.rawName.split('\n')[0])}</span>`
+          : ''}
+      </td>
+      <td><span class="${badgeCls}">${escHtml(t.quality)}</span></td>
+      <td style="color:#555;font-size:.78rem;white-space:nowrap">${t.length || '—'}</td>
+      <td style="color:#555;font-size:.78rem;white-space:nowrap">${t.leakDate || '—'}</td>
+      <td><a href="${t.link}" target="_blank">pillows.su ↗</a></td>
+    </tr>`;
+  });
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function selectAll(v) {
+  document.querySelectorAll('.row-check').forEach(c => c.checked = v);
+  updateSelCount();
+}
+
+function updateSelCount() {
+  const n = document.querySelectorAll('.row-check:checked').length;
+  document.getElementById('sel-count').textContent = `${n} selected`;
+}
+
+// ── Export URL list ───────────────────────────────────────────────────────────
+function exportURLs() {
+  const selected = [...document.querySelectorAll('.row-check:checked')]
+    .map(c => parsedTracks[+c.dataset.idx]);
+  if (!selected.length) { alert('Select at least one track.'); return; }
+  const urls = selected.map(t =>
+    t.link.replace(/https?:\/\/pillows\.su\/f\/([a-zA-Z0-9]+)/, 'https://api.pillows.su/api/download/$1')
+  ).join('\n');
+  const ta = document.getElementById('url-export');
+  ta.style.display = '';
+  ta.value = urls;
+  ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  ta.setSelectionRange(0, 0);
+  // Show count next to button
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = `✓ Copied ${selected.length} URLs`;
+  setTimeout(() => btn.textContent = orig, 2500);
+}
+
+// ── Step 3: Import ────────────────────────────────────────────────────────────
+async function startImport() {
+  const selected = [...document.querySelectorAll('.row-check:checked')]
+    .map(c => parsedTracks[+c.dataset.idx]);
+  if (!selected.length) { alert('Select at least one track.'); return; }
+
+  document.getElementById('step3').style.display = '';
+  document.getElementById('import-btn').disabled = true;
+  importedEntries = [];
+
+  const logEl = document.getElementById('import-log');
+  const log = (msg, cls = '') => {
+    logEl.innerHTML += `<div class="${cls}">${msg}</div>`;
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  log(`Starting import — ${selected.length} track${selected.length > 1 ? 's' : ''}…`, 'info');
+
+  for (let si = 0; si < selected.length; si++) {
+    const track = selected[si];
+    log(`[${si+1}/${selected.length}] ${track.title}`, 'info');
+
+    // 1. Resolve direct audio URL
+    const id   = hashFromLink(track.link);
+    const host = hostFromLink(track.link);
+    let directUrl;
+
+    if (host === 'pillows') {
+      directUrl = `https://api.pillows.su/api/download/${id}`;
+      log(`  ✓ pillows.su → ${directUrl}`, 'ok');
+    } else if (host === 'kraken') {
+      try {
+        const tr = await fetch(`https://krakenfiles.com/api/file/${id}/token`, { method: 'POST' });
+        const td = await tr.json();
+        if (td.status !== 'ok') throw new Error(td.message || 'bad status');
+        directUrl = `https://krakenfiles.com/download/${id}/file?token=${td.data.token}`;
+        log(`  ✓ krakenfiles → ${directUrl}`, 'ok');
+      } catch(e) {
+        log(`  · kraken token failed (${e.message}) — storing page URL`, 'info');
+        directUrl = track.link;
+      }
+    } else if (host === 'imgur') {
+      directUrl = track.link; // imgur.gg — store as-is for now
+      log(`  · imgur.gg link stored as page URL`, 'info');
+    } else {
+      directUrl = track.link;
+      log(`  · unknown host — storing link as-is`, 'info');
+    }
+
+    // 2. Cover art from Last.fm
+    let coverArt = '';
+    try {
+      const r = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key=${LASTFM_KEY}&artist=${enc(getArtist())}&track=${enc(track.title)}&autocorrect=1&format=json`);
+      const d = await r.json();
+      const imgs = d?.track?.album?.image || [];
+      const img  = imgs.find(i => i.size === 'extralarge') || imgs.find(i => i.size === 'large');
+      if (img && img['#text'] && !img['#text'].includes(LASTFM_PH)) {
+        coverArt = img['#text'];
+        log(`  ✓ Cover art from Last.fm`, 'ok');
+      } else {
+        log(`  · No Last.fm cover art`, 'info');
+      }
+    } catch(_) {
+      log(`  · Last.fm lookup failed`, 'info');
+    }
+
+    // 3. Build entry
+    const entry = {
+      id:      Date.now() + si,
+      added:   new Date().toISOString().slice(0, 10),
+      artist:  getArtist(),
+      title:   track.title,
+      url:     directUrl,
+      tags:    buildTags(track),
+      type:    'pillows',
+    };
+    if (coverArt) entry.coverArt = coverArt;
+
+    importedEntries.push(entry);
+  }
+
+  log(`\nDone — ${importedEntries.length} / ${selected.length} tracks imported successfully.`, 'ok');
+  document.getElementById('step4').style.display = '';
+  document.getElementById('results-json').value = JSON.stringify(importedEntries, null, 2);
+}
+
+function publicId(track) {
+  return 'carti-' + track.title.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 60);
+}
+
+function buildTags(track) {
+  const tags = ['unreleased'];
+  const q = (track.quality || '').toLowerCase();
+  const p = (track.portion || '').toLowerCase();
+  const t = (track.type    || '').toLowerCase();
+  if      (q.includes('lossless'))  tags.push('lossless');
+  else if (q.includes('cd'))        tags.push('cd quality');
+  else if (q.includes('high'))      tags.push('high quality');
+  if (p === 'og file') tags.push('og file');
+  if (t === 'og')      tags.push('og');
+  if (track.era) tags.push(track.era.toLowerCase().replace(/[^a-z0-9 $&]/g, '').trim());
+  return tags.filter(Boolean);
+}
+
+function enc(s) { return encodeURIComponent(s); }
+
+// ── Remove broken Carti imports ───────────────────────────────────────────────
+async function fixWithPillows() {
+  const token  = document.getElementById('fix-token').value.trim().replace(/[^\x20-\x7E]/g, '');
+  const repo   = document.getElementById('fix-repo').value.trim();
+  const csv    = document.getElementById('fix-csv').value.trim();
+  const status = document.getElementById('fix-status');
+  const logEl  = document.getElementById('fix-log');
+
+  if (!token) { status.textContent = 'Enter your GitHub token.'; return; }
+  if (!csv)   { status.textContent = 'Paste the CSV first.'; return; }
+
+  logEl.style.display = '';
+  logEl.innerHTML = '';
+  const log = (msg, cls='') => { logEl.innerHTML += `<div class="${cls}">${msg}</div>`; logEl.scrollTop = logEl.scrollHeight; };
+
+  // Parse CSV to build title→directUrl map
+  const rows = parseCSVText(csv);
+  let hi = -1;
+  for (let i = 0; i < Math.min(rows.length, 15); i++) {
+    if (rows[i].some(c => c.trim() === 'Era') && rows[i].some(c => c.trim() === 'Name')) { hi = i; break; }
+  }
+  if (hi === -1) { status.textContent = 'CSV header not found.'; return; }
+
+  const hdrs = rows[hi].map(h => h.trim());
+  const idx  = name => hdrs.findIndex(h => h.includes(name));
+  const C = { name: idx('Name'), links: idx('Link'), available: idx('Available'), quality: idx('Quality') };
+
+  const titleMap = {}; // cleaned-title → direct pillows URL
+  for (let i = hi + 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r.length < 5) continue;
+    const rawName  = get(r, C.name);
+    const available = get(r, C.available);
+    const quality  = get(r, C.quality);
+    const linksRaw = get(r, C.links);
+    if (!rawName) continue;
+    const avLow = available.toLowerCase();
+    if (avLow === 'not available' || avLow === 'rumored' || avLow === '') continue;
+    if (!quality || quality.toLowerCase() === 'not available') continue;
+    const m = linksRaw.match(/https?:\/\/pillows\.su\/f\/([a-zA-Z0-9]+)/);
+    if (!m) continue;
+    const directUrl = `https://api.pillows.su/api/download/${m[1]}`;
+    titleMap[cleanTitle(rawName).toLowerCase()] = directUrl;
+  }
+
+  log(`CSV parsed — ${Object.keys(titleMap).length} tracks with audio links`, 'info');
+
+  // Fetch tracks.json from GitHub
+  const ghHdrs = { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+  status.textContent = 'Fetching tracks.json from GitHub…';
+  let fileData, tracks;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, { headers: ghHdrs });
+    fileData = await r.json();
+    if (!r.ok) throw new Error(fileData.message);
+    tracks = JSON.parse(decodeURIComponent(escape(atob(fileData.content.replace(/\s/g, '')))));
+  } catch(e) { status.textContent = `✗ ${e.message}`; status.style.color='#c06060'; return; }
+
+  // Match and update
+  let fixed = 0, notFound = 0;
+  for (const t of tracks) {
+    if (t.artist !== 'Playboi Carti') continue;
+    const key = t.title.toLowerCase();
+    const directUrl = titleMap[key];
+    if (directUrl) {
+      t.url  = directUrl;
+      t.type = 'pillows';
+      fixed++;
+      log(`  ✓ ${t.title}`, 'ok');
+    } else {
+      notFound++;
+      log(`  · no match: ${t.title}`, 'info');
+    }
+  }
+
+  log(`Done — ${fixed} fixed, ${notFound} unmatched`, fixed > 0 ? 'ok' : 'err');
+  if (!fixed) { status.textContent = 'No tracks matched. Check the CSV is the right file.'; status.style.color='#c06060'; return; }
+
+  // Push
+  status.textContent = `Pushing ${fixed} updated tracks to GitHub…`;
+  try {
+    const pushRes = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, {
+      method: 'PUT', headers: ghHdrs,
+      body: JSON.stringify({
+        message: `fix: replace Cloudinary raw URLs with pillows.su direct audio for ${fixed} Carti tracks`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(tracks, null, 2)))),
+        sha: fileData.sha,
+      }),
+    });
+    const pushData = await pushRes.json();
+    if (!pushRes.ok) throw new Error(pushData.message);
+    status.textContent = `✓ Fixed ${fixed} tracks — audio should play now!`;
+    status.style.color = '#60b060';
+  } catch(e) {
+    status.textContent = `✗ Push failed: ${e.message}`;
+    status.style.color = '#c06060';
+  }
+}
+
+async function removeDuplicates() {
+  const token  = document.getElementById('fix-token').value.trim().replace(/[^\x20-\x7E]/g, '');
+  const repo   = document.getElementById('fix-repo').value.trim();
+  const status = document.getElementById('fix-status');
+  if (!token) { status.textContent = 'Enter your GitHub token.'; return; }
+
+  const hdrs = { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+
+  try {
+    status.textContent = 'Fetching tracks.json…';
+    const r = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, { headers: hdrs });
+    const fileData = await r.json();
+    if (!r.ok) throw new Error(fileData.message);
+
+    const tracks = JSON.parse(decodeURIComponent(escape(atob(fileData.content.replace(/\s/g, '')))));
+    const seen = new Set();
+    const deduped = tracks.filter(t => {
+      const key = `${t.artist}||${t.title}`.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    const removed = tracks.length - deduped.length;
+    if (!removed) { status.textContent = 'No duplicates found.'; return; }
+
+    status.textContent = `Removing ${removed} duplicate${removed > 1 ? 's' : ''}…`;
+    const pushRes = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, {
+      method: 'PUT', headers: hdrs,
+      body: JSON.stringify({
+        message: `chore: remove ${removed} duplicate tracks`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(deduped, null, 2)))),
+        sha: fileData.sha,
+      }),
+    });
+    const pushData = await pushRes.json();
+    if (!pushRes.ok) throw new Error(pushData.message);
+    status.textContent = `✓ Removed ${removed} duplicates. ${deduped.length} tracks remain.`;
+    status.style.color = '#60b060';
+  } catch(e) {
+    status.textContent = `✗ ${e.message}`;
+    status.style.color = '#c06060';
+  }
+}
+
+async function removeCarti() {
+  const token  = document.getElementById('fix-token').value.trim().replace(/[^\x20-\x7E]/g, '');
+  const repo   = document.getElementById('fix-repo').value.trim();
+  const status = document.getElementById('fix-status');
+  if (!token) { status.textContent = 'Enter your GitHub token.'; return; }
+
+  const hdrs = { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+
+  try {
+    status.textContent = 'Fetching tracks.json…';
+    const r = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, { headers: hdrs });
+    const fileData = await r.json();
+    if (!r.ok) throw new Error(fileData.message);
+
+    const raw  = atob(fileData.content.replace(/\s/g, ''));
+    const utf8 = decodeURIComponent(escape(raw));
+    const tracks = JSON.parse(utf8);
+
+    // Keep tracks that are NOT broken Carti imports
+    // (broken = Carti + Cloudinary URL + no audio extension)
+    const kept    = tracks.filter(t =>
+      !(t.artist === 'Playboi Carti' &&
+        t.url && t.url.includes('cloudinary.com') &&
+        !t.url.match(/\.(mp3|mp4|m4a|wav|flac|ogg|aac)(\?|$)/i))
+    );
+    const removed = tracks.length - kept.length;
+
+    status.textContent = `Removing ${removed} broken entries and pushing…`;
+    const pushRes = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, {
+      method: 'PUT', headers: hdrs,
+      body: JSON.stringify({
+        message: `chore: remove ${removed} broken Carti imports`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(kept, null, 2)))),
+        sha: fileData.sha,
+      }),
+    });
+    const pushData = await pushRes.json();
+    if (!pushRes.ok) throw new Error(pushData.message);
+
+    status.textContent = `✓ Removed ${removed} broken entries. ${kept.length} tracks remain.`;
+    status.style.color = '#60b060';
+  } catch(e) {
+    status.textContent = `✗ ${e.message}`;
+    status.style.color = '#c06060';
+  }
+}
+
+// ── Remove all tracks by a given artist ──────────────────────────────────────
+async function removeArtist(artistName) {
+  const token  = document.getElementById('fix-token').value.trim().replace(/[^\x20-\x7E]/g, '');
+  const repo   = document.getElementById('fix-repo').value.trim();
+  const status = document.getElementById('fix-status');
+  if (!token) { status.textContent = 'Enter your GitHub token.'; return; }
+
+  const hdrs = { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+
+  try {
+    status.textContent = 'Fetching tracks.json…';
+    const r = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, { headers: hdrs });
+    const fileData = await r.json();
+    if (!r.ok) throw new Error(fileData.message);
+
+    const raw    = atob(fileData.content.replace(/\s/g, ''));
+    const utf8   = decodeURIComponent(escape(raw));
+    const tracks = JSON.parse(utf8);
+
+    const kept    = tracks.filter(t => t.artist !== artistName);
+    const removed = tracks.length - kept.length;
+
+    status.textContent = `Removing ${removed} ${artistName} tracks and pushing…`;
+    const pushRes = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, {
+      method: 'PUT', headers: hdrs,
+      body: JSON.stringify({
+        message: `chore: remove ${removed} ${artistName} tracks`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(kept, null, 2)))),
+        sha: fileData.sha,
+      }),
+    });
+    const pushData = await pushRes.json();
+    if (!pushRes.ok) throw new Error(pushData.message);
+
+    status.textContent = `✓ Removed ${removed} ${artistName} tracks. ${kept.length} tracks remain.`;
+    status.style.color = '#60b060';
+  } catch(e) {
+    status.textContent = `✗ ${e.message}`;
+    status.style.color = '#c06060';
+  }
+}
+
+// ── Restore GitHub tracks.json from a local file ─────────────────────────────
+async function restoreFromLocal(input) {
+  const token  = document.getElementById('fix-token').value.trim().replace(/[^\x20-\x7E]/g, '');
+  const repo   = document.getElementById('fix-repo').value.trim();
+  const status = document.getElementById('fix-status');
+  if (!token) { status.textContent = 'Enter your GitHub token first, then pick the file.'; input.value = ''; return; }
+  if (!input.files[0]) return;
+
+  const hdrs = { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+
+  try {
+    status.textContent = 'Reading local file…';
+    const text = await input.files[0].text();
+    const tracks = JSON.parse(text); // validate JSON
+    if (!Array.isArray(tracks)) throw new Error('tracks.json must be a JSON array.');
+
+    status.textContent = `Fetching current SHA from GitHub…`;
+    const r = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, { headers: hdrs });
+    const fileData = await r.json();
+    if (!r.ok) throw new Error(fileData.message);
+
+    status.textContent = `Pushing ${tracks.length} tracks to GitHub…`;
+    const pushRes = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, {
+      method: 'PUT', headers: hdrs,
+      body: JSON.stringify({
+        message: `chore: restore tracks.json from local (${tracks.length} tracks)`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(tracks, null, 2)))),
+        sha: fileData.sha,
+      }),
+    });
+    const pushData = await pushRes.json();
+    if (!pushRes.ok) throw new Error(pushData.message);
+
+    status.textContent = `✓ Restored! GitHub now has ${tracks.length} tracks from your local file.`;
+    status.style.color = '#60b060';
+  } catch(e) {
+    status.textContent = `✗ ${e.message}`;
+    status.style.color = '#c06060';
+  }
+  input.value = ''; // reset so the same file can be re-selected
+}
+
+// ── Re-upload Carti tracks with correct resource type ────────────────────────
+async function fixUrls() {
+  const token  = document.getElementById('fix-token').value.trim().replace(/[^\x20-\x7E]/g, '');
+  const repo   = document.getElementById('fix-repo').value.trim();
+  const status = document.getElementById('fix-status');
+  if (!token) { status.textContent = 'Enter your GitHub token.'; return; }
+
+
+  const ghHdrs = { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+
+  // Step 1: Fetch tracks.json
+  status.textContent = 'Fetching tracks.json…';
+  let fileData, tracks;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, { headers: ghHdrs });
+    fileData = await r.json();
+    if (!r.ok) throw new Error(fileData.message);
+    // Proper UTF-8 decode of GitHub's base64 content
+    const raw = atob(fileData.content.replace(/\s/g, ''));
+    const utf8 = decodeURIComponent(escape(raw));
+    tracks = JSON.parse(utf8);
+  } catch(e) { status.textContent = `✗ Fetch/parse failed: ${e.message}`; status.style.color='#c06060'; return; }
+
+  // Find any Cloudinary track without a proper audio/video extension — these are the broken imports
+  const toFix = tracks.filter(t =>
+    t.url &&
+    t.url.includes(`cloudinary.com/${CLOUD_NAME}`) &&
+    !t.url.match(/\.(mp3|mp4|m4a|wav|flac|ogg|aac)(\?|$)/i)
+  );
+
+  status.textContent = `Found ${tracks.length} total tracks, ${toFix.length} need re-upload.`;
+
+  if (!toFix.length) { status.textContent = 'Nothing to re-upload — all tracks look correct.'; return; }
+
+  status.textContent = `Re-uploading ${toFix.length} tracks as video type… (this takes a few minutes)`;
+
+  let done = 0, failed = 0;
+  const errors = [];
+  for (const track of toFix) {
+    // Source: use raw/upload URL (exists on Cloudinary since original upload)
+    const srcUrl = track.url.replace('/video/upload/', '/raw/upload/');
+
+    // Use a new public_id with -vid suffix to avoid collision with existing raw asset
+    const baseId = 'carti-' + track.title.toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 55);
+    const publicId = baseId + '-vid';
+
+    try {
+      // Tell Cloudinary to fetch the raw URL server-side (avoids browser CORS)
+      const fd = new FormData();
+      fd.append('upload_preset', UPLOAD_PRESET);
+      fd.append('file', srcUrl);  // Cloudinary fetches this on its own servers
+      fd.append('public_id', publicId);
+
+      const r    = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method: 'POST', body: fd });
+      const data = await r.json();
+      if (!r.ok || data.error) throw new Error(data.error?.message || `HTTP ${r.status}`);
+
+      track.url = data.secure_url;
+      done++;
+      status.textContent = `Re-uploading… ${done}/${toFix.length} done, ${failed} failed`;
+    } catch(e) {
+      errors.push(`${track.title}: ${e.message}`);
+      console.warn(`Failed ${track.title}:`, e.message);
+      failed++;
+    }
+  }
+  if (errors.length) console.error('Upload errors:', errors.slice(0,10));
+
+  // Step 3: Push updated tracks.json
+  status.textContent = `Uploads done (${done} ok, ${failed} failed). Pushing to GitHub…`;
+  try {
+    const pushRes = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, {
+      method: 'PUT', headers: ghHdrs,
+      body: JSON.stringify({
+        message: `fix: re-upload ${done} Carti tracks as video resource type`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(tracks, null, 2)))),
+        sha: fileData.sha,
+      }),
+    });
+    const pushData = await pushRes.json();
+    if (!pushRes.ok) throw new Error(pushData.message);
+    status.textContent = `✓ Done — ${done} tracks re-uploaded and pushed. Tracks should now play.`;
+    status.style.color = '#60b060';
+  } catch(e) {
+    status.textContent = `✗ Push failed: ${e.message}`;
+    status.style.color = '#c06060';
+  }
+}
+
+// ── Step 4: Export ────────────────────────────────────────────────────────────
+function downloadJSON() {
+  const b = new Blob([JSON.stringify(importedEntries, null, 2)], { type: 'application/json' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(b), download: 'carti-tracks.json' });
+  a.click();
+}
+
+function copyJSON() {
+  navigator.clipboard.writeText(JSON.stringify(importedEntries, null, 2))
+    .then(() => alert('Copied to clipboard!'))
+    .catch(() => { document.getElementById('results-json').select(); document.execCommand('copy'); alert('Copied!'); });
+}
+
+async function pushToGitHub() {
+  const token  = document.getElementById('gh-token').value.trim().replace(/[^\x20-\x7E]/g, '');
+  const repo   = document.getElementById('gh-repo').value.trim();
+  const status = document.getElementById('gh-status');
+
+  if (!token)  { status.textContent = 'Enter a GitHub token.'; return; }
+  if (!repo)   { status.textContent = 'Enter owner/repo.'; return; }
+  if (!importedEntries.length) { status.textContent = 'No entries to push.'; return; }
+
+  const ghHeaders = {
+    Authorization: `token ${token}`,
+    Accept: 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    status.textContent = 'Fetching current tracks.json…';
+    const getRes  = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, { headers: ghHeaders });
+    const fileData = await getRes.json();
+    if (!getRes.ok) throw new Error(fileData.message);
+
+    const current = JSON.parse(decodeURIComponent(escape(atob(fileData.content.replace(/\s/g, '')))));
+
+    // Deduplicate: skip entries whose artist+title already exist
+    const existingKeys = new Set(current.map(t => `${t.artist}||${t.title}`.toLowerCase()));
+    const toAdd = importedEntries.filter(t => !existingKeys.has(`${t.artist}||${t.title}`.toLowerCase()));
+    if (!toAdd.length) { status.textContent = 'All tracks already exist in tracks.json — nothing to push.'; return; }
+
+    const merged = [...toAdd, ...current];
+    status.textContent = `Pushing ${toAdd.length} new tracks (${importedEntries.length - toAdd.length} duplicates skipped)…`;
+    const pushRes = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, {
+      method: 'PUT',
+      headers: ghHeaders,
+      body: JSON.stringify({
+        message: `feat: add ${toAdd.length} ${getArtist()} leak${toAdd.length > 1 ? 's' : ''}`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(merged, null, 2)))),
+        sha: fileData.sha,
+      }),
+    });
+    const pushData = await pushRes.json();
+    if (!pushRes.ok) throw new Error(pushData.message);
+
+    status.textContent = `✓ Pushed! ${toAdd.length} tracks added to tracks.json.`;
+    status.style.color = '#60b060';
+  } catch(e) {
+    status.textContent = `✗ ${e.message}`;
+    status.style.color = '#c06060';
+  }
+}
+
+// ── Bulk File Upload ──────────────────────────────────────────────────────────
+let bulkFiles = [];
+
+function cleanFilenameToTitle(filename) {
+  let title = filename.replace(/\.[^.]+$/, ''); // strip extension
+  const artist = document.getElementById('bulk-artist').value.trim();
+  // Strip "Artist - ", "Artist- ", "Artist – " prefix (case-insensitive)
+  if (artist) {
+    const escaped = artist.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    title = title.replace(new RegExp('^' + escaped + '\\s*[-–—]\\s*', 'i'), '');
+  }
+  // Strip leading track numbers like "01. " or "01 - "
+  title = title.replace(/^\d+[\s.\-]+/, '').trim();
+  return title;
+}
+
+function previewBulkFiles(input) {
+  bulkFiles = [...input.files];
+  const preview = document.getElementById('bulk-preview');
+  const count   = document.getElementById('bulk-file-count');
+  count.textContent = `${bulkFiles.length} file${bulkFiles.length !== 1 ? 's' : ''} selected`;
+  if (!bulkFiles.length) { preview.style.display = 'none'; return; }
+  preview.style.display = '';
+  preview.innerHTML = bulkFiles.map((f, i) => {
+    const title = cleanFilenameToTitle(f.name);
+    return `<div><span style="color:#444">${i+1}.</span> <span style="color:#bbb">${escHtml(title)}</span> <span style="color:#333">${escHtml(f.name)}</span></div>`;
+  }).join('');
+}
+
+async function startBulkUpload() {
+  const token  = document.getElementById('bulk-token').value.trim().replace(/[^\x20-\x7E]/g, '');
+  const repo   = document.getElementById('bulk-repo').value.trim();
+  const artist = document.getElementById('bulk-artist').value.trim() || 'Unknown Artist';
+  const status = document.getElementById('bulk-status');
+  const logEl  = document.getElementById('bulk-log');
+  const btn    = document.getElementById('bulk-upload-btn');
+
+  if (!token)            { status.textContent = 'Enter your GitHub token.'; return; }
+  if (!bulkFiles.length) { status.textContent = 'Pick audio files first.';  return; }
+
+  logEl.style.display = '';
+  logEl.innerHTML = '';
+  btn.disabled = true;
+  status.textContent = '';
+
+  const log = (msg, cls = '') => {
+    logEl.innerHTML += `<div class="${cls}">${msg}</div>`;
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  log(`Starting upload — ${bulkFiles.length} file${bulkFiles.length !== 1 ? 's' : ''}…`, 'info');
+  const newEntries = [];
+
+  for (let i = 0; i < bulkFiles.length; i++) {
+    const file  = bulkFiles[i];
+    const title = cleanFilenameToTitle(file.name);
+    log(`[${i+1}/${bulkFiles.length}] ${escHtml(title)}`, 'info');
+
+    // 1. Upload to Cloudinary (video resource type so audio plays in browser)
+    let cloudUrl = '';
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('upload_preset', UPLOAD_PRESET);
+      const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error.message);
+      cloudUrl = d.secure_url;
+      log(`  ✓ Cloudinary: ${cloudUrl}`, 'ok');
+    } catch(e) {
+      log(`  ✗ Cloudinary upload failed: ${e.message}`, 'err');
+      continue; // skip this track but keep going
+    }
+
+    // 2. Last.fm cover art
+    let coverArt = '';
+    try {
+      const r = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key=${LASTFM_KEY}&artist=${enc(artist)}&track=${enc(title)}&autocorrect=1&format=json`);
+      const d = await r.json();
+      const imgs = d?.track?.album?.image || [];
+      const img  = imgs.find(im => im.size === 'extralarge') || imgs.find(im => im.size === 'large');
+      if (img && img['#text'] && !img['#text'].includes(LASTFM_PH)) {
+        coverArt = img['#text'];
+        log(`  ✓ Cover art from Last.fm`, 'ok');
+      } else {
+        log(`  · No Last.fm cover art`, 'info');
+      }
+    } catch(_) {
+      log(`  · Last.fm lookup failed`, 'info');
+    }
+
+    // 3. Build entry
+    const entry = {
+      id:     Date.now() + i,
+      added:  new Date().toISOString().slice(0, 10),
+      artist,
+      title,
+      url:    cloudUrl,
+      tags:   ['unreleased'],
+      type:   'cloudinary',
+    };
+    if (coverArt) entry.coverArt = coverArt;
+    newEntries.push(entry);
+  }
+
+  if (!newEntries.length) {
+    log('✗ All uploads failed — nothing to push.', 'err');
+    status.textContent = '✗ All uploads failed.';
+    status.style.color = '#c06060';
+    btn.disabled = false;
+    return;
+  }
+
+  // 4. Push to GitHub with deduplication
+  log(`\nPushing ${newEntries.length} entries to GitHub…`, 'info');
+  const hdrs = { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, { headers: hdrs });
+    const fileData = await r.json();
+    if (!r.ok) throw new Error(fileData.message);
+
+    const raw     = atob(fileData.content.replace(/\s/g, ''));
+    const utf8    = decodeURIComponent(escape(raw));
+    const current = JSON.parse(utf8);
+
+    const existingKeys = new Set(current.map(t => `${t.artist}||${t.title}`.toLowerCase()));
+    const toAdd = newEntries.filter(t => !existingKeys.has(`${t.artist}||${t.title}`.toLowerCase()));
+
+    if (!toAdd.length) {
+      status.textContent = 'All tracks already exist in tracks.json — nothing pushed.';
+      status.style.color = '#888';
+      btn.disabled = false;
+      return;
+    }
+
+    const merged  = [...toAdd, ...current];
+    const pushRes = await fetch(`https://api.github.com/repos/${repo}/contents/tracks.json`, {
+      method: 'PUT', headers: hdrs,
+      body: JSON.stringify({
+        message: `feat: bulk upload ${toAdd.length} ${artist} tracks`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(merged, null, 2)))),
+        sha: fileData.sha,
+      }),
+    });
+    const pushData = await pushRes.json();
+    if (!pushRes.ok) throw new Error(pushData.message);
+
+    log(`\n✓ Pushed ${toAdd.length} new tracks to GitHub!`, 'ok');
+    if (toAdd.length < newEntries.length)
+      log(`· ${newEntries.length - toAdd.length} skipped (already in tracks.json)`, 'info');
+    status.textContent = `✓ Done! ${toAdd.length} tracks uploaded and pushed.`;
+    status.style.color = '#60b060';
+  } catch(e) {
+    log(`✗ GitHub push failed: ${e.message}`, 'err');
+    status.textContent = `✗ ${e.message}`;
+    status.style.color = '#c06060';
+  }
+
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>

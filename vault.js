@@ -2,6 +2,15 @@
 // vault.js — The Vault · all application logic
 // Loaded by index.html via <script src="vault.js" defer>
 // =============================================================
+
+// ── Krakenfiles proxy ─────────────────────────────────────────────────────────
+// krakenfiles token requests are blocked by CORS from GitHub Pages, so we route
+// them through a tiny Cloudflare Worker. Deploy kraken-proxy.js to Cloudflare
+// Workers (free, 2 min) and paste your worker URL here.
+// Leave empty ('') to attempt the request directly (works from localhost).
+const KRAKEN_PROXY = 'https://fancy-paper-61c6.n3hemiahgustave.workers.dev'; // e.g. 'https://kraken-proxy.yourname.workers.dev'
+
+// =============================================================
 // ===== CONFIG =====
 // Admin auth — password is SHA-256 hashed and stored in Firebase at vault-config/adminHash.
 // No plaintext password lives in this file.
@@ -989,17 +998,16 @@ const audio    = document.getElementById('audio-player');
 const audioXfade = document.getElementById('audio-xfade');
 const playerBar  = document.getElementById('player-bar');
 
-// CORS FIX: must be set ONCE before any src is ever assigned.
-audio.crossOrigin    = 'anonymous';
-audioXfade.crossOrigin = 'anonymous';
+// crossOrigin is set dynamically in playAtIndex based on URL host.
+// Cloudinary requires 'anonymous' for the Web Audio API visualiser.
+// External hosts (pillows.su, krakenfiles, etc.) may not send CORS headers,
+// so we leave crossOrigin unset for them to allow normal audio playback.
 
 // ===== PRELOAD SYSTEM =====
 // Two hidden <audio> elements buffer the next and previous tracks in the
 // background so skipping feels instant instead of waiting on Cloudinary.
 const preloadNext = new Audio();
 const preloadPrev = new Audio();
-preloadNext.crossOrigin = 'anonymous';
-preloadPrev.crossOrigin = 'anonymous';
 preloadNext.preload = 'auto';
 preloadPrev.preload = 'auto';
 
@@ -1025,7 +1033,7 @@ function _getNextIdx() {
     const qi = pl.findIndex(t => t.id === queue[0]);
     return qi !== -1 ? qi : 0;
   }
-  if (isShuffled) return Math.floor(Math.random() * pl.length);
+  if (isShuffled) return _nextShuffleIdx();
   return currentTrackIdx >= pl.length - 1 ? 0 : currentTrackIdx + 1;
 }
 
@@ -1043,6 +1051,11 @@ function schedulePreload(playlist, idx) {
   toPreload.forEach(({ el, track }) => {
     if (!track || !track.url || track.type === 'file') return;
     if (el.src === track.url) return; // already buffering this one
+    if (track.url.includes('cloudinary.com')) {
+      el.crossOrigin = 'anonymous';
+    } else {
+      el.removeAttribute('crossOrigin');
+    }
     el.src = track.url;
     el.load();
     _preloadMap.set(track.url, el);
@@ -1093,7 +1106,31 @@ function dismissYtBar() {
   }, 400);
 }
 
-function playAtIndex(idx) {
+// Resolve hosted-file page URLs to direct streamable audio URLs.
+// Currently handles: krakenfiles.com
+async function resolveTrackUrl(url) {
+  if (!url) return url;
+  const m = url.match(/krakenfiles\.com\/view\/([a-zA-Z0-9]+)/);
+  if (m) {
+    const id       = m[1];
+    const endpoint = KRAKEN_PROXY
+      ? `${KRAKEN_PROXY}/${id}`
+      : `https://krakenfiles.com/api/file/${id}/token`;
+    try {
+      const r = await fetch(endpoint, { method: 'POST' });
+      const d = await r.json();
+      if (d.status === 'ok' && d.data?.token) {
+        return `https://krakenfiles.com/download/${id}/file?token=${d.data.token}`;
+      }
+      console.warn('[Vault] krakenfiles token error:', d.message);
+    } catch(e) {
+      console.warn('[Vault] krakenfiles resolve failed:', e.message);
+    }
+  }
+  return url; // passthrough for all other URLs
+}
+
+async function playAtIndex(idx) {
   const playlist = getPlaylist();
   if (idx < 0 || idx >= playlist.length) return;
   const t = playlist[idx];
@@ -1123,12 +1160,23 @@ function playAtIndex(idx) {
   // Clean up preload map so we don't accidentally reuse stale entries.
   _preloadMap.delete(t.url);
 
-  // crossOrigin is already set to 'anonymous' at init time (above).
-  // We just assign src and play — no retry needed.
-  audio.src = t.url;
+  // Resolve hosted-file page URLs (e.g. krakenfiles) to direct audio URLs.
+  const resolvedUrl = await resolveTrackUrl(t.url);
+  // Set crossOrigin per-track: Cloudinary needs 'anonymous' for the visualiser;
+  // other hosts may not send CORS headers so leave it unset to allow playback.
+  // 'anonymous' lets the Web Audio API visualiser use the stream (requires CORS headers).
+  // For external hosts that don't send CORS headers, remove the attribute entirely so the
+  // browser uses no-cors mode — audio plays but the visualiser won't have access to it.
+  // NOTE: setting crossOrigin = '' is NOT the same as removing it; '' is treated as 'anonymous'.
+  if (resolvedUrl.includes('cloudinary.com')) {
+    audio.crossOrigin = 'anonymous';
+  } else {
+    audio.removeAttribute('crossOrigin');
+  }
+  audio.src = resolvedUrl;
   audio.load();
   audio.volume = parseFloat(document.getElementById('volume-slider').value);
-  _decodePCM(t.url); // async PCM fingerprint — non-blocking
+  _decodePCM(resolvedUrl); // async PCM fingerprint — non-blocking
   if (typeof loadComments === 'function') loadComments(String(t.id)); // Feature 3
 
   dismissYtBar();
@@ -1229,7 +1277,7 @@ document.getElementById('prev-btn').addEventListener('click', () => {
   const playlist = getPlaylist();
   if (playlist.length === 0) return;
   const newIdx = isShuffled
-    ? Math.floor(Math.random() * playlist.length)
+    ? _prevShuffleIdx()
     : (currentTrackIdx <= 0 ? playlist.length - 1 : currentTrackIdx - 1);
   crossfadeTo(newIdx);
 });
@@ -1238,7 +1286,7 @@ document.getElementById('next-btn').addEventListener('click', () => {
   const playlist = getPlaylist();
   if (playlist.length === 0) return;
   const newIdx = isShuffled
-    ? Math.floor(Math.random() * playlist.length)
+    ? _nextShuffleIdx()
     : (currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1);
   crossfadeTo(newIdx);
 });
@@ -1262,7 +1310,7 @@ audio.addEventListener('ended', () => {
   }
   const playlist = getPlaylist();
   const newIdx = isShuffled
-    ? Math.floor(Math.random() * playlist.length)
+    ? _nextShuffleIdx()
     : (currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1);
   // "You Might Like" — show suggestions before auto-advance (natural track end only)
   const _sessionOn = !!document.getElementById('session-btn')?.classList.contains('session-active');
@@ -1992,7 +2040,7 @@ audio.addEventListener('timeupdate', () => {
         const playlist = getPlaylist();
         if (playlist.length > 1) {
           const nextIdx = isShuffled
-            ? Math.floor(Math.random() * playlist.length)
+            ? _nextShuffleIdx()
             : (currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1);
           crossfadeTo(nextIdx);
         }
@@ -3087,7 +3135,45 @@ document.getElementById('gh-import-input').addEventListener('change', e => {
 
 // ===== SHUFFLE, LOOP, LIKE =====
 let isShuffled = false;
-let isLooping = false;
+let isLooping  = false;
+
+// ── No-repeat shuffle queue ───────────────────────────────────────────────────
+// Pre-shuffles all track indices so every song plays once before any repeats.
+let _shuffleQueue = [];
+let _shufflePos   = -1;
+
+function _buildShuffleQueue() {
+  const pl = getPlaylist();
+  // All indices except the currently playing one (avoid immediate re-play)
+  const indices = pl.map((_, i) => i).filter(i => i !== currentTrackIdx);
+  // Fisher-Yates shuffle
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  _shuffleQueue = indices;
+  _shufflePos   = -1;
+}
+
+function _nextShuffleIdx() {
+  const pl = getPlaylist();
+  if (!pl.length) return 0;
+  _shufflePos++;
+  if (_shufflePos >= _shuffleQueue.length) {
+    // All tracks played — reshuffle, then continue
+    _buildShuffleQueue();
+    _shufflePos = 0;
+  }
+  return _shuffleQueue[_shufflePos] ?? 0;
+}
+
+function _prevShuffleIdx() {
+  if (_shufflePos > 0) {
+    _shufflePos--;
+    return _shuffleQueue[_shufflePos];
+  }
+  return currentTrackIdx; // can't go further back
+}
 let likedTracks = new Set(JSON.parse(localStorage.getItem('vault-liked') || '[]'));
 
 function saveLiked() {
@@ -3096,6 +3182,7 @@ function saveLiked() {
 
 document.getElementById('shuffle-btn').addEventListener('click', () => {
   isShuffled = !isShuffled;
+  if (isShuffled) _buildShuffleQueue(); // pre-shuffle on enable
   document.getElementById('shuffle-btn').classList.toggle('active', isShuffled);
   showToast(isShuffled ? 'SHUFFLE ON' : 'SHUFFLE OFF', '');
 });
