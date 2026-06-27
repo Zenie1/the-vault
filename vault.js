@@ -1049,7 +1049,7 @@ function schedulePreload(playlist, idx) {
   toPreload.forEach(({ el, track }) => {
     if (!track || !track.url || track.type === 'file') return;
     if (el.src === track.url) return; // already buffering this one
-    if (track.url.includes('cloudinary.com')) {
+    if (track.url.includes('cloudinary.com') || track.url.includes('pillows.su')) {
       el.crossOrigin = 'anonymous';
     } else {
       el.removeAttribute('crossOrigin');
@@ -1166,7 +1166,10 @@ async function playAtIndex(idx) {
   // For external hosts that don't send CORS headers, remove the attribute entirely so the
   // browser uses no-cors mode — audio plays but the visualiser won't have access to it.
   // NOTE: setting crossOrigin = '' is NOT the same as removing it; '' is treated as 'anonymous'.
-  if (resolvedUrl.includes('cloudinary.com')) {
+  // pillows.su sends CORS headers, so 'anonymous' works and enables the
+  // Web Audio analyser + _decodePCM. Only strip crossOrigin for hosts
+  // that don't support CORS (e.g. krakenfiles download URLs).
+  if (resolvedUrl.includes('cloudinary.com') || resolvedUrl.includes('pillows.su')) {
     audio.crossOrigin = 'anonymous';
   } else {
     audio.removeAttribute('crossOrigin');
