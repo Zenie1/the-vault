@@ -1178,6 +1178,12 @@ async function playAtIndex(idx) {
   if (typeof loadComments === 'function') loadComments(String(t.id)); // Feature 3
 
   dismissYtBar();
+  // Resume AudioContext before play — on mobile it often starts suspended.
+  // The graph routes ALL audio, so a suspended ctx = silence even though
+  // audio.play() resolves successfully.
+  if (audioCtx && audioCtx.state === 'suspended') {
+    try { await audioCtx.resume(); } catch(_) {}
+  }
   const playPromise = audio.play();
   if (playPromise !== undefined) {
     playPromise.catch(err => {
