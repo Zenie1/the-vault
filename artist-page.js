@@ -178,11 +178,20 @@
     incrementStreamCount(artist, trackName);
   }
 
+  var AP_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours — keeps discography + top tracks fresh
+
   async function fetchApiData(artist) {
     var cacheKey = 'ap2_' + artist.toLowerCase().replace(/\s+/g, '_');
     try {
       var cached = sessionStorage.getItem(cacheKey);
-      if (cached) { console.log('[ArtistPage] cache hit:', artist); return JSON.parse(cached); }
+      if (cached) {
+        var entry = JSON.parse(cached);
+        if (Date.now() - (entry._cachedAt || 0) < AP_CACHE_TTL) {
+          console.log('[ArtistPage] cache hit:', artist);
+          return entry;
+        }
+        console.log('[ArtistPage] cache expired, refetching:', artist);
+      }
     } catch (e) {}
 
     console.log('[ArtistPage] Fetching all API data for:', artist);
@@ -212,6 +221,7 @@
       similar:   (similar && similar.similarartists && similar.similarartists.artist)   || [],
       mb:        mb || null,
     };
+    data._cachedAt = Date.now();
     try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
     return data;
   }
