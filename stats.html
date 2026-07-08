@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>THE VAULT — STATS</title>
+  <style>
+    :root {
+      --bg:       #080808;
+      --surface:  #0e0e0e;
+      --surface2: #141414;
+      --surface3: #1a1a1a;
+      --border:   #1e1e1e;
+      --border2:  #2a2a2a;
+      --text:     #e8e8e8;
+      --muted:    #555;
+      --muted2:   #888;
+      --accent:   #c41e3a;
+      --accent2:  #8b0000;
+      --green:    #1db954;
+      --font-mono: 'Courier New', Courier, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+    }
+
+    /* ── AUTH GATE ── */
+    #auth-gate {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 32px;
+    }
+    .gate-title { font-size: 11px; letter-spacing: 6px; color: var(--muted); }
+    .gate-logo  { font-size: 48px; letter-spacing: 2px; }
+    .gate-logo span { color: var(--accent); font-style: italic; }
+    .gate-sub   { font-size: 8px; letter-spacing: 4px; color: var(--muted); margin-top: -12px; }
+    .gate-label { font-size: 8px; letter-spacing: 3px; color: var(--muted2); }
+    .gate-input {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding: 12px 16px;
+      width: 280px;
+      letter-spacing: 2px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .gate-input:focus { border-color: var(--accent); }
+    .gate-btn {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 3px;
+      padding: 12px 32px;
+      cursor: pointer;
+      width: 280px;
+      text-transform: uppercase;
+      transition: background 0.2s;
+    }
+    .gate-btn:hover { background: #a01830; }
+    .gate-err { font-size: 9px; letter-spacing: 2px; color: var(--accent); display: none; }
+    .gate-back {
+      font-size: 8px; letter-spacing: 3px; color: var(--muted);
+      text-decoration: none; text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .gate-back:hover { color: var(--text); }
+
+    /* ── MAIN STATS ── */
+    #stats-page { display: none; }
+    .stats-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 32px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .stats-header-left { display: flex; flex-direction: column; gap: 4px; }
+    .stats-header-title { font-size: 9px; letter-spacing: 5px; color: var(--muted); }
+    .stats-header-name  { font-size: 26px; letter-spacing: 1px; }
+    .stats-header-name span { color: var(--accent); font-style: italic; }
+    .stats-nav { display: flex; gap: 12px; align-items: center; }
+    .stats-nav a {
+      font-size: 8px; letter-spacing: 3px; color: var(--muted);
+      text-decoration: none; text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .stats-nav a:hover { color: var(--text); }
+    .stats-refresh {
+      background: transparent; border: 1px solid var(--border2);
+      color: var(--muted2); font-family: var(--font-mono);
+      font-size: 8px; letter-spacing: 2px; text-transform: uppercase;
+      padding: 7px 14px; cursor: pointer; transition: all 0.2s;
+    }
+    .stats-refresh:hover { border-color: var(--accent); color: var(--accent); }
+
+    .stats-body { padding: 32px; max-width: 1100px; }
+
+    /* ── SUMMARY CARDS ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 20px 20px 18px;
+    }
+    .summary-card-label {
+      font-size: 7px; letter-spacing: 3px;
+      color: var(--muted); text-transform: uppercase; margin-bottom: 10px;
+    }
+    .summary-card-value {
+      font-size: 32px; letter-spacing: -1px; color: var(--text);
+      line-height: 1;
+    }
+    .summary-card-value.accent { color: var(--accent); }
+    .summary-card-sub {
+      font-size: 8px; letter-spacing: 1px; color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* ── SECTION HEADERS ── */
+    .section-head {
+      font-size: 8px; letter-spacing: 4px; color: var(--muted);
+      text-transform: uppercase; margin-bottom: 16px;
+      padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+
+    /* ── TWO-COL LAYOUT ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 40px; }
+    .one-col  { margin-bottom: 40px; }
+
+    /* ── TOP TRACKS TABLE ── */
+    .track-row {
+      display: grid;
+      grid-template-columns: 28px 36px 1fr 80px;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .track-row:hover { background: var(--surface); margin: 0 -8px; padding: 10px 8px; }
+    .track-rank { font-size: 10px; color: var(--muted); text-align: right; }
+    .track-rank.top { color: var(--accent); font-size: 12px; }
+    .track-art {
+      width: 36px; height: 36px; object-fit: cover;
+      background: var(--surface3); flex-shrink: 0;
+    }
+    .track-art-placeholder {
+      width: 36px; height: 36px; background: var(--surface3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--muted); flex-shrink: 0;
+    }
+    .track-info { min-width: 0; }
+    .track-title-stat { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .track-artist-stat { font-size: 8px; letter-spacing: 1px; color: var(--muted2); margin-top: 2px; text-transform: uppercase; }
+    .track-plays {
+      font-size: 18px; color: var(--accent); text-align: right;
+      letter-spacing: -1px;
+    }
+    .track-plays-label { font-size: 7px; color: var(--muted); text-align: right; letter-spacing: 2px; }
+
+    /* ── ARTIST BARS ── */
+    .artist-bar-row { margin-bottom: 14px; }
+    .artist-bar-header {
+      display: flex; justify-content: space-between;
+      align-items: baseline; margin-bottom: 5px;
+    }
+    .artist-bar-name { font-size: 10px; letter-spacing: 1px; }
+    .artist-bar-count { font-size: 10px; color: var(--accent); }
+    .artist-bar-track { height: 3px; background: var(--surface3); }
+    .artist-bar-fill  { height: 100%; background: var(--accent); transition: width 0.8s ease; }
+
+    /* ── TAG BREAKDOWN ── */
+    .tag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .tag-card {
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 16px;
+    }
+    .tag-card-name {
+      font-size: 8px; letter-spacing: 3px; color: var(--muted2);
+      text-transform: uppercase; margin-bottom: 8px;
+    }
+    .tag-card-plays { font-size: 24px; color: var(--text); }
+    .tag-card-tracks { font-size: 8px; color: var(--muted); margin-top: 4px; }
+    .tag-bar-wrap { height: 2px; background: var(--surface3); margin-top: 10px; }
+    .tag-bar-fill { height: 100%; background: var(--accent); transition: width 0.8s ease; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      padding: 48px; text-align: center;
+      font-size: 9px; letter-spacing: 3px; color: var(--muted);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width: 700px) {
+      .stats-header { padding: 20px 16px 16px; }
+      .stats-body   { padding: 20px 16px; }
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .two-col      { grid-template-columns: 1fr; }
+      .summary-card-value { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── AUTH GATE ── -->
+<div id="auth-gate">
+  <div class="gate-title">THE VAULT</div>
+  <div class="gate-logo">THE <span>VAULT</span></div>
+  <div class="gate-sub">+ CRYPT OF FORBIDDEN SOUND +</div>
+  <div style="display:flex;flex-direction:column;gap:10px;align-items:center;margin-top:8px">
+    <div class="gate-label">ADMIN PASSWORD</div>
+    <input id="pw-input" class="gate-input" type="password" placeholder="••••••••"
+      autocomplete="current-password" onkeydown="if(event.key==='Enter')tryLogin()">
+    <div id="gate-err" class="gate-err">INCORRECT PASSWORD</div>
+    <button class="gate-btn" onclick="tryLogin()">ENTER STATS</button>
+    <a href="index.html" class="gate-back">← Back to Vault</a>
+  </div>
+</div>
+
+<!-- ── STATS PAGE ── -->
+<div id="stats-page">
+  <div class="stats-header">
+    <div class="stats-header-left">
+      <div class="stats-header-title">THE VAULT</div>
+      <div class="stats-header-name">LISTENING <span>STATS</span></div>
+    </div>
+    <div class="stats-nav">
+      <button class="stats-refresh" onclick="buildStats()">↺ REFRESH</button>
+      <a href="index.html">← VAULT</a>
+    </div>
+  </div>
+
+  <div class="stats-body">
+    <!-- Summary cards -->
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-card-label">Total Plays</div>
+        <div class="summary-card-value accent" id="stat-total-plays">—</div>
+        <div class="summary-card-sub">all time</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Tracks Played</div>
+        <div class="summary-card-value" id="stat-tracks-played">—</div>
+        <div class="summary-card-sub" id="stat-tracks-sub">of — in vault</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Est. Listen Time</div>
+        <div class="summary-card-value" id="stat-listen-time">—</div>
+        <div class="summary-card-sub">hrs (avg 3 min/track)</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-label">Top Artist</div>
+        <div class="summary-card-value accent" id="stat-top-artist" style="font-size:16px;letter-spacing:0;padding-top:6px">—</div>
+        <div class="summary-card-sub" id="stat-top-artist-sub"></div>
+      </div>
+    </div>
+
+    <!-- Top tracks + Top artists side by side -->
+    <div class="two-col">
+      <div>
+        <div class="section-head">Top Tracks</div>
+        <div id="top-tracks-list"><div class="empty-state">NO PLAYS YET</div></div>
+      </div>
+      <div>
+        <div class="section-head">Top Artists</div>
+        <div id="top-artists-list"><div class="empty-state">NO PLAYS YET</div></div>
+      </div>
+    </div>
+
+    <!-- Tag breakdown -->
+    <div class="one-col">
+      <div class="section-head">Tag Breakdown</div>
+      <div id="tag-breakdown" class="tag-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase (ES module) -->
+<script type="module" src="firebase-config.js"></script>
+
+<script>
+  // ── Auth (mirrors vault.js checkPassword) ────────────────────────────────
+
+  async function hashPw(pw) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function tryLogin() {
+    const pw  = document.getElementById('pw-input').value;
+    const err = document.getElementById('gate-err');
+    if (!pw) return;
+
+    // Wait up to 3s for Firebase to be ready
+    let waited = 0;
+    while ((!window._vaultDb || !window._vaultDbRef || !window._vaultDbGet) && waited < 3000) {
+      await new Promise(r => setTimeout(r, 100));
+      waited += 100;
+    }
+
+    if (!window._vaultDb) { err.textContent = 'FIREBASE UNAVAILABLE'; err.style.display = 'block'; return; }
+
+    try {
+      const hash     = await hashPw(pw);
+      const snap     = await window._vaultDbGet(window._vaultDbRef(window._vaultDb, 'vault-config/adminHash'));
+      const stored   = snap.val();
+      if (!stored || hash !== stored) { err.style.display = 'block'; return; }
+      err.style.display = 'none';
+      document.getElementById('auth-gate').style.display = 'none';
+      document.getElementById('stats-page').style.display = 'block';
+      buildStats();
+    } catch(e) {
+      err.textContent = 'AUTH ERROR'; err.style.display = 'block';
+    }
+  }
+
+  // ── Data helpers ─────────────────────────────────────────────────────────
+
+  function getLocalTracks() {
+    try { return JSON.parse(localStorage.getItem('vault-tracks-v2') || '[]'); } catch { return []; }
+  }
+
+  function getPlayCounts() {
+    try { return JSON.parse(localStorage.getItem('vault-play-counts') || '{}'); } catch { return {}; }
+  }
+
+  function fmt(n) {
+    n = parseInt(n, 10) || 0;
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1000)    return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    return n.toString();
+  }
+
+  // ── Build stats ───────────────────────────────────────────────────────────
+
+  function buildStats() {
+    const tracks = getLocalTracks();
+    const counts = getPlayCounts();
+
+    if (!tracks.length) {
+      document.getElementById('stat-total-plays').textContent = '0';
+      document.getElementById('stat-tracks-played').textContent = '0';
+      return;
+    }
+
+    // Enrich tracks with play count
+    const enriched = tracks.map(t => ({ ...t, plays: counts[t.id] || 0 }));
+
+    // ── Summary ──────────────────────────────────────────────────────────
+    const totalPlays   = enriched.reduce((s, t) => s + t.plays, 0);
+    const tracksPlayed = enriched.filter(t => t.plays > 0).length;
+    const listenHrs    = ((totalPlays * 3) / 60).toFixed(1);
+
+    // Top artist
+    const artistTotals = {};
+    enriched.forEach(t => {
+      if (!t.artist) return;
+      artistTotals[t.artist] = (artistTotals[t.artist] || 0) + t.plays;
+    });
+    const topArtistEntry = Object.entries(artistTotals).sort((a, b) => b[1] - a[1])[0];
+
+    document.getElementById('stat-total-plays').textContent   = fmt(totalPlays);
+    document.getElementById('stat-tracks-played').textContent = fmt(tracksPlayed);
+    document.getElementById('stat-tracks-sub').textContent    = `of ${tracks.length} in vault`;
+    document.getElementById('stat-listen-time').textContent   = listenHrs;
+    if (topArtistEntry) {
+      document.getElementById('stat-top-artist').textContent     = topArtistEntry[0].toUpperCase();
+      document.getElementById('stat-top-artist-sub').textContent = fmt(topArtistEntry[1]) + ' plays';
+    }
+
+    // ── Top Tracks ───────────────────────────────────────────────────────
+    const topTracks = enriched.filter(t => t.plays > 0).sort((a, b) => b.plays - a.plays).slice(0, 15);
+    const ttEl = document.getElementById('top-tracks-list');
+    if (!topTracks.length) {
+      ttEl.innerHTML = '<div class="empty-state">NO PLAYS YET</div>';
+    } else {
+      ttEl.innerHTML = topTracks.map((t, i) => `
+        <div class="track-row">
+          <div class="track-rank ${i < 3 ? 'top' : ''}">${i + 1}</div>
+          ${t.coverArt
+            ? `<img class="track-art" src="${esc(t.coverArt)}" loading="lazy" alt="">`
+            : `<div class="track-art-placeholder">♪</div>`}
+          <div class="track-info">
+            <div class="track-title-stat">${esc(t.title)}</div>
+            <div class="track-artist-stat">${esc(t.artist)}</div>
+          </div>
+          <div>
+            <div class="track-plays">${fmt(t.plays)}</div>
+            <div class="track-plays-label">PLAYS</div>
+          </div>
+        </div>`).join('');
+    }
+
+    // ── Top Artists ──────────────────────────────────────────────────────
+    const topArtists = Object.entries(artistTotals)
+      .filter(([, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+    const maxArtistPlays = topArtists[0] ? topArtists[0][1] : 1;
+    const taEl = document.getElementById('top-artists-list');
+    if (!topArtists.length) {
+      taEl.innerHTML = '<div class="empty-state">NO PLAYS YET</div>';
+    } else {
+      taEl.innerHTML = topArtists.map(([name, plays]) => `
+        <div class="artist-bar-row">
+          <div class="artist-bar-header">
+            <div class="artist-bar-name">${esc(name)}</div>
+            <div class="artist-bar-count">${fmt(plays)}</div>
+          </div>
+          <div class="artist-bar-track">
+            <div class="artist-bar-fill" style="width:${Math.round((plays / maxArtistPlays) * 100)}%"></div>
+          </div>
+        </div>`).join('');
+    }
+
+    // ── Tag Breakdown ────────────────────────────────────────────────────
+    const tagPlays  = {};
+    const tagCounts = {};
+    enriched.forEach(t => {
+      (t.tags || []).forEach(tag => {
+        tagPlays[tag]  = (tagPlays[tag]  || 0) + t.plays;
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      });
+    });
+    const tagsSorted = Object.entries(tagPlays).sort((a, b) => b[1] - a[1]);
+    const maxTagPlays = tagsSorted[0] ? tagsSorted[0][1] : 1;
+    const tbEl = document.getElementById('tag-breakdown');
+    if (!tagsSorted.length) {
+      tbEl.innerHTML = '<div class="empty-state">NO TAGS FOUND</div>';
+    } else {
+      tbEl.innerHTML = tagsSorted.map(([tag, plays]) => `
+        <div class="tag-card">
+          <div class="tag-card-name">${esc(tag)}</div>
+          <div class="tag-card-plays">${fmt(plays)} <span style="font-size:12px;color:var(--muted2)">plays</span></div>
+          <div class="tag-card-tracks">${tagCounts[tag]} track${tagCounts[tag] !== 1 ? 's' : ''}</div>
+          <div class="tag-bar-wrap">
+            <div class="tag-bar-fill" style="width:${Math.round((plays / maxTagPlays) * 100)}%"></div>
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  function esc(s) {
+    return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Enter key on password field
+  document.getElementById('pw-input').focus();
+</script>
+</body>
+</html>
