@@ -144,8 +144,20 @@
   <p class="hint">For albums where each song has a different artist. Files must be named <code style="color:#888">Artist - Title.mp3</code>. Preview lets you edit artist/title per track before uploading.</p>
 
   <div class="flex" style="margin-bottom:10px">
+    <label style="font-size:.82rem;color:#888;white-space:nowrap;align-self:center">Album title:</label>
+    <input type="text" id="va-album-title" placeholder="Louder Than Love" style="max-width:220px">
+    <label style="font-size:.82rem;color:#888;white-space:nowrap;align-self:center">Producer/artist:</label>
+    <input type="text" id="va-producer" placeholder="tdf" style="max-width:140px">
+  </div>
+
+  <div class="flex" style="margin-bottom:10px">
+    <label style="font-size:.82rem;color:#888;white-space:nowrap;align-self:center">Album art URL <span style="color:#555">(shared for all tracks)</span>:</label>
+    <input type="text" id="va-cover-url" placeholder="https://i.scdn.co/image/…" style="flex:1">
+  </div>
+
+  <div class="flex" style="margin-bottom:10px">
     <label style="font-size:.82rem;color:#888;white-space:nowrap;align-self:center">Era/album tag <span style="color:#555">(optional)</span>:</label>
-    <input type="text" id="va-era" placeholder="chapter 5" style="max-width:200px">
+    <input type="text" id="va-era" placeholder="chapter-5" style="max-width:200px">
     <label style="font-size:.82rem;color:#888;white-space:nowrap;align-self:center">Extra tags <span style="color:#555">(comma-separated)</span>:</label>
     <input type="text" id="va-tags" placeholder="unreleased, leak" style="max-width:220px" value="unreleased">
   </div>
@@ -1312,15 +1324,18 @@ document.getElementById('va-era') && document.getElementById('va-era').addEventL
 });
 
 async function vaStartUpload() {
-  const token  = document.getElementById('va-token').value.trim().replace(/[^\x20-\x7E]/g, '');
-  const repo   = document.getElementById('va-repo').value.trim();
-  const era    = document.getElementById('va-era').value.trim();
-  const logEl  = document.getElementById('va-log');
-  const status = document.getElementById('va-status');
-  const btn    = document.getElementById('va-upload-btn');
+  const token      = document.getElementById('va-token').value.trim().replace(/[^\x20-\x7E]/g, '');
+  const repo       = document.getElementById('va-repo').value.trim();
+  const era        = document.getElementById('va-era').value.trim();
+  const coverUrl   = (document.getElementById('va-cover-url')?.value || '').trim();
+  const albumTitle = (document.getElementById('va-album-title')?.value || '').trim() || era || 'Various Artists Album';
+  const producer   = (document.getElementById('va-producer')?.value || '').trim() || 'Various Artists';
+  const logEl      = document.getElementById('va-log');
+  const status     = document.getElementById('va-status');
+  const btn        = document.getElementById('va-upload-btn');
 
-  if (!token)           { status.textContent = 'Enter your GitHub token.'; return; }
-  if (!vaFiles.length)  { status.textContent = 'Pick audio files first.';  return; }
+  if (!token)          { status.textContent = 'Enter your GitHub token.'; return; }
+  if (!vaFiles.length) { status.textContent = 'Pick audio files first.';  return; }
 
   logEl.style.display = '';
   logEl.innerHTML = '';
@@ -1332,9 +1347,13 @@ async function vaStartUpload() {
     logEl.scrollTop = logEl.scrollHeight;
   };
 
-  // Collect edited track metadata from table
+  const eraSlug = era ? era.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') : '';
+
+  // Pre-assign stable IDs so project.trackIds can reference them
+  const baseId = Date.now();
   const trackMeta = vaFiles.map((f, i) => ({
     file:   f,
+    preId:  baseId + i,
     artist: (document.getElementById(`va-artist-${i}`)?.value || '').trim() || 'Unknown Artist',
     title:  (document.getElementById(`va-title-${i}`)?.value  || '').trim() || vaParseFilename(f.name).title,
     tags:   (document.getElementById(`va-tags-${i}`)?.value   || '').split(',').map(s => s.trim()).filter(Boolean),
@@ -1346,7 +1365,7 @@ async function vaStartUpload() {
   const newEntries = [];
 
   for (let i = 0; i < trackMeta.length; i++) {
-    const { file, artist, title, tags } = trackMeta[i];
+    const { file, preId, artist, title, tags } = trackMeta[i];
     log(`[${i+1}/${trackMeta.length}] ${escHtml(artist)} — ${escHtml(title)}`, 'info');
 
     // 1. Upload to Cloudinary
@@ -1365,32 +1384,34 @@ async function vaStartUpload() {
       continue;
     }
 
-    // 2. Last.fm cover art (try track then artist)
-    let coverArt = '';
-    try {
-      const r = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key=${LASTFM_KEY}&artist=${enc(artist)}&track=${enc(title)}&autocorrect=1&format=json`);
-      const d = await r.json();
-      const imgs = d?.track?.album?.image || [];
-      const img  = imgs.find(im => im.size === 'extralarge') || imgs.find(im => im.size === 'large');
-      if (img && img['#text'] && !img['#text'].includes(LASTFM_PH)) {
-        coverArt = img['#text'];
-        log(`  ✓ Cover art from Last.fm`, 'ok');
-      } else {
-        log(`  · No Last.fm cover art`, 'info');
-      }
-    } catch(_) { log(`  · Last.fm lookup failed`, 'info'); }
+    // 2. Cover art: shared URL wins; fall back to Last.fm only if none provided
+    let trackCover = coverUrl;
+    if (!trackCover) {
+      try {
+        const r = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key=${LASTFM_KEY}&artist=${enc(artist)}&track=${enc(title)}&autocorrect=1&format=json`);
+        const d = await r.json();
+        const imgs = d?.track?.album?.image || [];
+        const img  = imgs.find(im => im.size === 'extralarge') || imgs.find(im => im.size === 'large');
+        if (img && img['#text'] && !img['#text'].includes(LASTFM_PH)) {
+          trackCover = img['#text'];
+          log(`  ✓ Cover art from Last.fm`, 'ok');
+        } else {
+          log(`  · No Last.fm cover art`, 'info');
+        }
+      } catch(_) { log(`  · Last.fm lookup failed`, 'info'); }
+    } else {
+      log(`  ✓ Shared album art`, 'ok');
+    }
 
     // 3. Build entry
     const entry = {
-      id:     Date.now() + i,
-      added:  new Date().toISOString().slice(0, 10),
-      artist,
-      title,
-      url:    cloudUrl,
-      tags,
-      type:   'cloudinary',
+      id:    preId,
+      added: new Date().toISOString().slice(0, 10),
+      artist, title, url: cloudUrl, tags,
+      type:  'cloudinary',
     };
-    if (coverArt) entry.coverArt = coverArt;
+    if (trackCover) entry.coverArt  = trackCover;
+    if (eraSlug)    entry.projectId = eraSlug;
     newEntries.push(entry);
   }
 
@@ -1400,34 +1421,84 @@ async function vaStartUpload() {
     return;
   }
 
-  // 4. Push to GitHub
+  // 4. Push tracks.json
   log(`\nFetching tracks.json from GitHub…`, 'info');
+  let hdrs;
   try {
-    const { tracks, sha, hdrs } = await ghGetJSON(repo, token);
+    const { tracks, sha, hdrs: h } = await ghGetJSON(repo, token);
+    hdrs = h;
 
     const existingKeys = new Set(tracks.map(t => `${t.artist}||${t.title}`.toLowerCase()));
     const toAdd = newEntries.filter(t => !existingKeys.has(`${t.artist}||${t.title}`.toLowerCase()));
     const dupes = newEntries.length - toAdd.length;
 
     if (!toAdd.length) {
-      log('All tracks already exist in tracks.json — nothing to push.', 'info');
+      log('All tracks already exist — nothing to push.', 'info');
       status.textContent = 'All tracks already exist — nothing pushed.';
       btn.disabled = false;
       return;
     }
 
-    const merged = [...toAdd, ...tracks];
-    log(`Pushing ${toAdd.length} tracks (${dupes} duplicate${dupes !== 1 ? 's' : ''} skipped)…`, 'info');
-    await ghPutJSON(repo, hdrs, sha, merged, `feat: add ${toAdd.length} various-artist tracks${era ? ' [' + era + ']' : ''}`);
+    await ghPutJSON(repo, hdrs, sha, [...toAdd, ...tracks],
+      `feat: add ${toAdd.length} tracks — ${albumTitle}`);
+    log(`✓ tracks.json pushed (${toAdd.length} tracks, ${dupes} dupes skipped)`, 'ok');
 
-    const msg = `✓ ${toAdd.length} tracks uploaded and pushed!${dupes ? ' (' + dupes + ' duplicates skipped)' : ''}`;
+    // 5. Push projects.json if era is set
+    if (eraSlug) {
+      log('Updating projects.json…', 'info');
+      try {
+        const projUrl = `https://api.github.com/repos/${repo}/contents/projects.json`;
+        const projRes = await fetch(projUrl, { headers: hdrs });
+        let existingProjects = [], projSha = null;
+        if (projRes.ok) {
+          const pd  = await projRes.json();
+          projSha   = pd.sha;
+          const raw = JSON.parse(atob(pd.content.replace(/\s/g, '')));
+          existingProjects = raw.projects || (Array.isArray(raw) ? raw : []);
+        }
+
+        const succeededIds = toAdd.map(e => e.id);
+        const projIdx      = existingProjects.findIndex(p => p.id === eraSlug);
+        const project = {
+          id:          eraSlug,
+          title:       albumTitle,
+          artist:      producer,
+          cover:       coverUrl || '',
+          releaseDate: new Date().getFullYear().toString(),
+          trackIds:    projIdx >= 0
+            ? [...new Set([...existingProjects[projIdx].trackIds, ...succeededIds])]
+            : succeededIds,
+        };
+
+        if (projIdx >= 0) existingProjects[projIdx] = project;
+        else              existingProjects.unshift(project);
+
+        const projContent = btoa(unescape(encodeURIComponent(
+          JSON.stringify({ projects: existingProjects }, null, 2)
+        )));
+        const projBody = { message: `feat: update project "${albumTitle}"`, content: projContent };
+        if (projSha) projBody.sha = projSha;
+
+        const pp = await fetch(projUrl, {
+          method: 'PUT',
+          headers: { ...hdrs, 'Content-Type': 'application/json' },
+          body:    JSON.stringify(projBody),
+        });
+        if (pp.ok) log('✓ projects.json updated', 'ok');
+        else { const err = await pp.json(); log(`⚠ projects.json: ${err.message}`, 'err'); }
+      } catch(e) {
+        log(`⚠ projects.json error: ${e.message}`, 'err');
+      }
+    }
+
+    const msg = `✓ Done! ${toAdd.length} tracks pushed.${dupes ? ' (' + dupes + ' dupes skipped)' : ''}${eraSlug ? ' Project updated.' : ''}`;
     log(msg, 'ok');
     status.textContent = msg;
-    status.style.color = '#60b060';
+    status.style.color  = '#60b060';
   } catch(e) {
     log(`✗ GitHub push failed: ${e.message}`, 'err');
     status.textContent = `✗ ${e.message}`;
-    status.style.color = '#c06060';
+    status.style.color  = '#c06060';
   }
 
   btn.disabled = false;
