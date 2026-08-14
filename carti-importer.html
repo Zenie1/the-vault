@@ -1270,6 +1270,34 @@ async function startBulkUpload() {
   btn.disabled = false;
 }
 
+// ── Audio format sniffer (reads first 12 bytes) ───────────────────────────────
+async function sniffAudioFormat(file) {
+  const buf = await new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = e => resolve(new Uint8Array(e.target.result));
+    r.readAsArrayBuffer(file.slice(0, 12));
+  });
+  // M4A / MP4 — ftyp box at offset 4
+  if (buf[4]===0x66&&buf[5]===0x74&&buf[6]===0x79&&buf[7]===0x70)
+    return { ext:'m4a', mime:'audio/mp4' };
+  // OGG container (Opus or Vorbis) — "OggS"
+  if (buf[0]===0x4F&&buf[1]===0x67&&buf[2]===0x67&&buf[3]===0x53)
+    return { ext:'ogg', mime:'audio/ogg' };
+  // FLAC — "fLaC"
+  if (buf[0]===0x66&&buf[1]===0x4C&&buf[2]===0x61&&buf[3]===0x43)
+    return { ext:'flac', mime:'audio/flac' };
+  // MP3 — ID3 tag or sync frame
+  if ((buf[0]===0x49&&buf[1]===0x44&&buf[2]===0x33)||
+      (buf[0]===0xFF&&(buf[1]&0xE0)===0xE0))
+    return { ext:'mp3', mime:'audio/mpeg' };
+  // WAV — "RIFF"
+  if (buf[0]===0x52&&buf[1]===0x49&&buf[2]===0x46&&buf[3]===0x46)
+    return { ext:'wav', mime:'audio/wav' };
+  // Unknown — trust the file extension
+  const ext = file.name.split('.').pop().toLowerCase() || 'mp3';
+  return { ext, mime: ext==='m4a'?'audio/mp4':ext==='mp3'?'audio/mpeg':'audio/'+ext };
+}
+
 // ── Various Artists Album Upload ──────────────────────────────────────────────
 
 let vaFiles = [];
@@ -1368,11 +1396,16 @@ async function vaStartUpload() {
     const { file, preId, artist, title, tags } = trackMeta[i];
     log(`[${i+1}/${trackMeta.length}] ${escHtml(artist)} — ${escHtml(title)}`, 'info');
 
-    // 1. Upload to Cloudinary
+    // 1. Detect actual audio format, rename if needed, upload to Cloudinary
     let cloudUrl = '';
     try {
+      const fmt  = await sniffAudioFormat(file);
+      const base = file.name.replace(/\.[^.]+$/, '');
+      // Create a new File with the correct extension so Cloudinary accepts it
+      const uploadFile = new File([file], base + '.' + fmt.ext, { type: fmt.mime });
+      log(`  · detected ${fmt.ext.toUpperCase()}`, 'info');
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', uploadFile);
       fd.append('upload_preset', UPLOAD_PRESET);
       const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method: 'POST', body: fd });
       const d = await r.json();
