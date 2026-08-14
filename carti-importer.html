@@ -1374,7 +1374,8 @@ async function vaStartUpload() {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('upload_preset', UPLOAD_PRESET);
-      const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method: 'POST', body: fd });
+      // Use 'auto' so Cloudinary handles M4A/AAC/MP3 regardless of file extension
+      const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: 'POST', body: fd });
       const d = await r.json();
       if (d.error) throw new Error(d.error.message);
       cloudUrl = d.secure_url;
