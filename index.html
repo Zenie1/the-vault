@@ -4723,7 +4723,7 @@ body.selection-mode .track-card:hover:not(.selected) {
     </div>
     <div class="header-right">
       <div class="status-badge guest" id="status-badge"><div class="dot"></div><span id="status-text">GUEST</span></div>
-      <button class="btn" id="projects-btn" onclick="setView('projects')">⊞ Projects</button>
+      <button class="btn" id="projects-btn" onclick="(activeView==='projects'||activeView==='project-detail')?setView('tracks'):setView('projects')">⊞ Projects</button>
       <button class="btn" id="share-btn">⟁ Share</button>
       <button class="btn" id="login-btn" title="Admin Login">⚿ Admin</button>
       <button class="btn primary" id="add-btn" style="display:none">+ Add Track</button>
@@ -5803,7 +5803,7 @@ body.selection-mode .track-card:hover:not(.selected) {
 <div id="projects-overlay" class="full-overlay">
   <div class="overlay-header">
     <span class="overlay-title">⊞ PROJECTS</span>
-    <button class="sort-btn" onclick="setView('tracks')">✕ Close</button>
+    <button class="btn" onclick="setView('tracks')">✕ Close</button>
     <button class="btn primary" id="create-proj-btn" style="display:none" onclick="openProjectModal()">+ New Project</button>
   </div>
   <div class="projects-grid"></div>

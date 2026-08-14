@@ -1429,20 +1429,38 @@ async function vaStartUpload() {
     const { tracks, sha, hdrs: h } = await ghGetJSON(repo, token);
     hdrs = h;
 
-    const existingKeys = new Set(tracks.map(t => `${t.artist}||${t.title}`.toLowerCase()));
-    const toAdd = newEntries.filter(t => !existingKeys.has(`${t.artist}||${t.title}`.toLowerCase()));
-    const dupes = newEntries.length - toAdd.length;
+    // Build lookup by artist||title
+    const existingMap = {};
+    tracks.forEach(t => { existingMap[`${t.artist}||${t.title}`.toLowerCase()] = t; });
 
-    if (!toAdd.length) {
-      log('All tracks already exist — nothing to push.', 'info');
-      status.textContent = 'All tracks already exist — nothing pushed.';
-      btn.disabled = false;
-      return;
+    const toAdd    = [];
+    const toUpdate = []; // existing tracks that need projectId added
+    newEntries.forEach(t => {
+      const key = `${t.artist}||${t.title}`.toLowerCase();
+      const existing = existingMap[key];
+      if (!existing) {
+        toAdd.push(t);
+      } else if (eraSlug && existing.projectId !== eraSlug) {
+        toUpdate.push({ ...existing, projectId: eraSlug,
+          coverArt: t.coverArt || existing.coverArt || '' });
+      }
+    });
+
+    const needsTracksUpdate = toAdd.length > 0 || toUpdate.length > 0;
+
+    if (needsTracksUpdate) {
+      // Apply updates to existing tracks, then prepend new ones
+      const updateIds = new Set(toUpdate.map(u => u.id));
+      const merged = [
+        ...toAdd,
+        ...tracks.map(t => updateIds.has(t.id) ? toUpdate.find(u => u.id === t.id) : t),
+      ];
+      await ghPutJSON(repo, hdrs, sha, merged,
+        `feat: add ${toAdd.length} tracks, tag ${toUpdate.length} with project — ${albumTitle}`);
+      log(`✓ tracks.json pushed (${toAdd.length} added, ${toUpdate.length} tagged with project)`, 'ok');
+    } else {
+      log('All tracks already exist and are tagged — skipping tracks.json push.', 'info');
     }
-
-    await ghPutJSON(repo, hdrs, sha, [...toAdd, ...tracks],
-      `feat: add ${toAdd.length} tracks — ${albumTitle}`);
-    log(`✓ tracks.json pushed (${toAdd.length} tracks, ${dupes} dupes skipped)`, 'ok');
 
     // 5. Push projects.json if era is set
     if (eraSlug) {
@@ -1458,7 +1476,7 @@ async function vaStartUpload() {
           existingProjects = raw.projects || (Array.isArray(raw) ? raw : []);
         }
 
-        const succeededIds = toAdd.map(e => e.id);
+        const succeededIds = [...toAdd.map(e => e.id), ...toUpdate.map(e => e.id)];
         const projIdx      = existingProjects.findIndex(p => p.id === eraSlug);
         const project = {
           id:          eraSlug,
