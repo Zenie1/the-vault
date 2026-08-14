@@ -1374,8 +1374,7 @@ async function vaStartUpload() {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('upload_preset', UPLOAD_PRESET);
-      // Use 'raw' to bypass Cloudinary's video pipeline — handles Opus/M4A/MP3 from SoundCloud
-      const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, { method: 'POST', body: fd });
+      const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method: 'POST', body: fd });
       const d = await r.json();
       if (d.error) throw new Error(d.error.message);
       cloudUrl = d.secure_url;
@@ -1434,15 +1433,20 @@ async function vaStartUpload() {
     tracks.forEach(t => { existingMap[`${t.artist}||${t.title}`.toLowerCase()] = t; });
 
     const toAdd    = [];
-    const toUpdate = []; // existing tracks that need projectId added
+    const toUpdate = []; // existing tracks that need url/projectId/coverArt refreshed
     newEntries.forEach(t => {
       const key = `${t.artist}||${t.title}`.toLowerCase();
       const existing = existingMap[key];
       if (!existing) {
         toAdd.push(t);
-      } else if (eraSlug && existing.projectId !== eraSlug) {
-        toUpdate.push({ ...existing, projectId: eraSlug,
-          coverArt: t.coverArt || existing.coverArt || '' });
+      } else {
+        // Always update url (fixes previously broken uploads), projectId, and coverArt
+        toUpdate.push({
+          ...existing,
+          url:      t.url,
+          ...(eraSlug  ? { projectId: eraSlug }                        : {}),
+          ...(t.coverArt ? { coverArt: t.coverArt } : existing.coverArt ? { coverArt: existing.coverArt } : {}),
+        });
       }
     });
 
