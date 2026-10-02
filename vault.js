@@ -809,10 +809,16 @@ function getFiltered() {
   } else if (sortMode === 'az') {
     list = [...list].sort((a, b) => a.title.localeCompare(b.title));
   }
-  // Invalidate preload buffers when playlist order changes
-  _preloadMap.clear();
-  preloadNext.src = '';
-  preloadPrev.src = '';
+  // Invalidate preload buffers only when the playlist order actually changes
+  // (this runs on every getPlaylist() call, so clearing unconditionally kept
+  // aborting the pre-loads before they could finish)
+  const _sig = list.map(t => t.id).join(',');
+  if (_sig !== _playlistSig) {
+    _playlistSig = _sig;
+    _preloadMap.clear();
+    preloadNext.src = '';
+    preloadPrev.src = '';
+  }
   return list;
 }
 
@@ -992,9 +998,35 @@ function formatDate(d) {
 }
 
 // ===== PLAYER =====
-const audio    = document.getElementById('audio-player');
-const audioXfade = document.getElementById('audio-xfade');
+// Two <audio> "decks" take turns. `audio` always points at the ACTIVE deck (the
+// one the UI, waveform, lyrics, media session etc. follow); `audioXfade` is the
+// idle deck that pre-loads and blends in the next song. After a blend the roles
+// swap, so there's no reload/re-seek hand-off (see TRANSITION ENGINE).
+const _deckEls   = [document.getElementById('audio-player'), document.getElementById('audio-xfade')];
+let   audio      = _deckEls[0];
+let   audioXfade = _deckEls[1];
 const playerBar  = document.getElementById('player-bar');
+window._vaultAudio = () => audio; // session.js reads the active deck through this
+
+// Listeners anywhere in the app can stay attached to whichever deck element they
+// were added to: native events from the idle deck are swallowed, and events from
+// the active deck are mirrored onto the other element — so every listener fires
+// exactly once, for the active deck only. (Registered first, so it runs first.)
+const _DECK_EVENTS = ['loadstart','progress','suspend','abort','error','emptied','stalled',
+  'loadedmetadata','loadeddata','canplay','canplaythrough','playing','waiting','seeking',
+  'seeked','ended','durationchange','timeupdate','play','pause','ratechange','volumechange'];
+_deckEls.forEach((el, i) => {
+  const other = _deckEls[1 - i];
+  _DECK_EVENTS.forEach(type => el.addEventListener(type, e => {
+    if (e._vaultMirror) return;                                   // our mirrored copy — let it through
+    if (el !== audio) { e.stopImmediatePropagation(); return; }   // idle deck — nobody hears it
+    if (type === 'volumechange') { other.volume = el.volume; other.muted = el.muted; }
+    if (type === 'ratechange')   { other.defaultPlaybackRate = el.defaultPlaybackRate; other.playbackRate = el.playbackRate; }
+    const copy = new Event(type);
+    copy._vaultMirror = true;
+    other.dispatchEvent(copy);
+  }, true));
+});
 
 // crossOrigin is set dynamically in playAtIndex based on URL host.
 // Cloudinary requires 'anonymous' for the Web Audio API visualiser.
@@ -1011,6 +1043,7 @@ preloadPrev.preload = 'auto';
 
 // Map of url → preload Audio element so we can detect a cache hit
 const _preloadMap = new Map(); // url → Audio element
+let _playlistSig = '';         // getFiltered() only invalidates preloads when this changes
 
 // Cover art image cache — preload cover Images so vinyl swap is instant
 const _coverCache = new Map(); // url → Image element
@@ -1036,15 +1069,13 @@ function _getNextIdx() {
 }
 
 function schedulePreload(playlist, idx) {
-  // Preload up to 2 tracks ahead and 1 behind (non-blocking, low priority)
+  // Warm the previous track (non-blocking, low priority). The NEXT track is
+  // pre-loaded on the idle deck by the transition engine, so it isn't fetched twice.
   const toPreload = [];
-  if (idx + 1 < playlist.length)  toPreload.push({ el: preloadNext, track: playlist[idx + 1] });
   if (idx - 1 >= 0)               toPreload.push({ el: preloadPrev, track: playlist[idx - 1] });
   // Wrap-around
   if (idx === 0 && playlist.length > 1)
     toPreload.push({ el: preloadPrev, track: playlist[playlist.length - 1] });
-  if (idx === playlist.length - 1 && playlist.length > 1)
-    toPreload.push({ el: preloadNext, track: playlist[0] });
 
   toPreload.forEach(({ el, track }) => {
     if (!track || !track.url || track.type === 'file') return;
@@ -1128,29 +1159,21 @@ async function resolveTrackUrl(url) {
   return url; // passthrough for all other URLs
 }
 
-async function playAtIndex(idx) {
+// "Play this song" — used by track cards, queue, projects, history, artist page…
+// Blends smoothly when something is already playing (see TRANSITION ENGINE).
+function playAtIndex(idx) { return _transitionTo(idx, { mode: 'manual' }); }
+
+// Hard switch on the active deck (nothing playing yet, session sync, fallbacks).
+async function _hardPlay(idx) {
   const playlist = getPlaylist();
   if (idx < 0 || idx >= playlist.length) return;
   const t = playlist[idx];
   if (!t.url) { showToast('NO AUDIO SOURCE — ADD A URL OR FILE', 'error'); return; }
   currentTrackIdx = idx;
 
-  // ── Cancel any in-progress crossfade before hard-switching ──────────────
-  if (xfadeTimer) { clearTimeout(xfadeTimer); xfadeTimer = null; }
-  if (gainMain && audioCtx) {
-    const _now = audioCtx.currentTime;
-    gainMain.gain.cancelScheduledValues(_now);
-    gainMain.gain.setValueAtTime(1, _now);
-    gainXfade.gain.cancelScheduledValues(_now);
-    gainXfade.gain.setValueAtTime(0, _now);
-  }
-  if (audioXfade && audioXfade.src) {
-    audioXfade.pause();
-    audioXfade.src = '';
-    audioXfade.load();
-  }
-  isXfading = false;
-  gaplessTriggered = false;
+  // ── Cancel any in-progress blend / pre-load before hard-switching ───────
+  _cancelTransition();
+  const _token = _xf.token;
 
   // ── Preload hit: swap the already-buffered element's src into main audio ──
   // We can't transfer the buffer directly, but re-assigning the same URL after
@@ -1160,6 +1183,7 @@ async function playAtIndex(idx) {
 
   // Resolve hosted-file page URLs (e.g. krakenfiles) to direct audio URLs.
   const resolvedUrl = await resolveTrackUrl(t.url);
+  if (_token !== _xf.token) return; // a newer play/skip happened while resolving
   // Set crossOrigin per-track: Cloudinary needs 'anonymous' for the visualiser;
   // other hosts may not send CORS headers so leave it unset to allow playback.
   // 'anonymous' lets the Web Audio API visualiser use the stream (requires CORS headers).
@@ -1175,6 +1199,7 @@ async function playAtIndex(idx) {
     audio.removeAttribute('crossOrigin');
   }
   audio.src = resolvedUrl;
+  audio._vaultSrc = t.url; audio._vaultUrl = resolvedUrl; audio._vaultTrackId = t.id;
   audio.load();
   audio.volume = parseFloat(document.getElementById('volume-slider').value);
   _decodePCM(resolvedUrl); // async PCM fingerprint — non-blocking
@@ -1283,19 +1308,16 @@ document.getElementById('prev-btn').addEventListener('click', () => {
   _cancelSleepFade();
   const playlist = getPlaylist();
   if (playlist.length === 0) return;
+  const cur = _xf.pendingIdx != null ? _xf.pendingIdx : currentTrackIdx; // count rapid taps
   const newIdx = isShuffled
     ? _prevShuffleIdx()
-    : (currentTrackIdx <= 0 ? playlist.length - 1 : currentTrackIdx - 1);
+    : (cur <= 0 ? playlist.length - 1 : cur - 1);
   crossfadeTo(newIdx);
 });
 document.getElementById('next-btn').addEventListener('click', () => {
   _cancelSleepFade();
-  const playlist = getPlaylist();
-  if (playlist.length === 0) return;
-  const newIdx = isShuffled
-    ? _nextShuffleIdx()
-    : (currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1);
-  crossfadeTo(newIdx);
+  const plan = _planNext(true); // Up Next queue first, then shuffle / normal order
+  if (plan) crossfadeTo(plan.idx, { plan });
 });
 
 audio.addEventListener('ended', () => {
@@ -1306,28 +1328,24 @@ audio.addEventListener('ended', () => {
     _startSleepFade(10000); // 10s fade on EOT
     return;
   }
-  gaplessTriggered = false; // reset gapless flag for next track
-  isXfading = false;        // ensure clean state
-  // Reset gain to 1 in case a fade was in progress
-  if (gainMain && audioCtx) gainMain.gain.setValueAtTime(1, audioCtx.currentTime);
-  // Queue takes priority over shuffle/normal
-  if (queue.length) {
-    playFromQueue(0);
-    return;
-  }
+  if (isXfading && !_xf.outEl) return; // a song change is already on its way
+  if (_xf.outEl) _finishBlend();       // a blend that should have wrapped up already
+  const plan = _planNext(); // queue takes priority over shuffle/normal
+  if (!plan) return;
   const playlist = getPlaylist();
-  const newIdx = isShuffled
-    ? _nextShuffleIdx()
-    : (currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1);
   // "You Might Like" — show suggestions before auto-advance (natural track end only)
   const _sessionOn = !!document.getElementById('session-btn')?.classList.contains('session-active');
-  if (!_sleepFading && !_sleepEOT && !_sessionOn && playlist.length >= 5) {
-    const shown = _showYML(newIdx);
-    if (!shown) playAtIndex(newIdx);
+  if (!plan.fromQueue && !_sleepFading && !_sleepEOT && !_sessionOn && playlist.length >= 5) {
+    _commitPlan(plan);
+    if (!_showYML(plan.idx)) _transitionTo(plan.idx, { mode: 'ended' });
   } else {
-    playAtIndex(newIdx);
+    _transitionTo(plan.idx, { mode: 'ended', plan });
   }
 });
+
+// Engine housekeeping on the active deck
+audio.addEventListener('pause',   () => { _disarm(); if (_xf.outEl) _finishBlend(); }); // don't leave the old song playing underneath
+audio.addEventListener('seeking', () => _disarm());                                    // re-armed by the next timeupdate
 
 // ===== WAVEFORM VISUALIZER (live frequency-reactive) =====
 const waveCanvas = document.getElementById('waveform-canvas');
@@ -1750,6 +1768,7 @@ async function _decodePCM(url) {
     const resp = await fetch(url, { mode: 'cors' });
     const buf  = await resp.arrayBuffer();
     const decoded = await audioCtx.decodeAudioData(buf);
+    _silenceMap.set(url, _audibleBounds(decoded)); // dead air at start/end → smarter blends
     const isMobile = window.innerWidth < 768;
     const BAR_COUNT = isMobile ? 120 : 200;
     const channels  = decoded.numberOfChannels;
@@ -1780,7 +1799,7 @@ async function _decodePCM(url) {
 
 function _getPCMBars(count) {
   if (!audio.src) return null;
-  const data = _pcmCache.get(audio.src);
+  const data = _pcmCache.get(audio.src) || _pcmCache.get(audio._vaultUrl);
   if (!data) return null;
   const result = new Float32Array(count);
   const srcLen = data.length;
@@ -2023,44 +2042,9 @@ audio.addEventListener('timeupdate', () => {
   if (_tot)  _tot.textContent  = fmt(audio.duration);
   _historyTimeUpdate();
 
-  // ── T-10s: pre-buffer the next track into audioXfade so the crossfade
-  //    starts instantly with no network wait. Only for tracks > 15s.
-  // FIX: Sleep timer vs gapless conflict — skip preload during sleep fade — The Vault conflict resolution
-  if (gaplessEnabled && !isXfading && !gaplessTriggered && !isLooping && !_sleepFading && audio.duration > 15) {
-    const _remaining = audio.duration - audio.currentTime;
-    const _triggerAt = Math.max(0.5, xfadeDuration) + 0.25;
-    if (_remaining > _triggerAt && _remaining <= 10) {
-      const _ni = _getNextIdx();
-      const _nt = getPlaylist()[_ni];
-      if (_nt && _nt.url && audioXfade.src !== _nt.url) {
-        audioXfade.src = _nt.url;
-        audioXfade.load();         // buffer silently — no play() call
-      }
-    }
-  }
-
-  // ── Gapless playback ─────────────────────────────────────────────
-  // When the track is within (xfadeDuration + 0.5s) of ending, start
-  // the crossfade automatically so the next track begins seamlessly.
-  // FIX: Sleep timer vs gapless conflict — skip crossfade trigger during sleep fade — The Vault conflict resolution
-  if (gaplessEnabled && !isXfading && !gaplessTriggered && !isLooping && !_sleepFading) {
-    const remaining = audio.duration - audio.currentTime;
-    const triggerAt  = Math.max(0.5, xfadeDuration) + 0.25;
-    if (remaining > 0 && remaining <= triggerAt) {
-      gaplessTriggered = true;
-      if (queue.length) {
-        playFromQueue(0);
-      } else {
-        const playlist = getPlaylist();
-        if (playlist.length > 1) {
-          const nextIdx = isShuffled
-            ? _nextShuffleIdx()
-            : (currentTrackIdx >= playlist.length - 1 ? 0 : currentTrackIdx + 1);
-          crossfadeTo(nextIdx);
-        }
-      }
-    }
-  }
+  // ── Seamless transitions: pre-load the next song on the idle deck and arm
+  //    a precise timer for the auto-advance blend (see TRANSITION ENGINE).
+  _xfTick();
 });
 
 document.getElementById('volume-slider').addEventListener('input', (e) => {
@@ -4618,6 +4602,7 @@ const speedBtn = document.getElementById('speed-btn');
 speedBtn.addEventListener('click', () => {
   speedIdx = (speedIdx + 1) % SPEEDS.length;
   const rate = SPEEDS[speedIdx];
+  audio.defaultPlaybackRate = rate; // survives loading the next song
   audio.playbackRate = rate;
   speedBtn.textContent = rate === 1 ? '1×' : `${rate}×`;
   speedBtn.classList.toggle('active', rate !== 1);
@@ -4638,12 +4623,11 @@ function _startSleepFade(fadeDuration) {
   fadeDuration = fadeDuration || 20000;
   if (_sleepFading) return;
   _sleepFading     = true;
-  // FIX: Sleep timer vs gapless conflict — cancel buffered preload immediately — The Vault conflict resolution
-  if (audioXfade && audioXfade.src) {
-    audioXfade.pause();
-    audioXfade.src = '';
-    try { audioXfade.load(); } catch (_) {}
-  }
+  // FIX: Sleep timer vs gapless conflict — no auto-advance while fading out — The Vault conflict resolution
+  _xf.token++;                    // abandon any song change that's still loading
+  _xf.pendingIdx = null;
+  _disarm();
+  if (_xf.outEl) _finishBlend();  // wrap up a blend in progress so only one song fades
   isXfading       = false;
   gaplessTriggered = false;
   _sleepFadePreVol = audio.volume;
@@ -5505,123 +5489,393 @@ function applyVizArtistConfig(artist) {
 }
 
 // =====================================================================
-// ██████  CROSSFADE ENGINE
+// ██████  TRANSITION ENGINE — two decks, equal-power blends
 // =====================================================================
+//
+// Every song change goes through _transitionTo(). The next song plays on the
+// idle deck and the two decks are blended with equal-power curves (sin/cos),
+// so loudness stays even through the overlap. The decks swap roles the moment
+// the new song starts — `audio` then points at it — so nothing has to be
+// reloaded or re-seeked when the blend ends (that hand-off was the old stutter).
+//
+//  • Song ends naturally (GAPLESS on): blends over the FADE length, timed so it
+//    finishes as the outgoing song's music ends (trailing dead air is ignored),
+//    and the incoming song skips its leading dead air.
+//  • Next / Prev / clicking a song: quick blend (MANUAL_BLEND_S). The old song
+//    keeps playing, ducked, until the new one is actually sounding — no gap.
+//  • FADE = OFF: a 60 ms micro-blend — gapless, and no click.
+//  • The next song is pre-loaded on the idle deck PREBUFFER_AFTER_S into the
+//    current one, so auto-advance and ⏭ start instantly.
+
+const MANUAL_BLEND_S    = 0.5;   // Next / Prev / clicking a different song
+const MICRO_BLEND_S     = 0.06;  // FADE = OFF — just enough to avoid a click
+const PREBUFFER_AFTER_S = 8;     // give the current song the bandwidth first
+
+const _xf = {
+  token: 0,          // bumped by every song change — stale async steps bail out
+  outEl: null,       // deck that's fading out (null when no blend is running)
+  arm: null,         // precise timer for the auto-advance
+  lastPlan: 0,       // throttles the pre-load check
+  pendingIdx: null,  // song we're switching to while it loads (so ⏭⏭⏭ counts every tap)
+  blendEnd: 0,       // audio-clock time the current blend's ramps finish
+};
+const _silenceMap = new Map(); // url → { lead, tail, dur } in seconds (filled by _decodePCM)
+const _wait = ms => new Promise(r => setTimeout(r, ms));
+
+/** crossfadeTo(idx, opts) — kept for existing callers; same as _transitionTo(). */
+function crossfadeTo(idx, opts) { return _transitionTo(idx, opts); }
 
 /**
- * crossfadeTo(idx)
- * Smoothly transitions to the track at playlist index `idx`.
- * - Loads the incoming track into the secondary <audio id="audio-xfade"> element
- * - Ramps gainMain 1→0 and gainXfade 0→1 over xfadeDuration seconds
- * - After the fade, swaps audio state back to the main element (so all
- *   existing event handlers / timeupdate / ended continue to work)
- * - Falls back to direct playAtIndex() when xfadeDuration=0 or no context
+ * _transitionTo(idx, { mode, plan })
+ * mode: 'manual' (default) | 'auto' (blend before the end) | 'ended' (song already finished)
+ * plan: from _planNext() — committed (queue / shuffle advanced) when the switch happens
  */
-function crossfadeTo(idx) {
-  // FIX: Sleep timer vs gapless conflict — safety net: don't crossfade during sleep fade — The Vault conflict resolution
-  if (_sleepFading) return;
-  const playlist = getPlaylist();
-  if (idx < 0 || idx >= playlist.length) return;
-  const t = playlist[idx];
-  if (!t || !t.url) { showToast('NO AUDIO SOURCE', 'error'); return; }
+async function _transitionTo(idx, opts = {}) {
+  const mode = opts.mode || 'manual';
+  // FIX: Sleep timer vs gapless conflict — no auto-advance while the sleep fade runs — The Vault conflict resolution
+  if (_sleepFading) { if (mode !== 'manual') return; _cancelSleepFade(); }
+  const pl = getPlaylist();
+  const t  = pl[idx];
+  if (!t) return;
+  if (!t.url) { showToast('NO AUDIO SOURCE — ADD A URL OR FILE', 'error'); return; }
 
-  // Ensure audio context is running
-  if (!audioCtx || !gainMain) {
-    playAtIndex(idx);
-    return;
-  }
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-
-  // Instant switch when duration=0 or not currently playing
-  if (xfadeDuration <= 0 || !isPlaying) {
-    playAtIndex(idx);
-    return;
-  }
-
-  // Cancel any in-progress crossfade cleanly
-  if (isXfading) {
-    clearTimeout(xfadeTimer);
-    const now0 = audioCtx.currentTime;
-    gainMain.gain.cancelScheduledValues(now0);
-    gainXfade.gain.cancelScheduledValues(now0);
-    gainMain.gain.setValueAtTime(1, now0);
-    gainXfade.gain.setValueAtTime(0, now0);
-    audioXfade.pause();
-    audioXfade.src = '';
-    audioXfade.load();
-    isXfading = false;
+  const playing = isPlaying && !audio.paused && !audio.ended;
+  const holds   = _deckHolds(audioXfade, t);
+  const vs      = window._vaultSession;
+  const guest   = !!(vs && vs.isActive && vs.role === 'guest');
+  // Hard switch when a blend can't help: audio graph not built yet, stems mixing,
+  // the host telling a guest what to play, or nothing audible and nothing pre-loaded.
+  if (!audioCtx || !gainMain || stemOpen || (guest && mode === 'manual') || (!playing && !holds)) {
+    _commitPlan(opts.plan);
+    return _hardPlay(idx);
   }
 
+  _commitPlan(opts.plan);
+  const token = ++_xf.token;
+  _xf.pendingIdx = idx;
+  _disarm();
+  gaplessTriggered = true;               // one auto-advance per song
+  const hadBlend = !!_xf.outEl;
+  if (hadBlend) _finishBlend();          // a previous blend is still running — wrap it up
   isXfading = true;
+  dismissYtBar();
+  if (audioCtx.state === 'suspended') { try { await audioCtx.resume(); } catch (_) {} }
+  if (hadBlend) await _wait(40);         // let that tail finish its 30 ms fade-out first
+  if (token !== _xf.token) return;
 
-  // Load + start the incoming track on the secondary element.
-  // If the T-10s pre-buffer already loaded this URL, skip the src
-  // re-assignment so the browser can start from its buffer immediately.
-  const _preBuffered = audioXfade.src === t.url && audioXfade.readyState >= 2;
-  if (!_preBuffered) {
-    audioXfade.src = t.url;
-    audioXfade.currentTime = 0;
-  } else {
-    audioXfade.currentTime = 0; // rewind to start for the xfade
+  const inEl = audioXfade;
+  if (!holds) {
+    let url = t.url;
+    try { url = await resolveTrackUrl(t.url); } catch (_) {}
+    if (token !== _xf.token) return;
+    _loadDeck(inEl, url, t);
+    // (waveform / dead-air analysis waits until the song sticks — see below — so
+    //  skipping through five songs doesn't download and decode all five)
   }
-  audioXfade.volume = 1;
-  // FIX: Pitch shift vs crossfade conflict — apply current pitch to xfade node before fade-in — The Vault conflict resolution
-  if (pitchNodeXfade && pitchWorkletReady) {
-    const _pitchRatio = Math.pow(2, pitchSemitones / 12);
-    pitchNodeXfade.port.postMessage({ ratio: _pitchRatio });
+  // Auto-advance: the current song stays the active deck until the next one can play
+  if (mode === 'auto' && inEl.readyState < 3) {
+    const ok = await _waitReady(inEl, 15000);
+    if (token !== _xf.token) return;
+    if (!ok) { isXfading = false; return _hardPlay(idx); }
   }
-  const xp = audioXfade.play();
-  if (xp) xp.catch(() => {});
 
-  // Ramp gains
+  const outEl = audio;
+  // Mirror settings so nothing jumps after the swap
+  inEl.volume = outEl.volume;
+  inEl.muted  = outEl.muted;
+  inEl.defaultPlaybackRate = outEl.defaultPlaybackRate || 1;
+  inEl.playbackRate        = outEl.playbackRate || 1;
+  const ready = inEl.readyState >= 3;     // buffered → it starts within a few ms of play()
+  // Skip dead air at the start (also rewinds a deck that was kept loaded for ⏮)
+  const lead = _leadInFor(inEl);
+  if (Math.abs((inEl.currentTime || 0) - lead) > 0.05) { try { inEl.currentTime = lead; } catch (_) {} }
+
+  // Swap roles — from here on `audio` is the new song and the whole UI follows it
   const now = audioCtx.currentTime;
-  const end = now + xfadeDuration;
-
-  gainMain.gain.cancelScheduledValues(now);
-  gainMain.gain.setValueAtTime(gainMain.gain.value, now);
-  gainMain.gain.linearRampToValueAtTime(0, end);
-
   gainXfade.gain.cancelScheduledValues(now);
-  gainXfade.gain.setValueAtTime(gainXfade.gain.value, now);
-  gainXfade.gain.linearRampToValueAtTime(1, end);
-
-  // Update UI immediately so the user sees the incoming track right away
+  gainXfade.gain.setValueAtTime(0, now);  // new song silent until the blend brings it up
+  _swapDecks();
+  _xf.outEl = outEl;
+  _xf.blendEnd = 0;                       // set by _startBlend once the ramps are scheduled
+  const playP = audio.play();             // start it before the UI work below, which can take a moment
   currentTrackIdx = idx;
+  _xf.pendingIdx = null;
+  gaplessTriggered = false;
+  if (ready) {
+    // Buffered: blend right away rather than waiting on the main thread / play() promise
+    _startBlend(mode, playing, outEl);
+    playP.catch(() => { if (token === _xf.token) _finishBlend(); });
+  }
   _updatePlayerUI(t, idx);
+  audio.dispatchEvent(new Event('loadstart')); // per-song resets (history, live session)
+  _refreshTimeLabels();
+  const newUrl = audio._vaultUrl;            // waveform + dead-air map once it's clearly staying
+  setTimeout(() => { if (audio._vaultUrl === newUrl) _decodePCM(newUrl); }, 1500);
+  if (ready) return;
 
-  // ── Early-swap: start main audio ~300 ms before fade completes ──
-  // This gives the browser time to seek to the right position in the
-  // cached buffer before we switch gain control back to gainMain.
-  const EARLY_MS = Math.min(300, xfadeDuration * 500);
-  const swapDelay = Math.max(0, xfadeDuration * 1000 - EARLY_MS);
+  // Still loading: duck the old song so the press feels instant, and keep it playing
+  // underneath until the new one is actually sounding — then blend
+  if (playing) _rampTo(gainXfade.gain, audioCtx.currentTime, 0.2, Math.min(gainXfade.gain.value, 0.35));
+  const started = await Promise.race([
+    playP.then(() => true, () => false),
+    _wait(12000).then(() => false),       // stuck loading — don't leave the old song ducked forever
+  ]);
+  if (token !== _xf.token) return;
+  if (!started) { _finishBlend(); return; } // the app's error handler has already said why
+  _startBlend(mode, playing, outEl);
+}
 
-  setTimeout(() => {
-    if (!isXfading) return; // cancelled in the meantime
-    // Pre-warm main audio element at xfade's current position
-    const saveTime = audioXfade.currentTime;
-    audio.src = t.url;
-    audio.currentTime = saveTime;
-    // Keep gainMain at 0 — xfade is still audible
-    const ap = audio.play();
-    if (ap) ap.catch(() => {});
-  }, swapDelay);
+// Equal-power blend between the decks: new song up (sin), old song down (cos),
+// so the overlap doesn't dip or bulge in loudness
+function _startBlend(mode, playing, outEl) {
+  let dur;
+  if (!playing)               dur = 0.03;   // nothing was audible — just avoid a click
+  else if (mode === 'manual') dur = xfadeDuration > 0 ? Math.min(MANUAL_BLEND_S, xfadeDuration) : MICRO_BLEND_S;
+  else {
+    const fade = xfadeDuration > 0 ? xfadeDuration : MICRO_BLEND_S;
+    const left = (outEl.paused || outEl.ended) ? 0
+      : (_endAtFor(outEl) - outEl.currentTime) / (outEl.playbackRate || 1);
+    dur = Math.max(MICRO_BLEND_S, Math.min(fade, left));
+  }
+  const t0 = audioCtx.currentTime;
+  _rampEP(gainMain.gain,  t0, dur, 1);
+  _rampEP(gainXfade.gain, t0, dur, 0);
+  _xf.blendEnd = t0 + dur;
+  _scheduleFinish(t0 + dur);
+  _updatePositionState();
+}
 
-  // ── Final swap: hand off audio at fade end ──────────────────────
+// Finish once the AUDIO clock reaches the end of the ramps — on a busy device it can
+// lag the wall clock, and finishing on a plain timer would chop the end of the blend
+function _scheduleFinish(endAt, deadline) {
+  if (deadline === undefined) deadline = performance.now() + Math.max(0, endAt - audioCtx.currentTime) * 1000 + 10000;
+  clearTimeout(xfadeTimer);
   xfadeTimer = setTimeout(() => {
-    isXfading = false;
-    const nc = audioCtx.currentTime;
-    // Switch gains atomically
-    gainXfade.gain.cancelScheduledValues(nc);
-    gainXfade.gain.setValueAtTime(0, nc);
-    gainMain.gain.cancelScheduledValues(nc);
-    gainMain.gain.setValueAtTime(1, nc);
-    // Silence and clean up xfade element
-    audioXfade.pause();
-    audioXfade.src = '';
-    audioXfade.load();
-    // Reset gapless trigger for the new track
-    gaplessTriggered = false;
-  }, xfadeDuration * 1000 + 60);
+    if (audioCtx.currentTime < endAt - 0.005 && performance.now() < deadline) return _scheduleFinish(endAt, deadline);
+    _finishBlend();
+  }, Math.max(0, endAt - audioCtx.currentTime) * 1000 + 60);
+}
+
+// Ends a blend — on schedule, or cut short by pause / another skip / the sleep timer
+function _finishBlend() {
+  clearTimeout(xfadeTimer); xfadeTimer = null;
+  const out = _xf.outEl;
+  _xf.outEl = null;
+  isXfading = false;
+  if (audioCtx && gainMain) {
+    const now = audioCtx.currentTime;
+    _rampTo(gainMain.gain,  now, 0.03, 1);   // short ramps — no click when cutting it short
+    _rampTo(gainXfade.gain, now, 0.03, 0);
+  }
+  if (out && out !== audio) {
+    const src = out._vaultUrl;
+    // Pause once its tail is silent, but keep it loaded so ⏮ Prev is instant
+    setTimeout(() => {
+      if (out !== audio && out._vaultUrl === src && !isXfading) { try { out.pause(); } catch (_) {} }
+    }, 45);
+  }
+}
+
+// Hard stop used by _hardPlay(): drop any blend and whatever the idle deck holds
+function _cancelTransition() {
+  _xf.token++;
+  _xf.pendingIdx = null;
+  _disarm();
+  clearTimeout(xfadeTimer); xfadeTimer = null;
+  _xf.outEl = null;
+  if (audioCtx && gainMain) {
+    const now = audioCtx.currentTime;
+    gainMain.gain.cancelScheduledValues(now);  gainMain.gain.setValueAtTime(1, now);
+    gainXfade.gain.cancelScheduledValues(now); gainXfade.gain.setValueAtTime(0, now);
+  }
+  _clearDeck(audioXfade);
+  isXfading = false;
+  gaplessTriggered = false;
+}
+
+// From timeupdate on the active deck: pre-load the next song, and arm a precise
+// timer for the auto-advance (timeupdate alone only fires every ~250 ms).
+function _xfTick() {
+  // Self-heal: if the finish timer ran late (very busy device), tidy up so it can't block the next song
+  if (_xf.outEl && _xf.blendEnd && audioCtx && audioCtx.currentTime > _xf.blendEnd + 0.25) _finishBlend();
+  if (!audio.duration || audio.paused || isXfading) return;
+  const endAt = _endAtFor(audio);
+  _maybePrebuffer(endAt);
+  if (!_autoAllowed() || !isFinite(endAt)) { _disarm(); return; }
+  const ms = (_autoStartAt() - audio.currentTime) / (audio.playbackRate || 1) * 1000;
+  _disarm();
+  if (ms <= 1500) _xf.arm = setTimeout(_autoAdvance, Math.max(0, ms));
+}
+
+function _autoAllowed() {
+  return gaplessEnabled && !gaplessTriggered && !isLooping && !_sleepFading && !_sleepEOT && !stemOpen;
+}
+// Media time on the active deck at which the auto-advance blend should begin
+function _autoStartAt() {
+  const endAt = _endAtFor(audio);
+  const fade  = Math.min(xfadeDuration > 0 ? xfadeDuration : MICRO_BLEND_S, Math.max(MICRO_BLEND_S, endAt / 4));
+  return endAt - fade;
+}
+
+function _autoAdvance() {
+  _xf.arm = null;
+  if (audio.paused || isXfading || !_autoAllowed()) return;
+  const early = _autoStartAt() - audio.currentTime;   // timers can fire a little early
+  if (early > 0.02) { _xf.arm = setTimeout(_autoAdvance, early / (audio.playbackRate || 1) * 1000); return; }
+  const plan = _planNext();
+  if (!plan) return;                         // nothing to move on to — let it end naturally
+  gaplessTriggered = true;
+  _transitionTo(plan.idx, { mode: 'auto', plan });
+}
+
+// What plays after the current song — a pure peek; _commitPlan() makes it happen.
+// Order: Up Next queue → shuffle order → next in the list (wrapping around).
+function _planNext(manual = false) {
+  const pl = getPlaylist();
+  if (!pl.length) return null;
+  for (const id of queue) {
+    const qi = pl.findIndex(x => x.id === id);
+    if (qi !== -1) return { idx: qi, fromQueue: true, id };
+  }
+  if (isLooping && !manual) return null;     // audio.loop repeats the song itself
+  if (isShuffled) {
+    if (_shufflePos + 1 >= _shuffleQueue.length || !pl[_shuffleQueue[_shufflePos + 1]]) _buildShuffleQueue();
+    const si = _shuffleQueue[_shufflePos + 1];
+    if (pl[si]) return { idx: si, shuffle: true };
+  }
+  const cur = _xf.pendingIdx != null ? _xf.pendingIdx : currentTrackIdx;
+  return { idx: cur >= pl.length - 1 ? 0 : cur + 1 };
+}
+function _commitPlan(p) {
+  if (!p) return;
+  if (p.fromQueue) { const i = queue.indexOf(p.id); if (i !== -1) queue.splice(i, 1); renderQueue(); }
+  else if (p.shuffle) _shufflePos++;
+}
+
+// Load the song that plays next onto the idle deck so the blend can start instantly
+function _maybePrebuffer(endAt) {
+  if (isXfading || stemOpen || audioXfade._vaultPending) return;
+  const now = performance.now();
+  if (now - _xf.lastPlan < 1000) return;     // getPlaylist() isn't free — once a second is plenty
+  _xf.lastPlan = now;
+  const left = endAt - audio.currentTime;
+  if (audio.currentTime < PREBUFFER_AFTER_S && left > 45) return; // long song: wait 8 s
+  if (audio.currentTime < 2 && left > 10) return;                 // short song: still let it start cleanly
+  const plan = _planNext();
+  const t = plan && getPlaylist()[plan.idx];
+  if (!t || !t.url || _deckHolds(audioXfade, t)) return;
+  _prepareDeck(audioXfade, t);
+}
+async function _prepareDeck(el, t) {
+  const token = _xf.token;
+  el._vaultPending = t.url;
+  let url = t.url;
+  try { url = await resolveTrackUrl(t.url); } catch (_) {}
+  el._vaultPending = null;
+  if (token !== _xf.token || el !== audioXfade || isXfading) return;
+  _loadDeck(el, url, t);
+  _decodePCM(url);                           // waveform + dead-air detection, ready in advance
+  if (t.coverArt) _preloadCoverArt(t.coverArt);
+}
+
+// ── Deck helpers ──────────────────────────────────────────────────────────
+function _swapDecks() {
+  [audio, audioXfade]           = [audioXfade, audio];
+  [gainMain, gainXfade]         = [gainXfade, gainMain];
+  [sourceNode, sourceNodeXfade] = [sourceNodeXfade, sourceNode];
+  [pitchNode, pitchNodeXfade]   = [pitchNodeXfade, pitchNode];
+  audio.loop      = isLooping;
+  audioXfade.loop = false;
+}
+function _loadDeck(el, url, t) {
+  // Same CORS rule as _hardPlay: Cloudinary / pillows.su need 'anonymous' for the analyser
+  if (/cloudinary\.com|pillows\.su/.test(url)) el.crossOrigin = 'anonymous';
+  else el.removeAttribute('crossOrigin');
+  el._vaultSrc = t.url; el._vaultUrl = url; el._vaultTrackId = t.id;
+  el.preload = 'auto';
+  el.src = url;
+  el.load();
+}
+function _clearDeck(el) {
+  try { el.pause(); } catch (_) {}
+  if (el.hasAttribute('src')) { el.removeAttribute('src'); try { el.load(); } catch (_) {} }
+  el._vaultSrc = el._vaultUrl = el._vaultTrackId = el._vaultPending = null;
+}
+function _deckHolds(el, t) {
+  return !!t && el._vaultTrackId === t.id && el._vaultSrc === t.url && !!el._vaultUrl && !el.error;
+}
+function _waitReady(el, ms) {
+  return new Promise(resolve => {
+    const t0 = performance.now();
+    (function poll() {
+      if (el.readyState >= 3) return resolve(true);          // HAVE_FUTURE_DATA
+      if (el.error || performance.now() - t0 > ms) return resolve(false);
+      setTimeout(poll, 50);
+    })();
+  });
+}
+function _disarm() { if (_xf.arm) { clearTimeout(_xf.arm); _xf.arm = null; } }
+function _refreshTimeLabels() {
+  const d = isFinite(audio.duration) ? audio.duration : 0;
+  const c = audio.currentTime || 0;
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  set('time-current', fmt(c)); set('time-total', fmt(d));
+  set('viz-time-cur', fmt(c)); set('viz-time-tot', fmt(d));
+  const fill = document.getElementById('viz-seek-fill');
+  if (fill) fill.style.width = d ? (c / d * 100) + '%' : '0%';
+}
+
+// ── AudioParam helpers — hold the current value, then ramp from it ─────────
+function _holdParam(p, t) {
+  const v = p.value;
+  p.cancelScheduledValues(t);
+  p.setValueAtTime(v, t);
+  return v;
+}
+function _rampTo(p, t0, dur, to) {
+  _holdParam(p, t0);
+  p.linearRampToValueAtTime(to, t0 + dur);
+}
+// Equal-power ramp (sin up / cos down) from the current value to `to`
+function _rampEP(p, t0, dur, to) {
+  const from  = _holdParam(p, t0);
+  const steps = Math.max(6, Math.min(48, Math.round(dur * 24)));
+  for (let i = 1; i <= steps; i++) {
+    const x = i / steps;
+    const k = to >= from ? Math.sin(x * Math.PI / 2) : 1 - Math.cos(x * Math.PI / 2);
+    p.linearRampToValueAtTime(from + (to - from) * k, t0 + x * dur);
+  }
+}
+
+// ── Dead-air detection ───────────────────────────────────────────────────
+// First / last 20 ms window above -50 dBFS — where the music actually starts and ends.
+function _audibleBounds(buf) {
+  const sr = buf.sampleRate, n = buf.length, win = Math.max(1, Math.round(sr * 0.02));
+  const thr = 1e-5;                          // -50 dBFS as mean-square
+  const ch = [];
+  for (let c = 0; c < buf.numberOfChannels; c++) ch.push(buf.getChannelData(c));
+  const loud = s => {
+    const e = Math.min(n, s + win);
+    for (const d of ch) { let sum = 0; for (let j = s; j < e; j++) sum += d[j] * d[j]; if (sum / (e - s) > thr) return true; }
+    return false;
+  };
+  let a = 0;
+  while (a < n && !loud(a)) a += win;
+  if (a >= n) return null;                   // silent file — no opinion
+  let b = n - win;
+  while (b > a && !loud(b)) b -= win;
+  return { lead: a / sr, tail: Math.min(n, b + win) / sr, dur: n / sr };
+}
+// Where the music on a deck really ends (ignores trailing dead air once analysed)
+function _endAtFor(el) {
+  const s = _silenceMap.get(el._vaultUrl);
+  if (s && s.tail > 1) return Math.min(s.tail + 0.15, s.dur);
+  return isFinite(el.duration) ? el.duration : Infinity;
+}
+// How far into a song its music starts (only skips leading dead air longer than 0.3 s)
+function _leadInFor(el) {
+  const s = _silenceMap.get(el._vaultUrl);
+  return s && s.lead > 0.3 ? Math.min(s.lead - 0.05, 10) : 0;
 }
 
 /**
@@ -5681,6 +5935,12 @@ function _updatePlayerUI(t, idx) {
   const va = document.getElementById('viz-track-artist');
   if (vt) vt.textContent = t.title;
   if (va) va.textContent = t.artist.toUpperCase();
+
+  if (typeof loadComments === 'function') loadComments(String(t.id)); // comment markers for the new song
+  // Log for session history (host side) — same as _hardPlay
+  if (window._vaultSession && window._vaultSession.isActive && window._vaultSession.role === 'host') {
+    if (typeof window.logSessionTrack === 'function') window.logSessionTrack(t.title, t.artist);
+  }
 
   renderTracks();
   updateLikeBtn();

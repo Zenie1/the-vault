@@ -759,7 +759,8 @@ function onTypingChange(isTyping, role) {
 // VAULT.JS INTEROP
 // ══════════════════════════════════════════════════════════════════════════════
 
-function getAudio() { return document.getElementById('audio-player'); }
+// vault.js plays on two <audio> decks that swap after each crossfade — ask it which one is live
+function getAudio() { return (window._vaultAudio && window._vaultAudio()) || document.getElementById('audio-player'); }
 
 function getPlaylist_() {
   try { if (typeof getPlaylist === 'function') return getPlaylist(); } catch { /* ignore */ }
