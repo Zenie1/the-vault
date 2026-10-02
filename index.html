@@ -2400,6 +2400,42 @@ header {
 }
 .viz-dot:hover::after { opacity: 1; }
 
+/* Viz seek bar */
+#viz-seek {
+  position: absolute;
+  bottom: 62px;
+  left: 24px; right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 2;
+  pointer-events: all;
+}
+#viz-seek-track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+}
+#viz-seek-track:hover { background: rgba(255,255,255,0.22); }
+#viz-seek-fill {
+  height: 100%;
+  background: var(--current-color, var(--accent));
+  border-radius: 2px;
+  pointer-events: none;
+  width: 0%;
+  transition: width 0.25s linear;
+}
+#viz-seek span {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: rgba(255,255,255,0.45);
+  min-width: 30px;
+  text-align: center;
+}
+
 /* Viz toggle button in player bar */
 .viz-btn {
   background: transparent;
@@ -5794,6 +5830,14 @@ body.selection-mode .track-card:hover:not(.selected) {
       <div class="viz-dot" data-mode="3" data-label="RADIAL"></div>
       <div class="viz-dot" data-mode="4" data-label="TUNNEL"></div>
       <div class="viz-dot" data-mode="5" data-label="AURORA"></div>
+    </div>
+    <!-- Seek bar inside viz overlay -->
+    <div id="viz-seek">
+      <span id="viz-time-cur">0:00</span>
+      <div id="viz-seek-track">
+        <div id="viz-seek-fill"></div>
+      </div>
+      <span id="viz-time-tot">0:00</span>
     </div>
   </div>
 </div>

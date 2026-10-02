@@ -2014,6 +2014,13 @@ audio.addEventListener('timeupdate', () => {
   if (!audio.duration) return;
   document.getElementById('time-current').textContent = fmt(audio.currentTime);
   document.getElementById('time-total').textContent = fmt(audio.duration);
+  // Update viz overlay seek bar
+  const _fill = document.getElementById('viz-seek-fill');
+  const _cur  = document.getElementById('viz-time-cur');
+  const _tot  = document.getElementById('viz-time-tot');
+  if (_fill) _fill.style.width = (audio.currentTime / audio.duration * 100) + '%';
+  if (_cur)  _cur.textContent  = fmt(audio.currentTime);
+  if (_tot)  _tot.textContent  = fmt(audio.duration);
   _historyTimeUpdate();
 
   // ── T-10s: pre-buffer the next track into audioXfade so the crossfade
@@ -4869,6 +4876,12 @@ function toggleVisualizer() {
 // ── Wiring ──────────────────────────────────────────────────────────
 document.getElementById('viz-btn').addEventListener('click', toggleVisualizer);
 document.getElementById('viz-close-btn').addEventListener('click', closeVisualizer);
+// Viz seek bar — click to seek
+document.getElementById('viz-seek-track').addEventListener('click', (e) => {
+  if (!audio.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  audio.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * audio.duration;
+});
 document.getElementById('viz-mode-btn').addEventListener('click', () => {
   _setVizMode((vizMode + 1) % VIZ_MODES.length, true);
 });
