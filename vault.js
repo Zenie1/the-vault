@@ -1401,7 +1401,7 @@ function setupAudioContext() {
     // ── Waveform analyser & output gain ─────────────────────────────
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 512;
-    analyser.smoothingTimeConstant = 0.7;
+    analyser.smoothingTimeConstant = 0.4;
     freqData = new Uint8Array(analyser.frequencyBinCount);
 
     waveformMuteGain = audioCtx.createGain();
@@ -1524,8 +1524,8 @@ function drawWaveform() {
       else if (i < 20) target = Math.min(255, target * 1.5);
 
       smoothedBars[i] = smoothedBars[i] < target
-        ? smoothedBars[i] * 0.3 + target * 0.7   // fast attack
-        : smoothedBars[i] * 0.78 + target * 0.22; // decay
+        ? smoothedBars[i] * 0.2 + target * 0.8   // fast attack
+        : smoothedBars[i] * 0.45 + target * 0.55; // fast decay — no afterglow
     }
   } else if (!smoothedBars.length) {
     smoothedBars = new Array(BAR_COUNT).fill(8);
