@@ -5012,9 +5012,8 @@ function _viz808(W, H, color) {
     vizAnalyser.getByteFrequencyData(vizFD);
   }
 
-  // Phosphor trail — partial clear (shorter trail = faster alpha; longer = slower)
-  vizCtx.fillStyle = `rgba(10,4,8,${Math.min(1, 8 / vizTrailLength).toFixed(3)})`;
-  vizCtx.fillRect(0, 0, W, H);
+  // Full clear — no phosphor trail
+  vizCtx.clearRect(0, 0, W, H);
 
   const bassE = _getBassEnergy();
 
